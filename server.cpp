@@ -4,6 +4,8 @@
 #include "server.h"
 
 #include <arrow/api.h>
+#include <arrow/io/api.h>
+#include <arrow/csv/api.h>
 
 const std::chrono::duration<uint64_t> Server::SILENCE_TIMEOUT_(10);
 
@@ -34,8 +36,32 @@ Server::Server(const std::shared_ptr<uvw::Loop>& loop) : tcp_(loop->resource<uvw
         return;
       }
 
-      std::cerr << "Sending data: " << buffer->data() << std::endl;
-      client->write(reinterpret_cast<char *>(buffer->mutable_data()), buffer->size());
+      arrow::Status st;
+      arrow::MemoryPool* pool = arrow::default_memory_pool();
+      auto buffer_input = std::make_shared<arrow::io::BufferReader>(buffer);
+
+      auto read_options = arrow::csv::ReadOptions::Defaults();
+      auto parse_options = arrow::csv::ParseOptions::Defaults();
+      auto convert_options = arrow::csv::ConvertOptions::Defaults();
+
+      auto table_reader_result = arrow::csv::TableReader::Make(pool, buffer_input, read_options,
+          parse_options, convert_options);
+      if (!table_reader_result.ok()) {
+        std::cerr << "TableReader instantiation error" << std::endl;
+        client->write(reinterpret_cast<char *>(buffer->mutable_data()), buffer->size());
+        return;
+      }
+
+      auto table_result = table_reader_result.ValueOrDie()->Read();
+      if (!table_result.ok()) {
+        std::cerr << "Error while reading csv" << std::endl;
+        client->write(reinterpret_cast<char *>(buffer->mutable_data()), buffer->size());
+        return;
+      }
+
+      auto table_string = table_result.ValueOrDie()->ToString();
+      std::cerr << "Sending data: " << table_string << std::endl;
+      client->write(table_string.data(), table_string.size());
       timer.again();
     });
 
