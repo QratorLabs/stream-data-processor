@@ -12,15 +12,13 @@ Server::Server(const std::shared_ptr<uvw::Loop>& loop) : tcp_(loop->resource<uvw
     std::cerr << "New connection!" << std::endl;
 
     auto client = server.loop().resource<uvw::TCPHandle>();
-    client->data(std::make_shared<Indicator>("client"));
-    auto buffer_builder = std::make_shared<BufferBuilderWrapper>();
+    auto buffer_builder = std::make_shared<arrow::BufferBuilder>();
     auto timer = client->loop().resource<uvw::TimerHandle>();
-    timer->data(std::make_shared<Indicator>("timer"));
     timer->start(SILENCE_TIMEOUT_, SILENCE_TIMEOUT_);
 
     client->on<uvw::DataEvent>([buffer_builder, timer](const uvw::DataEvent& event, uvw::TCPHandle& client) {
       std::cerr << "Data received: " << event.data.get() << std::endl;
-      buffer_builder->buffer_builder_.Append(event.data.get(), event.length);
+      buffer_builder->Append(event.data.get(), event.length);
       timer->again();
     });
 
@@ -28,11 +26,11 @@ Server::Server(const std::shared_ptr<uvw::Loop>& loop) : tcp_(loop->resource<uvw
     timer->on<uvw::TimerEvent>([buffer_builder, client_weak](const uvw::TimerEvent& event, uvw::TimerHandle& timer) {
       auto client = client_weak.lock();
       std::shared_ptr<arrow::Buffer> buffer;
-      if (!buffer_builder->buffer_builder_.Finish(&buffer).ok()) {
+      if (!buffer_builder->Finish(&buffer).ok()) {
         std::cerr << "Buffer constructing failed" << std::endl;
         return;
       } else if (buffer->size() == 0) {
-        std::cerr << "No data to send" << std::endl;
+        std::cerr << "No data to be sent" << std::endl;
         return;
       }
 
