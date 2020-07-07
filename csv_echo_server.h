@@ -17,5 +17,5 @@ class Server {
  private:
   std::shared_ptr<uvw::TCPHandle> tcp_;
 
-  static const std::chrono::duration<uint64_t> SILENCE_TIMEOUT_;
+  static const std::chrono::duration<uint64_t> SILENCE_TIMEOUT;
 };

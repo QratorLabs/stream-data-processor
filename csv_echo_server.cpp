@@ -1,13 +1,13 @@
 #include <iostream>
 #include <memory>
 
-#include "server.h"
+#include "csv_echo_server.h"
 
 #include <arrow/api.h>
 #include <arrow/io/api.h>
 #include <arrow/csv/api.h>
 
-const std::chrono::duration<uint64_t> Server::SILENCE_TIMEOUT_(10);
+const std::chrono::duration<uint64_t> Server::SILENCE_TIMEOUT(10);
 
 Server::Server(const std::shared_ptr<uvw::Loop>& loop) : tcp_(loop->resource<uvw::TCPHandle>()) {
   tcp_->on<uvw::ListenEvent>([](const uvw::ListenEvent& event, uvw::TCPHandle& server) {
@@ -16,7 +16,7 @@ Server::Server(const std::shared_ptr<uvw::Loop>& loop) : tcp_(loop->resource<uvw
     auto client = server.loop().resource<uvw::TCPHandle>();
     auto buffer_builder = std::make_shared<arrow::BufferBuilder>();
     auto timer = client->loop().resource<uvw::TimerHandle>();
-    timer->start(SILENCE_TIMEOUT_, SILENCE_TIMEOUT_);
+    timer->start(SILENCE_TIMEOUT, SILENCE_TIMEOUT);
 
     client->on<uvw::DataEvent>([buffer_builder, timer](const uvw::DataEvent& event, uvw::TCPHandle& client) {
       std::cerr << "Data received: " << event.data.get() << std::endl;
