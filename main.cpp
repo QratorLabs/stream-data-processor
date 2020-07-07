@@ -1,8 +1,10 @@
-#include "server.h"
+#include "pass_node.h"
 
 int main() {
-  auto loop = uvw::Loop::getDefault();
-  Server server(loop);
-  server.start("127.0.0.1", 4243);
-  loop->run();
+  PassNode pass_node({"127.0.0.1", 4240},
+      {
+    {"127.0.0.1", 4250},
+    {"127.0.0.1", 4251}
+      });
+  pass_node.start();
 }

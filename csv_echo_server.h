@@ -1,8 +1,11 @@
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <string>
+#include <utility>
 
+#include <arrow/api.h>
 #include <uvw.hpp>
 
 class Server {
@@ -13,6 +16,6 @@ class Server {
 
  private:
   std::shared_ptr<uvw::TCPHandle> tcp_;
+
+  static const std::chrono::duration<uint64_t> SILENCE_TIMEOUT;
 };
-
-
