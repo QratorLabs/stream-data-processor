@@ -10,9 +10,9 @@
 #include "task_node.h"
 #include "utils.h"
 
- class PassNode : public TaskNode {
+ class InputNode : public TaskNode {
  public:
-  PassNode(const IPv4Endpoint& listen_endpoint, const std::vector<IPv4Endpoint>& target_endpoints);
+  InputNode(const IPv4Endpoint& listen_endpoint, const std::vector<IPv4Endpoint>& target_endpoints);
 
   void start() override;
 
