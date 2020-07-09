@@ -16,6 +16,8 @@ int main() {
                             {"127.0.0.1", 4250}
                         });
 
+  oss.close();
+
   loop->run();
 
   return 0;
