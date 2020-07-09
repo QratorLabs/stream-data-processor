@@ -8,8 +8,14 @@ add_subdirectory(third_party/uvw)
 
 find_package(Arrow REQUIRED)
 
-set(TCP_ECHO_SERVER_SOURCES nodes/input_node.cpp nodes/finalize_node.cpp)
-set(TCP_ECHO_SERVER_DIRS "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/nodes")
+set(TCP_ECHO_SERVER_SOURCES
+  nodes/eval_node.cpp
+  nodes/finalize_node.cpp
+  data_handlers/csv_to_record_batches_converter.cpp)
+set(TCP_ECHO_SERVER_DIRS
+  "${CMAKE_CURRENT_SOURCE_DIR}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/nodes"
+  "${CMAKE_CURRENT_SOURCE_DIR}/data_handlers")
 
 add_executable(eval_graph main.cpp "${TCP_ECHO_SERVER_SOURCES}")
 

@@ -35,8 +35,8 @@ class Utils {
     return arrow::Status::OK();
   }
 
-  static arrow::Status CSVToRecordBatches(std::shared_ptr<arrow::Buffer> buffer,
-      std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches) {
+  static arrow::Status parseCSVToRecordBatches(std::shared_ptr<arrow::Buffer> buffer,
+                                               std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches) {
     arrow::MemoryPool* pool = arrow::default_memory_pool();
     auto buffer_input = std::make_shared<arrow::io::BufferReader>(buffer);
 
@@ -54,8 +54,37 @@ class Utils {
     return arrow::Status::OK();
   }
 
-  static arrow::Status BufferToRecordBatches(std::shared_ptr<arrow::Buffer> buffer,
-                                             std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches) {
+  static arrow::Status serializeRecordBatches(const std::vector<std::shared_ptr<arrow::RecordBatch>> &record_batches,
+      std::shared_ptr<arrow::Buffer> *target, bool with_schema) {
+    auto buffer_builder = std::make_shared<arrow::BufferBuilder>();
+
+    if (with_schema) {
+      arrow::ipc::DictionaryMemo dictionary_memo;
+      auto schema_serialization_result = arrow::ipc::SerializeSchema(*record_batches.front()->schema(), &dictionary_memo);
+      if (!schema_serialization_result.ok()) {
+        return schema_serialization_result.status();
+      }
+
+      ARROW_RETURN_NOT_OK(buffer_builder->Append(schema_serialization_result.ValueOrDie()->data(),
+                                                 schema_serialization_result.ValueOrDie()->size()));
+    }
+
+    for (auto& record_batch : record_batches) {
+      auto serialization_result = arrow::ipc::SerializeRecordBatch(*record_batch, arrow::ipc::IpcWriteOptions::Defaults());
+      if (!serialization_result.ok()) {
+        return serialization_result.status();
+      }
+
+      ARROW_RETURN_NOT_OK(buffer_builder->Append(serialization_result.ValueOrDie()->data(),
+                                                 serialization_result.ValueOrDie()->size()));
+    }
+
+    ARROW_RETURN_NOT_OK(buffer_builder->Finish(target));
+    return arrow::Status::OK();
+  }
+
+  static arrow::Status deserializeRecordBatches(std::shared_ptr<arrow::Buffer> buffer,
+                                                std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches) {
     auto buffer_input = std::make_shared<arrow::io::BufferReader>(buffer);
     auto read_options = arrow::ipc::IpcReadOptions::Defaults();
     auto batch_reader_result = arrow::ipc::RecordBatchStreamReader::Open(buffer_input, read_options);

@@ -19,6 +19,7 @@ void FinalizeNode::configureServer(const IPv4Endpoint &endpoint) {
     auto client = server.loop().resource<uvw::TCPHandle>();
 
     client->on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::TCPHandle& client) {
+      std::cerr << "Data received, length: " << event.length << std::endl;
       buffer_builder_->Append(event.data.get(), event.length);
     });
 
@@ -49,7 +50,8 @@ void FinalizeNode::writeData() {
   }
 
   std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
-  if (!Utils::BufferToRecordBatches(buffer, &record_batches).ok()) {
+  if (!Utils::deserializeRecordBatches(buffer, &record_batches).ok()) {
+    return;
   }
 
   for (auto& record_batch : record_batches) {
