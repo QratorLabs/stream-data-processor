@@ -1,26 +1,22 @@
 #include <fstream>
-#include <thread>
+
+#include <uvw.hpp>
 
 #include "finalize_node.h"
 #include "input_node.h"
 
 int main() {
+  auto loop = uvw::Loop::getDefault();
+
   std::ofstream oss("result.txt");
-  FinalizeNode finalize_node({"127.0.0.1", 4250}, oss);
-  InputNode pass_node({"127.0.0.1", 4240},
-                      {
-                         {"127.0.0.1", 4250}
-                     });
+  FinalizeNode finalize_node(loop, {"127.0.0.1", 4250}, oss);
 
-  std::thread finalize_node_thread([&]{
-    finalize_node.start();
-  });
-  std::thread pass_node_thread([&]{
-    pass_node.start();
-  });
+  InputNode pass_node(loop, {"127.0.0.1", 4240},
+                        {
+                            {"127.0.0.1", 4250}
+                        });
 
-  finalize_node_thread.join();
-  pass_node_thread.join();
+  loop->run();
 
   return 0;
 }

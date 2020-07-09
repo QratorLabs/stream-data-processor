@@ -11,18 +11,10 @@ find_package(Arrow REQUIRED)
 set(TCP_ECHO_SERVER_SOURCES nodes/input_node.cpp nodes/finalize_node.cpp)
 set(TCP_ECHO_SERVER_DIRS "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/nodes")
 
-add_executable(finalize main_finalize.cpp "${TCP_ECHO_SERVER_SOURCES}")
+add_executable(eval_graph main.cpp "${TCP_ECHO_SERVER_SOURCES}")
 
-target_include_directories(finalize PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src")
-target_include_directories(finalize PRIVATE "${TCP_ECHO_SERVER_DIRS}")
+target_include_directories(eval_graph PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src")
+target_include_directories(eval_graph PRIVATE "${TCP_ECHO_SERVER_DIRS}")
 
-target_link_libraries(finalize uvw::uvw-static)
-target_link_libraries(finalize arrow_shared)
-
-add_executable(input main_input.cpp "${TCP_ECHO_SERVER_SOURCES}")
-
-target_include_directories(input PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src")
-target_include_directories(input PRIVATE "${TCP_ECHO_SERVER_DIRS}")
-
-target_link_libraries(input uvw::uvw-static)
-target_link_libraries(input arrow_shared)
+target_link_libraries(eval_graph uvw::uvw-static)
+target_link_libraries(eval_graph arrow_shared)

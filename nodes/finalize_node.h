@@ -6,14 +6,11 @@
 #include <arrow/api.h>
 #include "uvw.hpp"
 
-#include "task_node.h"
 #include "utils.h"
 
-class FinalizeNode : public TaskNode {
+class FinalizeNode {
  public:
-  FinalizeNode(const IPv4Endpoint& listen_endpoint, std::ofstream& ostrm);
-
-  void start() override;
+  FinalizeNode(std::shared_ptr<uvw::Loop> loop, const IPv4Endpoint& listen_endpoint, std::ofstream& ostrm);
 
  private:
   void configureServer(const IPv4Endpoint& endpoint);

@@ -1,18 +1,21 @@
 #include <iostream>
+#include <utility>
 
 #include <arrow/csv/api.h>
-#include <arrow/io/api.h>
 #include <arrow/ipc/api.h>
 
 #include "input_node.h"
 
 const std::chrono::duration<uint64_t> InputNode::SILENCE_TIMEOUT(10);
 
-InputNode::InputNode(const IPv4Endpoint &listen_endpoint, const std::vector<IPv4Endpoint> &target_endpoints)
-    : loop_(uvw::Loop::getDefault())
+InputNode::InputNode(std::shared_ptr<uvw::Loop> loop,
+    const IPv4Endpoint &listen_endpoint,
+    const std::vector<IPv4Endpoint> &target_endpoints)
+    : loop_(std::move(loop))
     , server_(loop_->resource<uvw::TCPHandle>())
     , timer_(loop_->resource<uvw::TimerHandle>())
-    , buffer_builder_(std::make_shared<arrow::BufferBuilder>()) {
+    , buffer_builder_(std::make_shared<arrow::BufferBuilder>())
+    , has_sent_(false) {
   for (const auto& target_endpoint : target_endpoints) {
     addTarget(target_endpoint);
   }
@@ -24,11 +27,9 @@ void InputNode::addTarget(const IPv4Endpoint &endpoint) {
   auto target = loop_->resource<uvw::TCPHandle>();
 
   target->once<uvw::ConnectEvent>([](const uvw::ConnectEvent& event, uvw::TCPHandle& target) {
-    std::cerr << "Successfully connected to " << target.peer().port << std::endl;
   });
 
   target->on<uvw::ErrorEvent>([&endpoint](const uvw::ErrorEvent& event, uvw::TCPHandle& target) {
-    std::cerr << event.what() << std::endl;
   });
 
   target->connect(endpoint.host, endpoint.port);
@@ -38,21 +39,17 @@ void InputNode::addTarget(const IPv4Endpoint &endpoint) {
 void InputNode::configureServer(const IPv4Endpoint &endpoint) {
   timer_->on<uvw::TimerEvent>([this](const uvw::TimerEvent& event, uvw::TimerHandle& timer) {
     sendData();
-    timer.again();
   });
 
   server_->once<uvw::ListenEvent>([this](const uvw::ListenEvent& event, uvw::TCPHandle& server) {
-    std::cerr << "New connection!" << std::endl;
     auto client = server.loop().resource<uvw::TCPHandle>();
 
     client->on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::TCPHandle& client) {
-      std::cerr << "Data received: " << event.data.get() << std::endl;
       buffer_builder_->Append(event.data.get(), event.length);
       timer_->again();
     });
 
     client->once<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::TCPHandle& client) {
-      std::cerr << event.what() << std::endl;
       sendData();
       stop();
       client.close();
@@ -76,32 +73,29 @@ void InputNode::configureServer(const IPv4Endpoint &endpoint) {
 void InputNode::sendData() {
   std::shared_ptr<arrow::Buffer> buffer;
   if (!buffer_builder_->Finish(&buffer).ok() || buffer->size() == 0) {
-    std::cerr << "No data to be sent" << std::endl;
     return;
   }
 
   std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
   if (!Utils::CSVToRecordBatches(buffer, &record_batches).ok()) {
-    std::cerr << "Error while converting CSV to Record Batches" << std::endl;
   }
 
-  std::cerr << "Sending data: " << record_batches.front()->schema()->ToString() << std::endl;
-  arrow::ipc::DictionaryMemo dictionary_memo;
-  auto schema_serialization_result = arrow::ipc::SerializeSchema(*record_batches.front()->schema(), &dictionary_memo);
-  if (!schema_serialization_result.ok()) {
-    std::cerr << schema_serialization_result.status() << std::endl;
-    return;
-  }
-  for (auto &target : targets_) {
-    target->write(reinterpret_cast<char *>(schema_serialization_result.ValueOrDie()->mutable_data()),
-                  schema_serialization_result.ValueOrDie()->size());
+  if (!has_sent_) {
+    arrow::ipc::DictionaryMemo dictionary_memo;
+    auto schema_serialization_result = arrow::ipc::SerializeSchema(*record_batches.front()->schema(), &dictionary_memo);
+    if (!schema_serialization_result.ok()) {
+      return;
+    }
+    for (auto &target : targets_) {
+      target->write(reinterpret_cast<char *>(schema_serialization_result.ValueOrDie()->mutable_data()),
+                    schema_serialization_result.ValueOrDie()->size());
+    }
+    has_sent_ = true;
   }
 
   for (auto& record_batch : record_batches) {
-    std::cerr << "Sending data: " << record_batch->ToString() << std::endl;
     auto serialization_result = arrow::ipc::SerializeRecordBatch(*record_batch, arrow::ipc::IpcWriteOptions::Defaults());
     if (!serialization_result.ok()) {
-      std::cerr << serialization_result.status() << std::endl;
       continue;
     }
     for (auto &target : targets_) {
@@ -118,8 +112,4 @@ void InputNode::stop() {
   for (auto& target : targets_) {
     target->close();
   }
-}
-
-void InputNode::start() {
-  loop_->run();
 }
