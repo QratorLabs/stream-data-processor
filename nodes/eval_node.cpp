@@ -82,7 +82,6 @@ void EvalNode::sendData() {
     return;
   }
 
-//  std::cerr << "Sending data" << std::endl;
   for (auto &target : targets_) {
     target->write(reinterpret_cast<char *>(processed_data->mutable_data()), processed_data->size());
   }
@@ -92,7 +91,6 @@ void EvalNode::stop() {
   timer_->stop();
   timer_->close();
   server_->close();
-  data_handler_->reset();
   for (auto& target : targets_) {
     target->close();
   }

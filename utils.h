@@ -54,20 +54,14 @@ class Utils {
     return arrow::Status::OK();
   }
 
-  static arrow::Status serializeRecordBatches(const std::vector<std::shared_ptr<arrow::RecordBatch>> &record_batches,
-      std::shared_ptr<arrow::Buffer> *target, bool with_schema) {
+  static arrow::Status serializeRecordBatches(const arrow::Schema& schema,
+      const std::vector<std::shared_ptr<arrow::RecordBatch>> &record_batches,
+      std::shared_ptr<arrow::Buffer> *target) {
     auto buffer_builder = std::make_shared<arrow::BufferBuilder>();
 
-    if (with_schema) {
-      arrow::ipc::DictionaryMemo dictionary_memo;
-      auto schema_serialization_result = arrow::ipc::SerializeSchema(*record_batches.front()->schema(), &dictionary_memo);
-      if (!schema_serialization_result.ok()) {
-        return schema_serialization_result.status();
-      }
-
-      ARROW_RETURN_NOT_OK(buffer_builder->Append(schema_serialization_result.ValueOrDie()->data(),
-                                                 schema_serialization_result.ValueOrDie()->size()));
-    }
+    std::shared_ptr<arrow::Buffer> schema_buffer;
+    ARROW_RETURN_NOT_OK(serializeSchema(schema, &schema_buffer));
+    ARROW_RETURN_NOT_OK(buffer_builder->Append(schema_buffer->data(), schema_buffer->size()));
 
     for (auto& record_batch : record_batches) {
       auto serialization_result = arrow::ipc::SerializeRecordBatch(*record_batch, arrow::ipc::IpcWriteOptions::Defaults());
@@ -80,6 +74,17 @@ class Utils {
     }
 
     ARROW_RETURN_NOT_OK(buffer_builder->Finish(target));
+    return arrow::Status::OK();
+  }
+
+  static arrow::Status serializeSchema(const arrow::Schema& schema, std::shared_ptr<arrow::Buffer> *target) {
+    arrow::ipc::DictionaryMemo dictionary_memo;
+    auto schema_serialization_result = arrow::ipc::SerializeSchema(schema, &dictionary_memo);
+    if (!schema_serialization_result.ok()) {
+      return schema_serialization_result.status();
+    }
+
+    *target = schema_serialization_result.ValueOrDie();
     return arrow::Status::OK();
   }
 

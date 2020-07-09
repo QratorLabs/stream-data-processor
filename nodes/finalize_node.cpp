@@ -19,8 +19,8 @@ void FinalizeNode::configureServer(const IPv4Endpoint &endpoint) {
     auto client = server.loop().resource<uvw::TCPHandle>();
 
     client->on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::TCPHandle& client) {
-      std::cerr << "Data received, length: " << event.length << std::endl;
       buffer_builder_->Append(event.data.get(), event.length);
+      writeData();
     });
 
     client->once<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::TCPHandle& client) {

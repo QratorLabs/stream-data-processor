@@ -5,5 +5,4 @@
 class DataHandler {
  public:
   virtual arrow::Status handle(std::shared_ptr<arrow::Buffer> source, std::shared_ptr<arrow::Buffer>* target) = 0;
-  virtual void reset() = 0;
 };

@@ -13,7 +13,7 @@ int main() {
   FinalizeNode finalize_node(loop, {"127.0.0.1", 4250}, oss);
 
   EvalNode pass_node(loop,
-      std::make_shared<CSVToRecordBatchesConverter>(true),
+      std::make_shared<CSVToRecordBatchesConverter>(),
           {"127.0.0.1", 4240},
           {
     {"127.0.0.1", 4250}

@@ -11,7 +11,8 @@ find_package(Arrow REQUIRED)
 set(TCP_ECHO_SERVER_SOURCES
   nodes/eval_node.cpp
   nodes/finalize_node.cpp
-  data_handlers/csv_to_record_batches_converter.cpp)
+  data_handlers/csv_to_record_batches_converter.cpp
+  data_handlers/eval_handler.cpp)
 set(TCP_ECHO_SERVER_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}"
   "${CMAKE_CURRENT_SOURCE_DIR}/nodes"
