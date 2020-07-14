@@ -5,6 +5,7 @@
 #include <arrow/io/api.h>
 
 #include "csv_to_record_batches_converter.h"
+
 #include "utils.h"
 
 arrow::Status CSVToRecordBatchesConverter::handle(std::shared_ptr<arrow::Buffer> source,

@@ -1,8 +1,7 @@
 #include <iostream>
 #include <utility>
 
-#include <arrow/csv/api.h>
-#include <arrow/ipc/api.h>
+#include <arrow/api.h>
 
 #include "eval_node.h"
 
@@ -78,7 +77,9 @@ void EvalNode::sendData() {
   }
 
   std::shared_ptr<arrow::Buffer> processed_data;
-  if (!data_handler_->handle(buffer, &processed_data).ok()) {
+  auto handle_result = data_handler_->handle(buffer, &processed_data);
+  if (!handle_result.ok()) {
+    std::cerr << handle_result << std::endl;
     return;
   }
 

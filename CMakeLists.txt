@@ -11,27 +11,25 @@ message(STATUS "Arrow lib dir: ${Arrow_DIR}")
 
 set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${Arrow_DIR})
 find_package(Gandiva REQUIRED)
+message(STATUS "Gandiva lib dir: ${Gandiva_DIR}")
 
 set(TCP_ECHO_SERVER_SOURCES
   nodes/eval_node.cpp
   nodes/finalize_node.cpp
-  data_handlers/csv_to_record_batches_converter.cpp)
-set(TCP_ECHO_SERVER_DIRS
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  "${CMAKE_CURRENT_SOURCE_DIR}/nodes"
-  "${CMAKE_CURRENT_SOURCE_DIR}/data_handlers")
+  data_handlers/csv_to_record_batches_converter.cpp
+  data_handlers/map_handler.cpp)
+set(TCP_ECHO_SERVER_INCLUDE_DIRS
+  ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(eval_graph main.cpp ${TCP_ECHO_SERVER_SOURCES})
 
 set(PROJECT_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src"
-  ${TCP_ECHO_SERVER_DIRS}
-  ${ARROW_INCLUDE_DIR}
-  ${GANDIVA_INCLUDE_DIR})
+  ${TCP_ECHO_SERVER_INCLUDE_DIRS})
 target_include_directories(eval_graph PRIVATE "${PROJECT_INCLUDE_DIRS}")
 
 set(PROJECT_DEPENDENCIES
   uvw::uvw-static
   arrow_shared
-  ${GANDIVA_SHARED_LIBRARY})
+  gandiva_shared)
 target_link_libraries(eval_graph "${PROJECT_DEPENDENCIES}")

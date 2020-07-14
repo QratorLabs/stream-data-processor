@@ -2,7 +2,7 @@
 #include <utility>
 #include <vector>
 
-#include <arrow/csv/api.h>
+#include <arrow/api.h>
 
 #include "finalize_node.h"
 

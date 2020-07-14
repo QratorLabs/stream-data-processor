@@ -4,6 +4,7 @@
 #include <memory>
 
 #include <arrow/api.h>
+
 #include "uvw.hpp"
 
 #include "utils.h"
