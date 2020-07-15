@@ -7,21 +7,32 @@ set(BUILD_UVW_LIBS ON)
 add_subdirectory(third_party/uvw)
 
 find_package(Arrow REQUIRED)
+message(STATUS "Arrow lib dir: ${Arrow_DIR}")
+
+set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${Arrow_DIR})
+find_package(Gandiva REQUIRED)
+message(STATUS "Gandiva lib dir: ${Gandiva_DIR}")
+
+find_package(spdlog REQUIRED)
 
 set(TCP_ECHO_SERVER_SOURCES
   nodes/eval_node.cpp
   nodes/finalize_node.cpp
   data_handlers/csv_to_record_batches_converter.cpp
-  data_handlers/eval_handler.cpp)
-set(TCP_ECHO_SERVER_DIRS
-  "${CMAKE_CURRENT_SOURCE_DIR}"
-  "${CMAKE_CURRENT_SOURCE_DIR}/nodes"
-  "${CMAKE_CURRENT_SOURCE_DIR}/data_handlers")
+  data_handlers/map_handler.cpp)
+set(TCP_ECHO_SERVER_INCLUDE_DIRS
+  ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(eval_graph main.cpp "${TCP_ECHO_SERVER_SOURCES}")
+add_executable(eval_graph main.cpp ${TCP_ECHO_SERVER_SOURCES})
 
-target_include_directories(eval_graph PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src")
-target_include_directories(eval_graph PRIVATE "${TCP_ECHO_SERVER_DIRS}")
+set(PROJECT_INCLUDE_DIRS
+  "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src"
+  ${TCP_ECHO_SERVER_INCLUDE_DIRS})
+target_include_directories(eval_graph PRIVATE "${PROJECT_INCLUDE_DIRS}")
 
-target_link_libraries(eval_graph uvw::uvw-static)
-target_link_libraries(eval_graph arrow_shared)
+set(PROJECT_DEPENDENCIES
+  uvw::uvw-static
+  arrow_shared
+  gandiva_shared
+  spdlog::spdlog)
+target_link_libraries(eval_graph "${PROJECT_DEPENDENCIES}")
