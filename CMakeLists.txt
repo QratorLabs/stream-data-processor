@@ -13,6 +13,8 @@ set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${Arrow_DIR})
 find_package(Gandiva REQUIRED)
 message(STATUS "Gandiva lib dir: ${Gandiva_DIR}")
 
+find_package(spdlog REQUIRED)
+
 set(TCP_ECHO_SERVER_SOURCES
   nodes/eval_node.cpp
   nodes/finalize_node.cpp
@@ -31,5 +33,6 @@ target_include_directories(eval_graph PRIVATE "${PROJECT_INCLUDE_DIRS}")
 set(PROJECT_DEPENDENCIES
   uvw::uvw-static
   arrow_shared
-  gandiva_shared)
+  gandiva_shared
+  spdlog::spdlog)
 target_link_libraries(eval_graph "${PROJECT_DEPENDENCIES}")

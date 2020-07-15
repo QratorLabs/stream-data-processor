@@ -6,7 +6,6 @@
 #include "utils.h"
 
 MapHandler::MapHandler(const std::shared_ptr<arrow::Schema>& input_schema, const gandiva::ExpressionVector &expressions) {
-  std::cerr << "Input schema: " << *input_schema << std::endl;
   arrow::FieldVector result_fields;
   for (auto& input_field : input_schema->fields()) {
     result_fields.push_back(input_field);
@@ -28,8 +27,6 @@ arrow::Status MapHandler::handle(std::shared_ptr<arrow::Buffer> source, std::sha
 }
 
 arrow::Status MapHandler::eval(arrow::RecordBatchVector& record_batches) {
-  std::cerr << "Started evaluating" << std::endl;
-
   if (record_batches.empty()) {
     return arrow::Status::CapacityError("No data to handle");
   }
@@ -37,7 +34,6 @@ arrow::Status MapHandler::eval(arrow::RecordBatchVector& record_batches) {
   auto input_schema_size = record_batches.front()->schema()->num_fields();
   auto pool = arrow::default_memory_pool();
   for (auto& record_batch : record_batches) {
-    std::cerr << "RecordBatch schema: " << *record_batch->schema() << std::endl;
     arrow::ArrayVector result_arrays;
     ARROW_RETURN_NOT_OK(projector_->Evaluate(*record_batch, pool, &result_arrays));
     for (size_t i = 0; i < result_arrays.size(); ++i) {
@@ -50,8 +46,6 @@ arrow::Status MapHandler::eval(arrow::RecordBatchVector& record_batches) {
       record_batch = add_column_result.ValueOrDie();
     }
   }
-
-  std::cerr << "Successful evaluating" << std::endl;
 
   return arrow::Status::OK();
 }

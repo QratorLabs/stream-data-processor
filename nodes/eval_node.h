@@ -2,9 +2,12 @@
 
 #include <chrono>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <arrow/api.h>
+
+#include <spdlog/sinks/basic_file_sink.h>
 
 #include "uvw.hpp"
 
@@ -14,10 +17,11 @@
 
  class EvalNode {
  public:
-  EvalNode(std::shared_ptr<uvw::Loop> loop,
-           std::shared_ptr<DataHandler> data_handler,
-           const IPv4Endpoint& listen_endpoint,
-           const std::vector<IPv4Endpoint>& target_endpoints);
+  EvalNode(std::string name,
+      std::shared_ptr<uvw::Loop> loop,
+      std::shared_ptr<DataHandler> data_handler,
+      const IPv4Endpoint& listen_endpoint,
+      const std::vector<IPv4Endpoint>& target_endpoints);
 
  private:
   void configureServer(const IPv4Endpoint& endpoint);
@@ -28,6 +32,8 @@
   void stop();
 
  private:
+   std::string name_;
+   std::shared_ptr<spdlog::logger> logger_;
   std::shared_ptr<uvw::Loop> loop_;
   std::shared_ptr<DataHandler> data_handler_;
   std::shared_ptr<uvw::TCPHandle> server_;
