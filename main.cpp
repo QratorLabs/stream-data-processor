@@ -21,7 +21,7 @@ int main() {
   std::ofstream oss("result.txt");
   FinalizeNode finalize_node("finalize_node", loop, {"127.0.0.1", 4250}, oss);
 
-  std::vector<std::string> sort_fields({"tag", "sum", "diff"});
+  std::vector<std::string> sort_fields({"tag", "ts"});
   EvalNode sort_node("sort_node", loop,
                      std::make_shared<Sorter>(sort_fields),
                      {"127.0.0.1", 4242},

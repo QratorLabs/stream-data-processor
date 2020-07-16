@@ -29,6 +29,15 @@ arrow::Status Sorter::sortByColumn(size_t i,
                                    const std::shared_ptr<arrow::RecordBatch>& source,
                                    std::shared_ptr<arrow::RecordBatch> *target) const {
   auto sorting_column = source->GetColumnByName(column_names_[i]);
+  if (sorting_column->type_id() == arrow::Type::TIMESTAMP) {
+    auto converted_sorting_column_result = sorting_column->View(arrow::uint64());
+    if (!converted_sorting_column_result.ok()) {
+      return converted_sorting_column_result.status();
+    }
+
+    sorting_column = converted_sorting_column_result.ValueOrDie();
+  }
+
   auto sorted_idx_result = arrow::compute::SortToIndices(*sorting_column);
   if (!sorted_idx_result.ok()) {
     return sorted_idx_result.status();
