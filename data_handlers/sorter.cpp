@@ -28,7 +28,8 @@ arrow::Status Sorter::handle(std::shared_ptr<arrow::Buffer> source, std::shared_
 arrow::Status Sorter::sortByColumn(size_t i,
                                    const std::shared_ptr<arrow::RecordBatch>& source,
                                    std::shared_ptr<arrow::RecordBatch> *target) const {
-  auto sorted_idx_result = arrow::compute::SortToIndices(*source->GetColumnByName(column_names_[i]));
+  auto sorting_column = source->GetColumnByName(column_names_[i]);
+  auto sorted_idx_result = arrow::compute::SortToIndices(*sorting_column);
   if (!sorted_idx_result.ok()) {
     return sorted_idx_result.status();
   }
@@ -54,14 +55,18 @@ arrow::Status Sorter::sort(size_t i,
 
   while (true) {
     auto sorted_keys = sorted_batch->GetColumnByName(column_names_[i]);
-    auto min_max_result = arrow::compute::MinMax(sorted_keys);
-    if (!min_max_result.ok()) {
-      return min_max_result.status();
+
+    auto min_val1 = sorted_keys->GetScalar(0);
+    if (!min_val1.ok()) {
+      return min_val1.status();
     }
 
-    auto min_val = min_max_result.ValueOrDie().scalar_as<arrow::StructScalar>().value[0];
-    auto max_val = min_max_result.ValueOrDie().scalar_as<arrow::StructScalar>().value[1];
-    auto equals_result = arrow::compute::Compare(sorted_keys, min_val,
+    auto max_val1 = sorted_keys->GetScalar(sorted_keys->length() - 1);
+    if (!max_val1.ok()) {
+      return max_val1.status();
+    }
+
+    auto equals_result = arrow::compute::Compare(sorted_keys, min_val1.ValueOrDie(),
                                                  arrow::compute::CompareOptions(arrow::compute::CompareOperator::EQUAL));
     if (!equals_result.ok()) {
       return equals_result.status();
@@ -73,11 +78,11 @@ arrow::Status Sorter::sort(size_t i,
     }
 
     ARROW_RETURN_NOT_OK(sort(i + 1, filter_equals_result.ValueOrDie().record_batch(), targets));
-    if (min_val->Equals(max_val)) {
+    if (min_val1.ValueOrDie()->Equals(max_val1.ValueOrDie())) {
       break;
     }
 
-    auto not_equals_result = arrow::compute::Compare(sorted_keys, min_val,
+    auto not_equals_result = arrow::compute::Compare(sorted_keys, min_val1.ValueOrDie(),
                                                  arrow::compute::CompareOptions(arrow::compute::CompareOperator::NOT_EQUAL));
     if (!not_equals_result.ok()) {
       return equals_result.status();
