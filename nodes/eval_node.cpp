@@ -30,10 +30,12 @@ EvalNode::EvalNode(std::string name,
 void EvalNode::addTarget(const IPv4Endpoint &endpoint) {
   auto target = loop_->resource<uvw::TCPHandle>();
 
-  target->once<uvw::ConnectEvent>([](const uvw::ConnectEvent& event, uvw::TCPHandle& target) {
+  target->once<uvw::ConnectEvent>([this, &endpoint](const uvw::ConnectEvent& event, uvw::TCPHandle& target) {
+    spdlog::get(name_)->info("Successfully connected to {}:{}", endpoint.host, endpoint.port);
   });
 
-  target->on<uvw::ErrorEvent>([&endpoint](const uvw::ErrorEvent& event, uvw::TCPHandle& target) {
+  target->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::TCPHandle& target) {
+    spdlog::get(name_)->error(event.what());
   });
 
   target->connect(endpoint.host, endpoint.port);

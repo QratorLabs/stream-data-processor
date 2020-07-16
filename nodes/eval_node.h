@@ -32,8 +32,8 @@
   void stop();
 
  private:
-   std::string name_;
-   std::shared_ptr<spdlog::logger> logger_;
+  std::string name_;
+  std::shared_ptr<spdlog::logger> logger_;
   std::shared_ptr<uvw::Loop> loop_;
   std::shared_ptr<DataHandler> data_handler_;
   std::shared_ptr<uvw::TCPHandle> server_;
