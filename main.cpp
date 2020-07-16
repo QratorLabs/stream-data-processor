@@ -8,7 +8,7 @@
 
 #include "data_handlers/csv_to_record_batches_converter.h"
 #include "data_handlers/map_handler.h"
-#include "data_handlers/sorter.h"
+#include "data_handlers/sort_handler.h"
 
 #include "nodes/eval_node.h"
 #include "nodes/finalize_node.h"
@@ -23,7 +23,7 @@ int main() {
 
   std::vector<std::string> sort_fields({"tag", "ts"});
   EvalNode sort_node("sort_node", loop,
-                     std::make_shared<Sorter>(sort_fields),
+                     std::make_shared<SortHandler>(sort_fields),
                      {"127.0.0.1", 4242},
                      {
                          {"127.0.0.1", 4250}
