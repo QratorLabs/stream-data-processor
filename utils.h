@@ -146,7 +146,7 @@ class Utils {
                                     std::shared_ptr<arrow::RecordBatch>* target) {
     auto sorting_column = source->GetColumnByName(column_name);
     if (sorting_column->type_id() == arrow::Type::TIMESTAMP) {
-      auto converted_sorting_column_result = sorting_column->View(arrow::uint64());
+      auto converted_sorting_column_result = sorting_column->View(arrow::int64());
       if (!converted_sorting_column_result.ok()) {
         return converted_sorting_column_result.status();
       }
@@ -165,6 +165,45 @@ class Utils {
     }
 
     *target = sorted_record_batch_result.ValueOrDie().record_batch();
+    return arrow::Status::OK();
+  }
+
+  static arrow::Status argMinMax(std::shared_ptr<arrow::Array> array, std::pair<size_t, size_t>& arg_min_max) {
+    if (array->type_id() == arrow::Type::TIMESTAMP) {
+      auto converted_sorting_column_result = array->View(arrow::int64());
+      if (!converted_sorting_column_result.ok()) {
+        return converted_sorting_column_result.status();
+      }
+
+      array = converted_sorting_column_result.ValueOrDie();
+    }
+
+    auto min_max_ts_result = arrow::compute::MinMax(array);
+    if (!min_max_ts_result.ok()) {
+      return min_max_ts_result.status();
+    }
+
+    int64_t arg_min = -1;
+    int64_t arg_max = -1;
+    size_t i = 0;
+    while (i < array->length() && (arg_min == -1 || arg_max == -1)) {
+      auto get_scalar_result = array->GetScalar(i);
+      if (!get_scalar_result.ok()) {
+        return get_scalar_result.status();
+      }
+
+      if (get_scalar_result.ValueOrDie()->Equals(min_max_ts_result.ValueOrDie().scalar_as<arrow::StructScalar>().value[0])) {
+        arg_min = i;
+      }
+
+      if (get_scalar_result.ValueOrDie()->Equals(min_max_ts_result.ValueOrDie().scalar_as<arrow::StructScalar>().value[1])) {
+        arg_max = i;
+      }
+
+      ++i;
+    }
+
+    arg_min_max = {arg_min, arg_max};
     return arrow::Status::OK();
   }
 

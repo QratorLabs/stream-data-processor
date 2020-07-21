@@ -6,9 +6,7 @@
 
 #include <uvw.hpp>
 
-#include "data_handlers/csv_to_record_batches_converter.h"
-#include "data_handlers/map_handler.h"
-#include "data_handlers/sort_handler.h"
+#include "data_handlers/data_handlers.h"
 
 #include "nodes/eval_node.h"
 #include "nodes/finalize_node.h"
@@ -21,11 +19,16 @@ int main() {
   std::ofstream oss("result.txt");
   FinalizeNode finalize_node("finalize_node", loop, {"127.0.0.1", 4250}, oss);
 
-  std::vector<std::string> sort_fields({"tag", "ts"});
-  EvalNode sort_node("sort_node", loop,
-                     std::make_shared<SortHandler>(sort_fields),
-                     {"127.0.0.1", 4242},
-                     {
+  std::vector<std::string> aggregate_columns({"tag"});
+  AggregateHandler::AggregateOptions aggregate_options{{{"sum", {"first", "last", "min", "max"}},
+                                                        {"diff", {"first", "last", "min", "max"}}},
+                                                       true};
+  EvalNode aggregate_node("aggregate_node", loop,
+                          std::make_shared<AggregateHandler>(aggregate_columns,
+                                                             aggregate_options,
+                                                             "ts"),
+                          {"127.0.0.1", 4242},
+                          {
                          {"127.0.0.1", 4250}
                      });
 

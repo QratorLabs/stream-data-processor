@@ -18,10 +18,11 @@ find_package(spdlog REQUIRED)
 set(TCP_ECHO_SERVER_SOURCES
   nodes/eval_node.cpp
   nodes/finalize_node.cpp
-#  data_handlers/aggregate_handler.cpp
+  data_handlers/aggregate_handler.cpp
   data_handlers/csv_to_record_batches_converter.cpp
   data_handlers/map_handler.cpp
-  data_handlers/sort_handler.cpp)
+  data_handlers/sort_handler.cpp
+  data_handlers/aggregate_functions/min_aggregate_function.cpp data_handlers/aggregate_functions/max_aggregate_function.cpp data_handlers/aggregate_functions/max_aggregate_function.h data_handlers/aggregate_functions/first_aggregate_function.cpp data_handlers/aggregate_functions/first_aggregate_function.h data_handlers/aggregate_functions/last_aggregate_function.cpp data_handlers/aggregate_functions/last_aggregate_function.h)
 set(TCP_ECHO_SERVER_INCLUDE_DIRS
   ${CMAKE_CURRENT_SOURCE_DIR})
 
