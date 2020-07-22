@@ -9,42 +9,34 @@
 const std::chrono::duration<uint64_t> EvalNode::SILENCE_TIMEOUT(10);
 
 EvalNode::EvalNode(std::string name,
-    std::shared_ptr<uvw::Loop> loop,
-    std::shared_ptr<DataHandler> data_handler,
+    const std::shared_ptr<uvw::Loop>& loop,
     const IPv4Endpoint &listen_endpoint,
-    const std::vector<IPv4Endpoint> &target_endpoints)
-    : name_(std::move(name))
-    , logger_(spdlog::basic_logger_mt(name_, "logs/" + name_ + ".txt", true))
-    , loop_(std::move(loop))
+    const std::vector<IPv4Endpoint> &target_endpoints,
+    std::shared_ptr<DataHandler>  data_handler)
+    : PassNodeBase(std::move(name), loop, listen_endpoint, target_endpoints)
     , data_handler_(std::move(data_handler))
-    , server_(loop_->resource<uvw::TCPHandle>())
-    , timer_(loop_->resource<uvw::TimerHandle>())
+    , timer_(loop->resource<uvw::TimerHandle>())
     , buffer_builder_(std::make_shared<arrow::BufferBuilder>()) {
-  for (const auto& target_endpoint : target_endpoints) {
-    addTarget(target_endpoint);
+  configureServer();
+  for (size_t i = 0; i < targets_.size(); ++i) {
+    configureTarget(targets_[i]);
+    targets_[i]->connect(target_endpoints[i].host, target_endpoints[i].port);
   }
-
-  configureServer(listen_endpoint);
 }
 
-void EvalNode::addTarget(const IPv4Endpoint &endpoint) {
-  auto target = loop_->resource<uvw::TCPHandle>();
-
-  target->once<uvw::ConnectEvent>([this, &endpoint](const uvw::ConnectEvent& event, uvw::TCPHandle& target) {
-    spdlog::get(name_)->info("Successfully connected to {}:{}", endpoint.host, endpoint.port);
+void EvalNode::configureTarget(const std::shared_ptr<uvw::TCPHandle> &target) {
+  target->once<uvw::ConnectEvent>([this](const uvw::ConnectEvent& event, uvw::TCPHandle& target) {
+    spdlog::get(name_)->info("Successfully connected to {}:{}", target.peer().ip, target.peer().port);
   });
 
   target->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::TCPHandle& target) {
     spdlog::get(name_)->error(event.what());
   });
-
-  target->connect(endpoint.host, endpoint.port);
-  targets_.push_back(target);
 }
 
-void EvalNode::configureServer(const IPv4Endpoint &endpoint) {
+void EvalNode::configureServer() {
   timer_->on<uvw::TimerEvent>([this](const uvw::TimerEvent& event, uvw::TimerHandle& timer) {
-    sendData();
+    send();
   });
 
   server_->once<uvw::ListenEvent>([this](const uvw::ListenEvent& event, uvw::TCPHandle& server) {
@@ -54,19 +46,22 @@ void EvalNode::configureServer(const IPv4Endpoint &endpoint) {
 
     client->on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::TCPHandle& client) {
       spdlog::get(name_)->debug("Data received, size: {}", event.length);
-      buffer_builder_->Append(event.data.get(), event.length);
+      auto append_status = buffer_builder_->Append(event.data.get(), event.length);
+      if (!append_status.ok()) {
+        spdlog::get(name_)->error(append_status.ToString());
+      }
     });
 
     client->once<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::TCPHandle& client) {
       spdlog::get(name_)->error("Error: {}", event.what());
-      sendData();
+      send();
       stop();
       client.close();
     });
 
     client->once<uvw::EndEvent>([this](const uvw::EndEvent& event, uvw::TCPHandle& client) {
       spdlog::get(name_)->info("Closed connection with client");
-      sendData();
+      send();
       stop();
       client.close();
     });
@@ -75,29 +70,17 @@ void EvalNode::configureServer(const IPv4Endpoint &endpoint) {
     server.accept(*client);
     client->read();
   });
-
-  server_->bind(endpoint.host, endpoint.port);
-  server_->listen();
 }
 
-void EvalNode::sendData() {
-  std::shared_ptr<arrow::Buffer> buffer;
-  if (!buffer_builder_->Finish(&buffer).ok() || buffer->size() == 0) {
-    spdlog::get(name_)->debug("No data to send");
-    return;
-  }
-
+void EvalNode::send() {
   std::shared_ptr<arrow::Buffer> processed_data;
-  auto handle_result = data_handler_->handle(buffer, &processed_data);
-  if (!handle_result.ok()) {
-    spdlog::get(name_)->debug(handle_result.ToString());
+  auto processing_status = processData(processed_data);
+  if (!processing_status.ok()) {
+    spdlog::get(name_)->debug(processing_status.ToString());
     return;
   }
 
-  spdlog::get(name_)->info("Sending data");
-  for (auto &target : targets_) {
-    target->write(reinterpret_cast<char *>(processed_data->mutable_data()), processed_data->size());
-  }
+  sendData(processed_data);
 }
 
 void EvalNode::stop() {
@@ -108,4 +91,15 @@ void EvalNode::stop() {
   for (auto& target : targets_) {
     target->close();
   }
+}
+
+arrow::Status EvalNode::processData(std::shared_ptr<arrow::Buffer>& processed_data) {
+  std::shared_ptr<arrow::Buffer> buffer;
+  ARROW_RETURN_NOT_OK(buffer_builder_->Finish(&buffer));
+  if (buffer->size() == 0) {
+    return arrow::Status::CapacityError("No data to send");
+  }
+
+  ARROW_RETURN_NOT_OK(data_handler_->handle(buffer, &processed_data));
+  return arrow::Status::OK();
 }

@@ -24,13 +24,13 @@ int main() {
                                                         {"diff", {"first", "last", "min", "max"}}},
                                                        true};
   EvalNode aggregate_node("aggregate_node", loop,
-                          std::make_shared<AggregateHandler>(aggregate_columns,
-                                                             aggregate_options,
-                                                             "ts"),
                           {"127.0.0.1", 4242},
                           {
-                         {"127.0.0.1", 4250}
-                     });
+                              {"127.0.0.1", 4250}
+                          },
+                          std::make_shared<AggregateHandler>(aggregate_columns,
+                              aggregate_options,
+                              "ts"));
 
   auto field_ts = arrow::field("ts", arrow::timestamp(arrow::TimeUnit::SECOND));
   auto field0 = arrow::field("operand1", arrow::int64());
@@ -47,18 +47,18 @@ int main() {
   gandiva::ExpressionVector expressions{sum_expr, subtract_expr};
 
   EvalNode eval_node("eval_node", loop,
-      std::make_shared<MapHandler>(schema, expressions),
       {"127.0.0.1", 4241},
-      {
-    {"127.0.0.1", 4242}
-      });
+                     {
+                         {"127.0.0.1", 4242}
+                     },
+                     std::make_shared<MapHandler>(schema, expressions));
 
   EvalNode pass_node("pass_node", loop,
-      std::make_shared<CSVToRecordBatchesConverter>(),
           {"127.0.0.1", 4240},
-          {
-    {"127.0.0.1", 4241}
-          });
+                     {
+                         {"127.0.0.1", 4241}
+                     },
+                     std::make_shared<CSVToRecordBatchesConverter>());
 
   loop->run();
 

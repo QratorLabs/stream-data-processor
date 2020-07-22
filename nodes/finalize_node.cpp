@@ -8,18 +8,16 @@
 #include "finalize_node.h"
 
 FinalizeNode::FinalizeNode(std::string name,
-    std::shared_ptr<uvw::Loop> loop,
-    const IPv4Endpoint &listen_endpoint, std::ofstream& ostrm)
-    : name_(std::move(name))
-    , logger_(spdlog::basic_logger_mt(name_, "logs/" + name_ + ".txt", true))
-    , loop_(std::move(loop))
-    , server_(loop_->resource<uvw::TCPHandle>())
+    const std::shared_ptr<uvw::Loop>& loop,
+    const IPv4Endpoint &listen_endpoint,
+    std::ofstream& ostrm)
+    : NodeBase(std::move(name), loop, listen_endpoint)
     , buffer_builder_(std::make_shared<arrow::BufferBuilder>())
     , ostrm_(ostrm) {
-  configureServer(listen_endpoint);
+  configureServer();
 }
 
-void FinalizeNode::configureServer(const IPv4Endpoint &endpoint) {
+void FinalizeNode::configureServer() {
   server_->once<uvw::ListenEvent>([this](const uvw::ListenEvent& event, uvw::TCPHandle& server) {
     spdlog::get(name_)->info("New client connection");
 
@@ -27,12 +25,16 @@ void FinalizeNode::configureServer(const IPv4Endpoint &endpoint) {
 
     client->on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::TCPHandle& client) {
       spdlog::get(name_)->debug("Data received, size: {}", event.length);
-      buffer_builder_->Append(event.data.get(), event.length);
+      auto append_status = buffer_builder_->Append(event.data.get(), event.length);
+      if (!append_status.ok()) {
+        spdlog::get(name_)->error(append_status.ToString());
+      }
+
       writeData();
     });
 
     client->once<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::TCPHandle& client) {
-      spdlog::get(name_)->error("Error: {}", event.what());
+      spdlog::get(name_)->error(event.what());
       writeData();
       stop();
       client.close();
@@ -48,9 +50,6 @@ void FinalizeNode::configureServer(const IPv4Endpoint &endpoint) {
     server.accept(*client);
     client->read();
   });
-
-  server_->bind(endpoint.host, endpoint.port);
-  server_->listen();
 }
 
 void FinalizeNode::writeData() {
