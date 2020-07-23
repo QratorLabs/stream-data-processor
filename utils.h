@@ -49,55 +49,52 @@ class Utils {
 
     auto batch_reader_result = arrow::csv::StreamingReader::Make(pool, buffer_input, read_options,
         parse_options, convert_options);
+    if (!batch_reader_result.ok()) {
+      return batch_reader_result.status();
+    }
 
-    ARROW_RETURN_NOT_OK(batch_reader_result);
     ARROW_RETURN_NOT_OK(batch_reader_result.ValueOrDie()->ReadAll(record_batches));
 
     ARROW_RETURN_NOT_OK(buffer_input->Close());
     return arrow::Status::OK();
   }
 
-  static arrow::Status serializeRecordBatches(const arrow::Schema& schema,
-      const std::vector<std::shared_ptr<arrow::RecordBatch>> &record_batches,
-      std::shared_ptr<arrow::Buffer> *target) {
-    auto buffer_builder = std::make_shared<arrow::BufferBuilder>();
+  static arrow::Status serializeRecordBatches(const std::shared_ptr<arrow::Schema> &schema,
+                                              const std::vector<std::shared_ptr<arrow::RecordBatch>> &record_batches,
+                                              std::shared_ptr<arrow::Buffer> *target) {
+    auto output_stream_result = arrow::io::BufferOutputStream::Create();
+    if (!output_stream_result.ok()) {
+      return output_stream_result.status();
+    }
 
-    std::shared_ptr<arrow::Buffer> schema_buffer;
-    ARROW_RETURN_NOT_OK(serializeSchema(schema, &schema_buffer));
-    ARROW_RETURN_NOT_OK(buffer_builder->Append(schema_buffer->data(), schema_buffer->size()));
+    auto stream_writer_result = arrow::ipc::NewStreamWriter(output_stream_result.ValueOrDie().get(), schema);
+    if (!stream_writer_result.ok()) {
+      return stream_writer_result.status();
+    }
 
     for (auto& record_batch : record_batches) {
-      auto serialization_result = arrow::ipc::SerializeRecordBatch(*record_batch, arrow::ipc::IpcWriteOptions::Defaults());
-      if (!serialization_result.ok()) {
-        return serialization_result.status();
-      }
-
-      ARROW_RETURN_NOT_OK(buffer_builder->Append(serialization_result.ValueOrDie()->data(),
-                                                 serialization_result.ValueOrDie()->size()));
+      ARROW_RETURN_NOT_OK(stream_writer_result.ValueOrDie()->WriteRecordBatch(*record_batch));
     }
 
-    ARROW_RETURN_NOT_OK(buffer_builder->Finish(target));
-    return arrow::Status::OK();
-  }
-
-  static arrow::Status serializeSchema(const arrow::Schema& schema, std::shared_ptr<arrow::Buffer> *target) {
-    arrow::ipc::DictionaryMemo dictionary_memo;
-    auto schema_serialization_result = arrow::ipc::SerializeSchema(schema, &dictionary_memo);
-    if (!schema_serialization_result.ok()) {
-      return schema_serialization_result.status();
+    auto buffer_result = output_stream_result.ValueOrDie()->Finish();
+    if (!buffer_result.ok()) {
+      return buffer_result.status();
     }
 
-    *target = schema_serialization_result.ValueOrDie();
+    *target = buffer_result.ValueOrDie();
+    ARROW_RETURN_NOT_OK(output_stream_result.ValueOrDie()->Close());
     return arrow::Status::OK();
   }
 
   static arrow::Status deserializeRecordBatches(std::shared_ptr<arrow::Buffer> buffer,
                                                 std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches) {
     auto buffer_input = std::make_shared<arrow::io::BufferReader>(buffer);
-    auto read_options = arrow::ipc::IpcReadOptions::Defaults();
-    auto batch_reader_result = arrow::ipc::RecordBatchStreamReader::Open(buffer_input, read_options);
+    auto batch_reader_result = arrow::ipc::RecordBatchStreamReader::Open(buffer_input);
+    if (!batch_reader_result.ok()) {
+      return batch_reader_result.status();
+    }
 
-    ARROW_RETURN_NOT_OK(batch_reader_result);
+    record_batches->clear();
     ARROW_RETURN_NOT_OK(batch_reader_result.ValueOrDie()->ReadAll(record_batches));
 
     ARROW_RETURN_NOT_OK(buffer_input->Close());
@@ -205,6 +202,37 @@ class Utils {
 
     arg_min_max = {arg_min, arg_max};
     return arrow::Status::OK();
+  }
+
+  static const std::string TERMINATING_SYMBOLS;
+
+  static arrow::Status terminate(const std::shared_ptr<arrow::Buffer>& buffer, // TODO: Use ResizableBuffer
+      std::shared_ptr<arrow::Buffer>* terminated_buffer) {
+    arrow::BufferBuilder builder;
+    ARROW_RETURN_NOT_OK(builder.Append(buffer->data(), buffer->size()));
+    ARROW_RETURN_NOT_OK(builder.Append(TERMINATING_SYMBOLS.data(), TERMINATING_SYMBOLS.size()));
+    ARROW_RETURN_NOT_OK(builder.Finish(terminated_buffer));
+    return arrow::Status::OK();
+  }
+
+  static std::vector<std::pair<char*, size_t>> splitMessage(char* message_data, size_t length) {
+    std::vector<std::pair<char*, size_t>> parts;
+    size_t last_offset = 0;
+    for (size_t i = 0; i < length; ++i) {
+      bool found = true;
+      for (size_t j = 0; j < TERMINATING_SYMBOLS.size(); ++j) {
+        if (i + j >= length || message_data[i + j] != TERMINATING_SYMBOLS[j]) {
+          found = false;
+        }
+      }
+
+      if (found) {
+        parts.emplace_back(message_data + last_offset, i - last_offset);
+        last_offset = i + TERMINATING_SYMBOLS.size();
+      }
+    }
+
+    return parts;
   }
 
  private:

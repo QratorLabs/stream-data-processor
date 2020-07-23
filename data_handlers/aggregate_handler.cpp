@@ -70,7 +70,7 @@ arrow::Status AggregateHandler::handle(std::shared_ptr<arrow::Buffer> source, st
 
   auto result_record_batch = arrow::RecordBatch::Make(result_schema_, groups.size(), result_arrays);
 
-  ARROW_RETURN_NOT_OK(Utils::serializeRecordBatches(*result_schema_, { result_record_batch }, target));
+  ARROW_RETURN_NOT_OK(Utils::serializeRecordBatches(result_schema_, { result_record_batch }, target));
   return arrow::Status::OK();
 }
 

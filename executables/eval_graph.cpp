@@ -7,16 +7,14 @@
 #include <uvw.hpp>
 
 #include "data_handlers/data_handlers.h"
+#include "nodes/nodes.h"
 
-#include "nodes/eval_node.h"
-#include "nodes/finalize_node.h"
-
-int main() {
+int main(int argc, char** argv) {
   spdlog::set_level(spdlog::level::debug);
 
   auto loop = uvw::Loop::getDefault();
 
-  std::ofstream oss("result.txt");
+  std::ofstream oss(std::string(argv[0]) + "_result.txt");
   FinalizeNode finalize_node("finalize_node", loop, {"127.0.0.1", 4250}, oss);
 
   std::vector<std::string> aggregate_columns({"tag"});
@@ -29,8 +27,8 @@ int main() {
                               {"127.0.0.1", 4250}
                           },
                           std::make_shared<AggregateHandler>(aggregate_columns,
-                              aggregate_options,
-                              "ts"));
+                                                             aggregate_options,
+                                                             "ts"));
 
   auto field_ts = arrow::field("ts", arrow::timestamp(arrow::TimeUnit::SECOND));
   auto field0 = arrow::field("operand1", arrow::int64());
@@ -47,14 +45,14 @@ int main() {
   gandiva::ExpressionVector expressions{sum_expr, subtract_expr};
 
   EvalNode eval_node("eval_node", loop,
-      {"127.0.0.1", 4241},
+                     {"127.0.0.1", 4241},
                      {
                          {"127.0.0.1", 4242}
                      },
                      std::make_shared<MapHandler>(schema, expressions));
 
   EvalNode pass_node("pass_node", loop,
-          {"127.0.0.1", 4240},
+                     {"127.0.0.1", 4240},
                      {
                          {"127.0.0.1", 4241}
                      },

@@ -23,6 +23,6 @@ arrow::Status SortHandler::handle(std::shared_ptr<arrow::Buffer> source, std::sh
 
   ARROW_RETURN_NOT_OK(Utils::concatenateRecordBatches(sorted_record_batches, &record_batch));
 
-  ARROW_RETURN_NOT_OK(Utils::serializeRecordBatches(*record_batch->schema(), { record_batch }, target));
+  ARROW_RETURN_NOT_OK(Utils::serializeRecordBatches(record_batch->schema(), { record_batch }, target));
   return arrow::Status::OK();
 }

@@ -20,6 +20,7 @@ set(TCP_ECHO_SERVER_SOURCES
   nodes/pass_node_base.cpp
   nodes/eval_node.cpp
   nodes/finalize_node.cpp
+  nodes/window_node.cpp
   data_handlers/aggregate_handler.cpp
   data_handlers/csv_to_record_batches_converter.cpp
   data_handlers/map_handler.cpp
@@ -27,20 +28,26 @@ set(TCP_ECHO_SERVER_SOURCES
   data_handlers/aggregate_functions/min_aggregate_function.cpp
   data_handlers/aggregate_functions/max_aggregate_function.cpp
   data_handlers/aggregate_functions/first_aggregate_function.cpp
-  data_handlers/aggregate_functions/last_aggregate_function.cpp)
+  data_handlers/aggregate_functions/last_aggregate_function.cpp
+  utils.cpp)
+
 set(TCP_ECHO_SERVER_INCLUDE_DIRS
   ${CMAKE_CURRENT_SOURCE_DIR})
-
-add_executable(eval_graph main.cpp ${TCP_ECHO_SERVER_SOURCES})
 
 set(PROJECT_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src"
   ${TCP_ECHO_SERVER_INCLUDE_DIRS})
-target_include_directories(eval_graph PRIVATE "${PROJECT_INCLUDE_DIRS}")
 
 set(PROJECT_DEPENDENCIES
   uvw::uvw-static
   arrow_shared
   gandiva_shared
   spdlog::spdlog)
-target_link_libraries(eval_graph "${PROJECT_DEPENDENCIES}")
+
+file(GLOB files "executables/*.cpp")
+foreach(file ${files})
+  get_filename_component(file_name "${file}" NAME_WE)
+  add_executable("${file_name}" "${file}" ${TCP_ECHO_SERVER_SOURCES})
+  target_include_directories("${file_name}" PRIVATE "${PROJECT_INCLUDE_DIRS}")
+  target_link_libraries("${file_name}" "${PROJECT_DEPENDENCIES}")
+endforeach()

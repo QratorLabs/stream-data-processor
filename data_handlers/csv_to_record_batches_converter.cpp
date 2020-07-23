@@ -27,6 +27,6 @@ arrow::Status CSVToRecordBatchesConverter::handle(std::shared_ptr<arrow::Buffer>
     }
   }
 
-  ARROW_RETURN_NOT_OK(Utils::serializeRecordBatches(*record_batches_schema_, record_batches, target));
+  ARROW_RETURN_NOT_OK(Utils::serializeRecordBatches(record_batches_schema_, record_batches, target));
   return arrow::Status::OK();
 }
