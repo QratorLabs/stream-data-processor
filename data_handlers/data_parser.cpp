@@ -25,9 +25,9 @@ arrow::Status DataParser::handle(std::shared_ptr<arrow::Buffer> source,
     }
   } else {
     for (auto& record_batch : record_batches) {
-      for (size_t i = 0; i < record_batches_schema_->num_fields(); ++i) {
-        ARROW_RETURN_NOT_OK(record_batch->schema()->SetField(i, record_batches_schema_->field(i)));
-      }
+      record_batch = arrow::RecordBatch::Make(record_batches_schema_,
+          record_batch->num_rows(),
+          record_batch->columns());
     }
   }
 
