@@ -5,7 +5,7 @@
 #include <spdlog/spdlog.h>
 
 #include "window_node.h"
-#include "utils.h"
+#include "utils/utils.h"
 
 WindowNode::WindowNode(std::string name,
                        const std::shared_ptr<uvw::Loop> &loop,
@@ -34,7 +34,7 @@ void WindowNode::configureServer() {
 
     client->on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::TCPHandle& client) {
       spdlog::get(name_)->debug("Data received, size: {}", event.length);
-      for (auto& data_part : Utils::splitMessage(event.data.get(), event.length)) {
+      for (auto& data_part : NetworkUtils::splitMessage(event.data.get(), event.length)) {
         auto append_status = appendData(data_part.first, data_part.second);
         if (!append_status.ok()) {
           spdlog::get(name_)->error(append_status.ToString());
@@ -72,14 +72,13 @@ void WindowNode::configureTarget(const std::shared_ptr<uvw::TCPHandle> &target) 
 }
 
 arrow::Status WindowNode::appendData(char* data, size_t length) {
-  // SPLIT
   auto data_buffer = std::make_shared<arrow::Buffer>(reinterpret_cast<const uint8_t *>(data), length);
   arrow::RecordBatchVector record_batches;
-  ARROW_RETURN_NOT_OK(Utils::deserializeRecordBatches(data_buffer, &record_batches));
+  ARROW_RETURN_NOT_OK(Serializer::deserializeRecordBatches(data_buffer, &record_batches));
 
   std::shared_ptr<arrow::RecordBatch> record_batch;
-  ARROW_RETURN_NOT_OK(Utils::concatenateRecordBatches(record_batches, &record_batch));
-  ARROW_RETURN_NOT_OK(Utils::sortByColumn(ts_column_name_, record_batch, &record_batch));
+  ARROW_RETURN_NOT_OK(DataConverter::concatenateRecordBatches(record_batches, &record_batch));
+  ARROW_RETURN_NOT_OK(ComputeUtils::sortByColumn(ts_column_name_, record_batch, &record_batch));
 
   if (first_ts_in_current_batch_ == 0) {
     auto min_ts_result = record_batch->GetColumnByName(ts_column_name_)->GetScalar(0);
@@ -105,7 +104,7 @@ arrow::Status WindowNode::appendData(char* data, size_t length) {
     if (divide_index > 0) {
       auto current_slice = record_batch->Slice(0, divide_index);
       data_buffers_.emplace_back();
-      ARROW_RETURN_NOT_OK(Utils::serializeRecordBatches(record_batch->schema(),
+      ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(record_batch->schema(),
                                                         {current_slice},
                                                         &data_buffers_.back()));
     }
@@ -122,7 +121,7 @@ arrow::Status WindowNode::appendData(char* data, size_t length) {
   }
 
   data_buffers_.emplace_back();
-  ARROW_RETURN_NOT_OK(Utils::serializeRecordBatches(record_batch->schema(),
+  ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(record_batch->schema(),
       {record_batch},
       &data_buffers_.back()));
   return arrow::Status::OK();
@@ -187,15 +186,15 @@ arrow::Status WindowNode::buildWindow(std::shared_ptr<arrow::Buffer> &window_dat
   arrow::RecordBatchVector window_vector;
   for (auto& buffer : data_buffers_) {
     arrow::RecordBatchVector record_batch_vector;
-    ARROW_RETURN_NOT_OK(Utils::deserializeRecordBatches(buffer, &record_batch_vector));
+    ARROW_RETURN_NOT_OK(Serializer::deserializeRecordBatches(buffer, &record_batch_vector));
     for (auto& record_batch : record_batch_vector) {
       window_vector.push_back(record_batch);
     }
   }
 
   std::shared_ptr<arrow::RecordBatch> record_batch;
-  ARROW_RETURN_NOT_OK(Utils::concatenateRecordBatches(window_vector, &record_batch));
-  ARROW_RETURN_NOT_OK(Utils::serializeRecordBatches(record_batch->schema(), {record_batch}, &window_data));
+  ARROW_RETURN_NOT_OK(DataConverter::concatenateRecordBatches(window_vector, &record_batch));
+  ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(record_batch->schema(), {record_batch}, &window_data));
   return arrow::Status::OK();
 }
 

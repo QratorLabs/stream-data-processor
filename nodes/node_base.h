@@ -7,7 +7,7 @@
 
 #include "uvw.hpp"
 
-#include "utils.h"
+#include "utils/network_utils.h"
 
 class NodeBase {
  public:

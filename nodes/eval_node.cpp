@@ -5,6 +5,7 @@
 #include <spdlog/spdlog.h>
 
 #include "eval_node.h"
+#include "utils/network_utils.h"
 
 const std::chrono::duration<uint64_t> EvalNode::SILENCE_TIMEOUT(10);
 
@@ -46,17 +47,12 @@ void EvalNode::configureServer() {
 
     client->on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::TCPHandle& client) {
       spdlog::get(name_)->debug("Data received, size: {}", event.length);
-      auto append_status = buffer_builder_->Append(event.data.get(), event.length);
-      if (!append_status.ok()) {
-        spdlog::get(name_)->error(append_status.ToString());
+      for (auto& data_part : NetworkUtils::splitMessage(event.data.get(), event.length)) {
+        auto append_status = buffer_builder_->Append(data_part.first, data_part.second);
+        if (!append_status.ok()) {
+          spdlog::get(name_)->error(append_status.ToString());
+        }
       }
-
-//      for (auto& data_part : Utils::splitMessage(event.data.get(), event.length)) {
-//        auto append_status = buffer_builder_->Append(data_part.first, data_part.second);
-//        if (!append_status.ok()) {
-//          spdlog::get(name_)->error(append_status.ToString());
-//        }
-//      }
     });
 
     client->once<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::TCPHandle& client) {
@@ -109,17 +105,5 @@ arrow::Status EvalNode::processData(std::shared_ptr<arrow::Buffer>& processed_da
 
   ARROW_RETURN_NOT_OK(data_handler_->handle(buffer, &processed_data));
 
-//  arrow::BufferVector data_parts;
-//  ARROW_RETURN_NOT_OK(Utils::splitMessage(buffer, data_parts));
-//
-//  arrow::BufferBuilder builder;
-//  for (auto& data_part : data_parts) {
-//    std::shared_ptr<arrow::Buffer> tmp_buffer;
-//    spdlog::get(name_)->debug("Processing data of size: {}", data_part->size());
-//    ARROW_RETURN_NOT_OK(data_handler_->handle(data_part, &tmp_buffer));
-//    ARROW_RETURN_NOT_OK(builder.Append(tmp_buffer->data(), tmp_buffer->size()));
-//  }
-//
-//  ARROW_RETURN_NOT_OK(builder.Finish(&processed_data));
   return arrow::Status::OK();
 }

@@ -2,7 +2,7 @@
 
 #include <arrow/api.h>
 
-#include "utils.h"
+#include "utils/utils.h"
 
 int main() {
   std::shared_ptr<arrow::RecordBatch> record_batch;
@@ -28,7 +28,7 @@ int main() {
   std::cout << record_batch->ToString() << std::endl;
 
   std::shared_ptr<arrow::Buffer> buffer;
-  auto serialization_status = Utils::serializeRecordBatches(schema, {record_batch}, &buffer);
+  auto serialization_status = Serializer::serializeRecordBatches(schema, {record_batch}, &buffer);
   if (!serialization_status.ok()) {
     std::cerr << serialization_status.ToString() << std::endl;
     return 1;
@@ -37,7 +37,7 @@ int main() {
   std::cout << "Buffer size: " << buffer->size() << std::endl;
 
   arrow::RecordBatchVector record_batch_vector;
-  auto deserialization_status = Utils::deserializeRecordBatches(buffer, &record_batch_vector);
+  auto deserialization_status = Serializer::deserializeRecordBatches(buffer, &record_batch_vector);
   if (!deserialization_status.ok()) {
     std::cerr << deserialization_status.ToString() << std::endl;
     return 1;

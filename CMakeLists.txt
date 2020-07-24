@@ -22,14 +22,18 @@ set(TCP_ECHO_SERVER_SOURCES
   nodes/finalize_node.cpp
   nodes/window_node.cpp
   data_handlers/aggregate_handler.cpp
-  data_handlers/csv_to_record_batches_converter.cpp
+  data_handlers/data_parser.cpp
   data_handlers/map_handler.cpp
   data_handlers/sort_handler.cpp
   data_handlers/aggregate_functions/min_aggregate_function.cpp
   data_handlers/aggregate_functions/max_aggregate_function.cpp
   data_handlers/aggregate_functions/first_aggregate_function.cpp
   data_handlers/aggregate_functions/last_aggregate_function.cpp
-  utils.cpp)
+  utils/parsers/csv_parser.cpp
+  utils/compute_utils.cpp
+  utils/data_converter.cpp
+  utils/network_utils.cpp
+  utils/serializer.cpp)
 
 set(TCP_ECHO_SERVER_INCLUDE_DIRS
   ${CMAKE_CURRENT_SOURCE_DIR})

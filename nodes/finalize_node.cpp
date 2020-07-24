@@ -6,6 +6,7 @@
 #include <spdlog/spdlog.h>
 
 #include "finalize_node.h"
+#include "utils/utils.h"
 
 FinalizeNode::FinalizeNode(std::string name,
     const std::shared_ptr<uvw::Loop>& loop,
@@ -25,7 +26,7 @@ void FinalizeNode::configureServer() {
 
     client->on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::TCPHandle& client) {
       spdlog::get(name_)->debug("Data received, size: {}", event.length);
-      for (auto& data_part : Utils::splitMessage(event.data.get(), event.length)) {
+      for (auto& data_part : NetworkUtils::splitMessage(event.data.get(), event.length)) {
         auto append_status = buffer_builder_->Append(data_part.first, data_part.second);
         if (!append_status.ok()) {
           spdlog::get(name_)->error(append_status.ToString());
@@ -62,7 +63,7 @@ void FinalizeNode::writeData() {
   }
 
   std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
-  auto deserialize_status = Utils::deserializeRecordBatches(buffer, &record_batches);
+  auto deserialize_status = Serializer::deserializeRecordBatches(buffer, &record_batches);
   if (!deserialize_status.ok()) {
     spdlog::get(name_)->debug(deserialize_status.ToString());
     return;
@@ -72,30 +73,6 @@ void FinalizeNode::writeData() {
   for (auto& record_batch : record_batches) {
     ostrm_ << record_batch->ToString() << std::endl;
   }
-//
-//  arrow::BufferVector data_parts;
-//  auto split_status = Utils::splitMessage(buffer, data_parts);
-//  if (!split_status.ok()) {
-//    spdlog::get(name_)->error(split_status.ToString());
-//    return;
-//  }
-//
-//  for (auto& data_part : data_parts) {
-//    std::shared_ptr<arrow::Buffer> tmp_buffer;
-//    spdlog::get(name_)->debug("Writing data of size: {}", data_part->size());
-//
-//    std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
-//    auto deserialize_status = Utils::deserializeRecordBatches(buffer, &record_batches);
-//    if (!deserialize_status.ok()) {
-//      spdlog::get(name_)->error(deserialize_status.ToString());
-//      return;
-//    }
-//
-//    spdlog::get(name_)->info("Writing data");
-//    for (auto& record_batch : record_batches) {
-//      ostrm_ << record_batch->ToString() << std::endl;
-//    }
-//  }
 }
 
 void FinalizeNode::stop() {

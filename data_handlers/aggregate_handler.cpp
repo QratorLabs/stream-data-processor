@@ -4,7 +4,7 @@
 
 #include "aggregate_functions/aggregate_functions.h"
 
-#include "utils.h"
+#include "utils/utils.h"
 
 const std::unordered_map<std::string, std::shared_ptr<AggregateFunction>> AggregateHandler::NAMES_TO_FUNCTIONS{
     {"first", std::make_shared<FirstAggregateFunction>()},
@@ -25,14 +25,14 @@ AggregateHandler::AggregateHandler(std::vector<std::string> grouping_columns,
 arrow::Status AggregateHandler::handle(std::shared_ptr<arrow::Buffer> source, std::shared_ptr<arrow::Buffer> *target) {
   // Converting arrow::Buffer to arrow::RecordBatchVector
   std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
-  ARROW_RETURN_NOT_OK(Utils::deserializeRecordBatches(source, &record_batches));
+  ARROW_RETURN_NOT_OK(Serializer::deserializeRecordBatches(source, &record_batches));
   if (record_batches.empty()) {
     return arrow::Status::CapacityError("No data to aggregate");
   }
 
   // Concatenating record batches to the one batch
   std::shared_ptr<arrow::RecordBatch> record_batch;
-  ARROW_RETURN_NOT_OK(Utils::concatenateRecordBatches(record_batches, &record_batch));
+  ARROW_RETURN_NOT_OK(DataConverter::concatenateRecordBatches(record_batches, &record_batch));
 
   // Trying to find timestamp field for time window or first/last aggregators
   ARROW_RETURN_NOT_OK(findTsColumnName(record_batch));
@@ -42,7 +42,7 @@ arrow::Status AggregateHandler::handle(std::shared_ptr<arrow::Buffer> source, st
 
   // Splitting into groups in sorted order
   arrow::RecordBatchVector groups;
-  ARROW_RETURN_NOT_OK(Utils::groupSortingByColumns(grouping_columns_, record_batch, groups));
+  ARROW_RETURN_NOT_OK(ComputeUtils::groupSortingByColumns(grouping_columns_, record_batch, groups));
 
   // Setting result schema
   if (result_schema_ == nullptr) {
@@ -70,7 +70,7 @@ arrow::Status AggregateHandler::handle(std::shared_ptr<arrow::Buffer> source, st
 
   auto result_record_batch = arrow::RecordBatch::Make(result_schema_, groups.size(), result_arrays);
 
-  ARROW_RETURN_NOT_OK(Utils::serializeRecordBatches(result_schema_, { result_record_batch }, target));
+  ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(result_schema_, { result_record_batch }, target));
   return arrow::Status::OK();
 }
 
@@ -217,7 +217,7 @@ arrow::Status AggregateHandler::fillGroupingColumns(const arrow::RecordBatchVect
   }
 
   std::shared_ptr<arrow::RecordBatch> unique_record_batch;
-  ARROW_RETURN_NOT_OK(Utils::concatenateRecordBatches(cropped_groups, &unique_record_batch));
+  ARROW_RETURN_NOT_OK(DataConverter::concatenateRecordBatches(cropped_groups, &unique_record_batch));
 
   for (auto& grouping_column : unique_record_batch->columns()) {
     result_arrays.push_back(grouping_column);

@@ -8,6 +8,7 @@
 
 #include "data_handlers/data_handlers.h"
 #include "nodes/nodes.h"
+#include "utils/parsers/csv_parser.h"
 
 int main(int argc, char** argv) {
   spdlog::set_level(spdlog::level::debug);
@@ -56,7 +57,7 @@ int main(int argc, char** argv) {
                      {
                          {"127.0.0.1", 4241}
                      },
-                     std::make_shared<CSVToRecordBatchesConverter>());
+                     std::make_shared<DataParser>(std::make_shared<CSVParser>()));
 
   loop->run();
 

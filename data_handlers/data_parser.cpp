@@ -1,18 +1,22 @@
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include <arrow/csv/api.h>
 #include <arrow/io/api.h>
 
-#include "csv_to_record_batches_converter.h"
+#include "data_parser.h"
+#include "utils/serializer.h"
 
-#include "utils.h"
+DataParser::DataParser(std::shared_ptr<Parser> parser) : parser_(std::move(parser)) {
 
-arrow::Status CSVToRecordBatchesConverter::handle(std::shared_ptr<arrow::Buffer> source,
-                                                  std::shared_ptr<arrow::Buffer> *target) {
+}
+
+arrow::Status DataParser::handle(std::shared_ptr<arrow::Buffer> source,
+                                 std::shared_ptr<arrow::Buffer> *target) {
   std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
   bool first_batch = record_batches_schema_ == nullptr;
-  ARROW_RETURN_NOT_OK(Utils::parseCSVToRecordBatches(source, &record_batches, first_batch));
+  ARROW_RETURN_NOT_OK(parser_->parseRecordBatches(source, &record_batches, first_batch));
   if (first_batch) {
     if (record_batches.empty()) {
       return arrow::Status::CapacityError("No data to handle");
@@ -27,6 +31,6 @@ arrow::Status CSVToRecordBatchesConverter::handle(std::shared_ptr<arrow::Buffer>
     }
   }
 
-  ARROW_RETURN_NOT_OK(Utils::serializeRecordBatches(record_batches_schema_, record_batches, target));
+  ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(record_batches_schema_, record_batches, target));
   return arrow::Status::OK();
 }

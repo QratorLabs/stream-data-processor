@@ -16,7 +16,7 @@ PassNodeBase::PassNodeBase(std::string name,
 
 void PassNodeBase::sendData(const std::shared_ptr<arrow::Buffer> &data) {
   std::shared_ptr<arrow::Buffer> terminated_buffer;
-  auto terminate_status = Utils::terminate(data, &terminated_buffer);
+  auto terminate_status = NetworkUtils::terminate(data, &terminated_buffer);
   if (!terminate_status.ok()){
     spdlog::get(name_)->error(terminate_status.ToString());
     return;

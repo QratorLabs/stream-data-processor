@@ -3,7 +3,7 @@
 
 #include "map_handler.h"
 
-#include "utils.h"
+#include "utils/serializer.h"
 
 MapHandler::MapHandler(const std::shared_ptr<arrow::Schema>& input_schema, const gandiva::ExpressionVector &expressions) {
   arrow::FieldVector result_fields;
@@ -20,9 +20,9 @@ MapHandler::MapHandler(const std::shared_ptr<arrow::Schema>& input_schema, const
 
 arrow::Status MapHandler::handle(std::shared_ptr<arrow::Buffer> source, std::shared_ptr<arrow::Buffer> *target) {
   std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
-  ARROW_RETURN_NOT_OK(Utils::deserializeRecordBatches(source, &record_batches));
+  ARROW_RETURN_NOT_OK(Serializer::deserializeRecordBatches(source, &record_batches));
   ARROW_RETURN_NOT_OK(eval(record_batches));
-  ARROW_RETURN_NOT_OK(Utils::serializeRecordBatches(result_schema_, record_batches, target));
+  ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(result_schema_, record_batches, target));
   return arrow::Status::OK();
 }
 
