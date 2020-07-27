@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(tcp_echo_server)
+project(stream-data-processor)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -15,32 +15,34 @@ message(STATUS "Gandiva lib dir: ${Gandiva_DIR}")
 
 find_package(spdlog REQUIRED)
 
-set(TCP_ECHO_SERVER_SOURCES
-  nodes/node_base.cpp
-  nodes/pass_node_base.cpp
-  nodes/eval_node.cpp
-  nodes/finalize_node.cpp
-  nodes/window_node.cpp
-  data_handlers/aggregate_handler.cpp
-  data_handlers/data_parser.cpp
-  data_handlers/map_handler.cpp
-  data_handlers/sort_handler.cpp
-  data_handlers/aggregate_functions/min_aggregate_function.cpp
-  data_handlers/aggregate_functions/max_aggregate_function.cpp
-  data_handlers/aggregate_functions/first_aggregate_function.cpp
-  data_handlers/aggregate_functions/last_aggregate_function.cpp
-  utils/parsers/csv_parser.cpp
-  utils/compute_utils.cpp
-  utils/data_converter.cpp
-  utils/network_utils.cpp
-  utils/serializer.cpp)
+set(STREAM_DATA_PROCESSOR_SOURCES
+  src/nodes/node_base.cpp
+  src/nodes/pass_node_base.cpp
+  src/nodes/eval_node.cpp
+  src/nodes/finalize_node.cpp
+  src/nodes/window_node.cpp
+  src/data_handlers/aggregate_handler.cpp
+  src/data_handlers/data_parser.cpp
+  src/data_handlers/map_handler.cpp
+  src/data_handlers/sort_handler.cpp
+  src/data_handlers/aggregate_functions/min_aggregate_function.cpp
+  src/data_handlers/aggregate_functions/max_aggregate_function.cpp
+  src/data_handlers/aggregate_functions/first_aggregate_function.cpp
+  src/data_handlers/aggregate_functions/last_aggregate_function.cpp
+  src/utils/parsers/csv_parser.cpp
+  src/utils/parsers/graphite_parser.cpp
+  src/utils/compute_utils.cpp
+  src/utils/data_converter.cpp
+  src/utils/network_utils.cpp
+  src/utils/serializer.cpp
+  src/utils/string_utils.cpp)
 
-set(TCP_ECHO_SERVER_INCLUDE_DIRS
-  ${CMAKE_CURRENT_SOURCE_DIR})
+set(STREAM_DATA_PROCESSOR_INCLUDE_DIRS
+  "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 set(PROJECT_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src"
-  ${TCP_ECHO_SERVER_INCLUDE_DIRS})
+  ${STREAM_DATA_PROCESSOR_INCLUDE_DIRS})
 
 set(PROJECT_DEPENDENCIES
   uvw::uvw-static
@@ -48,10 +50,21 @@ set(PROJECT_DEPENDENCIES
   gandiva_shared
   spdlog::spdlog)
 
-file(GLOB files "executables/*.cpp")
-foreach(file ${files})
-  get_filename_component(file_name "${file}" NAME_WE)
-  add_executable("${file_name}" "${file}" ${TCP_ECHO_SERVER_SOURCES})
-  target_include_directories("${file_name}" PRIVATE "${PROJECT_INCLUDE_DIRS}")
-  target_link_libraries("${file_name}" "${PROJECT_DEPENDENCIES}")
+set(LIBRARY_NAME "stream_data_processor")
+
+add_library(${LIBRARY_NAME} STATIC "${STREAM_DATA_PROCESSOR_SOURCES}")
+target_include_directories(${LIBRARY_NAME} PUBLIC "${PROJECT_INCLUDE_DIRS}")
+target_link_libraries(${LIBRARY_NAME} "${PROJECT_DEPENDENCIES}")
+
+function(add_exec_target file_path)
+  get_filename_component(file_name "${file_path}" NAME_WE)
+  add_executable("${file_name}" "${file_path}")
+  target_link_libraries("${file_name}" ${LIBRARY_NAME})
+endfunction()
+
+file(GLOB exec_files "executables/*.cpp")
+foreach(file ${exec_files})
+  add_exec_target(${file})
 endforeach()
+
+add_subdirectory(test)

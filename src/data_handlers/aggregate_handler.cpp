@@ -2,7 +2,7 @@
 
 #include "aggregate_handler.h"
 
-#include "aggregate_functions/aggregate_functions.h"
+#include "data_handlers/aggregate_functions/aggregate_functions.h"
 
 #include "utils/utils.h"
 
