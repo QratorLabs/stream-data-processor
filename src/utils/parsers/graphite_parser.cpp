@@ -20,14 +20,14 @@ arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Bu
   KVContainer<arrow::Type::type> fields_types;
   for (auto& metric : parsed_metrics_) {
     // Adding builders for tags
-    for (auto& metric_tag : metric.second->tags_) {
+    for (auto& metric_tag : metric->tags) {
       if (tags_id_to_builders.find(metric_tag.first) == tags_id_to_builders.end()) {
         tags_id_to_builders.emplace(metric_tag.first, pool);
       }
     }
 
     // Determining fields types for further usage
-    for (auto& metric_field : metric.second->fields_) {
+    for (auto& metric_field : metric->fields) {
       auto metric_field_type = determineFieldType(metric_field.second);
       if (fields_types.find(metric_field.first) == fields_types.end()
           || (fields_types[metric_field.first] == arrow::Type::INT64 && metric_field_type != arrow::Type::INT64)
@@ -56,15 +56,23 @@ arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Bu
   }
 
   char* str_end;
+  arrow::TimestampBuilder timestamp_builder(arrow::timestamp(arrow::TimeUnit::SECOND), pool);
   arrow::StringBuilder measurement_name_builder;
   for (auto& metric : parsed_metrics_) {
+    //Building timestamp field
+    if (metric->timestamp != -1) {
+      ARROW_RETURN_NOT_OK(timestamp_builder.Append(metric->timestamp));
+    } else {
+      ARROW_RETURN_NOT_OK(timestamp_builder.AppendNull());
+    }
+
     // Building measurement field
-    ARROW_RETURN_NOT_OK(measurement_name_builder.Append(metric.second->measurement_name_));
+    ARROW_RETURN_NOT_OK(measurement_name_builder.Append(metric->measurement_name));
 
     // Building tag fields
     for (auto& tag : tags_id_to_builders) {
-      if (metric.second->tags_.find(tag.first) != metric.second->tags_.end()) {
-        ARROW_RETURN_NOT_OK(tag.second.Append(metric.second->tags_[tag.first]));
+      if (metric->tags.find(tag.first) != metric->tags.end()) {
+        ARROW_RETURN_NOT_OK(tag.second.Append(metric->tags[tag.first]));
       } else {
         ARROW_RETURN_NOT_OK(tag.second.AppendNull());
       }
@@ -72,14 +80,14 @@ arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Bu
 
     // Building field fields
     for (auto& field : field_builders) {
-      if (metric.second->fields_.find(field.first) != metric.second->fields_.end()) {
-        auto field_value = metric.second->fields_[field.first];
+      if (metric->fields.find(field.first) != metric->fields.end()) {
+        auto field_value = metric->fields[field.first];
         switch (fields_types[field.first]) {
           case arrow::Type::INT64:
-            ARROW_RETURN_NOT_OK(std::static_pointer_cast<arrow::Int64Builder>(field.second)->Append(std::strtoll(field_value.data(), &str_end, 10)));
+            ARROW_RETURN_NOT_OK(std::static_pointer_cast<arrow::Int64Builder>(field.second)->Append(std::strtoll(field_value.c_str(), &str_end, 10)));
             break;
           case arrow::Type::DOUBLE:
-            ARROW_RETURN_NOT_OK(std::static_pointer_cast<arrow::DoubleBuilder>(field.second)->Append(std::strtod(field_value.data(), &str_end)));
+            ARROW_RETURN_NOT_OK(std::static_pointer_cast<arrow::DoubleBuilder>(field.second)->Append(std::strtod(field_value.c_str(), &str_end)));
             break;
           case arrow::Type::STRING:
             ARROW_RETURN_NOT_OK(std::static_pointer_cast<arrow::StringBuilder>(field.second)->Append(field_value));
@@ -97,6 +105,14 @@ arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Bu
   arrow::ArrayVector column_arrays;
 
   // Creating schema and finishing builders
+  column_arrays.emplace_back();
+  ARROW_RETURN_NOT_OK(timestamp_builder.Finish(&column_arrays.back()));
+  if (column_arrays.back()->null_count() != column_arrays.back()->length()) {
+    fields.push_back(arrow::field("timestamp", arrow::timestamp(arrow::TimeUnit::SECOND)));
+  } else {
+    column_arrays.pop_back();
+  }
+
   fields.push_back(arrow::field("measurement", arrow::utf8()));
   column_arrays.emplace_back();
   ARROW_RETURN_NOT_OK(measurement_name_builder.Finish(&column_arrays.back()));
@@ -137,12 +153,12 @@ arrow::Type::type GraphiteParser::determineFieldType(const std::string& value) c
   }
 
   char* str_end;
-  auto int64_value = std::strtoll(value.data(), &str_end, 10);
+  auto int64_value = std::strtoll(value.c_str(), &str_end, 10);
   if (errno != ERANGE && int64_value != 0) {
     return arrow::Type::INT64;
   }
 
-  auto double_value = std::strtod(value.data(), &str_end);
+  auto double_value = std::strtod(value.c_str(), &str_end);
   if (errno != ERANGE && double_value != 0) {
     return arrow::Type::DOUBLE;
   }
@@ -160,31 +176,30 @@ void GraphiteParser::parseMetricStrings(const std::vector<std::string> &metric_s
     }
 
     if (metric != nullptr) {
-      auto metric_key_string = metric->getKeyString();
-      auto parsed_metric_iter = parsed_metrics_.find(metric_key_string);
+      auto parsed_metric_iter = parsed_metrics_.find(metric);
       if (parsed_metric_iter != parsed_metrics_.end()) {
-        parsed_metric_iter->second->mergeWith(*metric);
+        parsed_metric_iter->get()->mergeWith(*metric);
       } else {
-        parsed_metrics_[metric_key_string] = metric;
+        parsed_metrics_.insert(metric);
       }
     }
   }
 }
 
 GraphiteParser::Metric::Metric(std::string &&measurement_name, GraphiteParser::SortedKVContainer<std::string> &&tags)
-    : measurement_name_(std::forward<std::string>(measurement_name))
-    , tags_(std::forward<GraphiteParser::SortedKVContainer<std::string>>(tags)) {
+    : measurement_name(std::forward<std::string>(measurement_name))
+    , tags(std::forward<GraphiteParser::SortedKVContainer<std::string>>(tags)) {
 
 }
 
 std::string GraphiteParser::Metric::getKeyString() const {
-  std::stringstream string_builder;
-  string_builder << measurement_name_ << '.';
-  for (auto& tag : tags_) {
-    string_builder << tag.first << '=' << tag.second << '.';
+  std::vector<std::string> key_parts;
+  key_parts.push_back(measurement_name);
+  for (auto& tag : tags) {
+    key_parts.push_back(tag.first + '=' + tag.second);
   }
 
-  return string_builder.str();
+  return StringUtils::concatenateStrings(key_parts, ".");
 }
 
 void GraphiteParser::Metric::mergeWith(const Metric& other) {
@@ -192,10 +207,14 @@ void GraphiteParser::Metric::mergeWith(const Metric& other) {
     return;
   }
 
-  for (auto& field : other.fields_) {
-    if (fields_.find(field.first) != fields_.end()) {
-      fields_[field.first] = field.second;
+  for (auto& field : other.fields) {
+    if (fields.find(field.first) != fields.end()) {
+      fields[field.first] = field.second;
     }
+  }
+
+  if (timestamp == -1) {
+    timestamp = other.timestamp;
   }
 }
 
@@ -226,7 +245,7 @@ std::string GraphiteParser::MetricTemplate::prepareFilterRegex(const std::string
         regex_string_builder << "\\.";
         break;
       case '*':
-        regex_string_builder << "[\\w\\d]+";
+        regex_string_builder << ".+";
         break;
       default:
         regex_string_builder << c;
@@ -279,14 +298,14 @@ void GraphiteParser::MetricTemplate::prepareAdditionalTags(const std::string &ad
 }
 
 bool GraphiteParser::MetricTemplate::match(const std::string &metric_string) const {
-  auto metric_description_with_value = StringUtils::split(metric_string, " ");
+  auto metric_parts = StringUtils::split(metric_string, " ");
 
-  if (metric_description_with_value.size() < 2 ||
-      (filter_ != nullptr && !std::regex_match(metric_description_with_value[0], *filter_))) {
+  if (metric_parts.size() < 2 ||
+      (filter_ != nullptr && !std::regex_match(metric_parts[0], *filter_))) {
     return false;
   }
 
-  auto metric_description_parts = StringUtils::split(metric_description_with_value[0], ".");
+  auto metric_description_parts = StringUtils::split(metric_parts[0], ".");
   return metric_description_parts.size() == parts_.size()
       || (metric_description_parts.size() > parts_.size() && multiple_last_part_);
 }
@@ -299,8 +318,8 @@ std::shared_ptr<GraphiteParser::Metric> GraphiteParser::MetricTemplate::buildMet
     return nullptr;
   }
 
-  auto metric_description_with_value = StringUtils::split(metric_string, " ");
-  auto metric_description_parts = StringUtils::split(metric_description_with_value[0], ".");
+  auto metric_parts = StringUtils::split(metric_string, " ");
+  auto metric_description_parts = StringUtils::split(metric_parts[0], ".");
   std::vector<std::string> measurement_name_parts;
   std::unordered_map<std::string, std::vector<std::string>> tags_parts;
   std::vector<std::string> field_parts;
@@ -350,11 +369,31 @@ std::shared_ptr<GraphiteParser::Metric> GraphiteParser::MetricTemplate::buildMet
       std::move(StringUtils::concatenateStrings(measurement_name_parts, separator)),
       std::move(tags)
       );
+
   if (!field_parts.empty()) {
-    metric->fields_[StringUtils::concatenateStrings(field_parts, separator)] = metric_description_with_value[1];
+    metric->fields[StringUtils::concatenateStrings(field_parts, separator)] = metric_parts[1];
   } else {
-    metric->fields_[DEFAULT_FIELD_NAME] = metric_description_with_value[1];
+    metric->fields[DEFAULT_FIELD_NAME] = metric_parts[1];
+  }
+
+  char* str_end;
+  if (metric_parts.size() == 3) {
+    metric->timestamp = std::strtoll(metric_parts[2].c_str(), &str_end, 10);
   }
 
   return metric;
+}
+
+bool GraphiteParser::MetricComparator::operator()(const std::shared_ptr<Metric>& metric1, const std::shared_ptr<Metric>& metric2) const {
+  if (metric1->timestamp == metric2->timestamp) {
+    return std::less<>()(metric1->getKeyString(), metric2->getKeyString());
+  }
+
+  if (metric1->timestamp == -1) {
+    return false;
+  } else if (metric2->timestamp == -1) {
+    return true;
+  } else {
+    return metric1->timestamp < metric2->timestamp;
+  }
 }

@@ -1,8 +1,10 @@
 #pragma once
 
+#include <ctime>
 #include <map>
 #include <memory>
 #include <regex>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -48,9 +50,15 @@ class GraphiteParser : public Parser {
 
     void mergeWith(const Metric& other);
 
-    std::string measurement_name_;
-    SortedKVContainer<std::string> tags_;
-    KVContainer<std::string> fields_;
+    std::string measurement_name;
+    SortedKVContainer<std::string> tags;
+    KVContainer<std::string> fields;
+    std::time_t timestamp{-1};
+  };
+
+  class MetricComparator {
+   public:
+    bool operator()(const std::shared_ptr<Metric>& metric1, const std::shared_ptr<Metric>& metric2) const;
   };
 
   class MetricTemplate {
@@ -92,7 +100,7 @@ class GraphiteParser : public Parser {
 
   std::string separator_;
   std::vector<MetricTemplate> templates_;
-  KVContainer<std::shared_ptr<Metric>> parsed_metrics_;
+  std::set<std::shared_ptr<Metric>, MetricComparator> parsed_metrics_;
 };
 
 
