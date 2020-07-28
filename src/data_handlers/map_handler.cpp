@@ -1,4 +1,3 @@
-#include <iostream>
 #include <vector>
 
 #include "map_handler.h"
@@ -15,7 +14,10 @@ MapHandler::MapHandler(const std::shared_ptr<arrow::Schema>& input_schema, const
   }
   result_schema_ = arrow::schema(result_fields);
 
-  gandiva::Projector::Make(input_schema, expressions, &projector_);
+  auto projector_status = gandiva::Projector::Make(input_schema, expressions, &projector_);
+  if (!projector_status.ok()) {
+    throw std::runtime_error(projector_status.ToString());
+  }
 }
 
 arrow::Status MapHandler::handle(std::shared_ptr<arrow::Buffer> source, std::shared_ptr<arrow::Buffer> *target) {

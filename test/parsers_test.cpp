@@ -9,50 +9,15 @@
 
 #include <gtest/gtest.h>
 
+#include "help.h"
 #include "utils/parsers/graphite_parser.h"
-
-void checkSize(const std::shared_ptr<arrow::RecordBatch>& record_batch, size_t num_rows, size_t num_columns) {
-  ASSERT_EQ(num_columns, record_batch->columns().size());
-  ASSERT_EQ(num_rows, record_batch->num_rows());
-}
-
-void checkColumnsArePresent(const std::shared_ptr<arrow::RecordBatch>& record_batch,
-    const std::vector<std::string>& column_names) {
-  for (auto& column_name : column_names) {
-    ASSERT_NE(nullptr, record_batch->GetColumnByName(column_name));
-  }
-}
-
-template<typename T, typename ArrowType>
-void checkValue(const T& expected_value, const std::shared_ptr<arrow::RecordBatch>& record_batch,
-    const std::string& column_name, size_t i) {
-  auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
-  ASSERT_EQ(arrow::Status::OK(), field_result.status());
-  ASSERT_EQ(expected_value, std::static_pointer_cast<ArrowType>(field_result.ValueOrDie())->value);
-}
-
-template<>
-void checkValue<std::string, arrow::StringScalar> (const std::string& expected_value,
-    const std::shared_ptr<arrow::RecordBatch>& record_batch,
-    const std::string& column_name, size_t i) {
-  auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
-  ASSERT_EQ(arrow::Status::OK(), field_result.status());
-  ASSERT_EQ(expected_value, std::static_pointer_cast<arrow::StringScalar>(field_result.ValueOrDie())->value->ToString());
-}
-
-void checkIsInvalid(const std::shared_ptr<arrow::RecordBatch>& record_batch,
-                    const std::string& column_name, size_t i) {
-  auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
-  ASSERT_EQ(arrow::Status::OK(), field_result.status());
-  ASSERT_TRUE(!field_result.ValueOrDie()->is_valid);
-}
 
 TEST(GraphiteParserTest, SimpleTest) {
   std::vector<std::string> templates{"measurement.measurement.field.field.region"};
   std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(templates, "_");
   auto metric_buffer = std::make_shared<arrow::Buffer>("cpu.usage.idle.percent.eu-east 100");
   arrow::RecordBatchVector record_batch_vector;
-  ASSERT_EQ(arrow::Status::OK(), parser->parseRecordBatches(metric_buffer, record_batch_vector));
+  ASSERT_TRUE(arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector)));
 
   ASSERT_EQ(1, record_batch_vector.size());
   checkSize(record_batch_vector[0], 1, 3);
@@ -76,7 +41,7 @@ TEST(GraphiteParserTest, MultipleEndingTest) {
   std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(templates);
   auto metric_buffer = std::make_shared<arrow::Buffer>("us.cpu.load 100");
   arrow::RecordBatchVector record_batch_vector;
-  ASSERT_EQ(arrow::Status::OK(), parser->parseRecordBatches(metric_buffer, record_batch_vector));
+  ASSERT_TRUE(arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector)));
 
   ASSERT_EQ(1, record_batch_vector.size());
   checkSize(record_batch_vector[0], 1, 3);
@@ -104,7 +69,7 @@ TEST(GraphiteParserTest, MultipleTemplatesTest) {
   auto metric_buffer = std::make_shared<arrow::Buffer>("cn.south.mem-usage 50\n"
                                                        "us.west.localhost.cpu 100");
   arrow::RecordBatchVector record_batch_vector;
-  ASSERT_EQ(arrow::Status::OK(), parser->parseRecordBatches(metric_buffer, record_batch_vector));
+  ASSERT_TRUE(arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector)));
 
   ASSERT_EQ(1, record_batch_vector.size());
   checkSize(record_batch_vector[0], 2, 4);
@@ -151,7 +116,7 @@ TEST(GraphiteParserTest, FilterTest) {
   auto metric_buffer = std::make_shared<arrow::Buffer>("cpu.load.eu-east 100\n"
                                                        "mem.cached.localhost 256");
   arrow::RecordBatchVector record_batch_vector;
-  ASSERT_EQ(arrow::Status::OK(), parser->parseRecordBatches(metric_buffer, record_batch_vector));
+  ASSERT_TRUE(arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector)));
 
   ASSERT_EQ(1, record_batch_vector.size());
   checkSize(record_batch_vector[0], 2, 4);
@@ -195,7 +160,7 @@ TEST(GraphiteParserTest, AdditionalTagsTest) {
   std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(templates);
   auto metric_buffer = std::make_shared<arrow::Buffer>("cpu.usage.idle.eu-east 100");
   arrow::RecordBatchVector record_batch_vector;
-  ASSERT_EQ(arrow::Status::OK(), parser->parseRecordBatches(metric_buffer, record_batch_vector));
+  ASSERT_TRUE(arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector)));
 
   ASSERT_EQ(1, record_batch_vector.size());
   checkSize(record_batch_vector[0], 1, 4);
@@ -225,7 +190,7 @@ TEST(GraphiteParserTest, TimestampTest) {
   metric_string_builder << "cpu.usage.idle.percent.eu-east 100 " << now;
   auto metric_buffer = std::make_shared<arrow::Buffer>(metric_string_builder.str());
   arrow::RecordBatchVector record_batch_vector;
-  ASSERT_EQ(arrow::Status::OK(), parser->parseRecordBatches(metric_buffer, record_batch_vector));
+  ASSERT_TRUE(arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector)));
 
   ASSERT_EQ(1, record_batch_vector.size());
   checkSize(record_batch_vector[0], 1, 4);
