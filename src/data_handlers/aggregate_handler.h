@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "aggregate_functions/aggregate_function.h"
+#include "data_handlers/aggregate_functions/aggregate_function.h"
 #include "data_handler.h"
 
 class AggregateHandler : public DataHandler {
