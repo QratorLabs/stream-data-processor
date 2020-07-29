@@ -8,4 +8,5 @@ NodeBase::NodeBase(std::string name, const std::shared_ptr<uvw::Loop> &loop, con
     , server_(loop->resource<uvw::TCPHandle>()) {
   server_->bind(listen_endpoint.host, listen_endpoint.port);
   server_->listen();
+  spdlog::get(name_)->info("Node started on {}:{}", listen_endpoint.host, listen_endpoint.port);
 }

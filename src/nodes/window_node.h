@@ -22,7 +22,7 @@ class WindowNode : public PassNodeBase {
 
  private:
   void configureServer();
-  void configureTarget(const std::shared_ptr<uvw::TCPHandle>& target);
+  void configureTarget(std::shared_ptr<uvw::TCPHandle> &target, const IPv4Endpoint &endpoint);
 
   arrow::Status appendData(char* data, size_t length);
   void send();
@@ -39,6 +39,8 @@ class WindowNode : public PassNodeBase {
   std::vector<size_t> separation_idx_;
   std::deque<std::shared_ptr<arrow::Buffer>> data_buffers_;
   std::time_t first_ts_in_current_batch_{0};
+
+  static const std::chrono::duration<uint64_t, std::milli> RETRY_DELAY;
 };
 
 

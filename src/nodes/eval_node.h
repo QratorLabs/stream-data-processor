@@ -22,7 +22,7 @@ class EvalNode : public PassNodeBase {
 
  private:
   void configureServer();
-  void configureTarget(const std::shared_ptr<uvw::TCPHandle>& target);
+  void configureTarget(std::shared_ptr<uvw::TCPHandle> &target, const IPv4Endpoint &endpoint);
 
   arrow::Status processData(std::shared_ptr<arrow::Buffer>& processed_data);
   void send();
@@ -34,6 +34,7 @@ class EvalNode : public PassNodeBase {
   std::shared_ptr<arrow::BufferBuilder> buffer_builder_;
 
   static const std::chrono::duration<uint64_t> SILENCE_TIMEOUT;
+  static const std::chrono::duration<uint64_t, std::milli> RETRY_DELAY;
 };
 
 

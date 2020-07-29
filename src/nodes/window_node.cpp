@@ -7,6 +7,8 @@
 #include "window_node.h"
 #include "utils/utils.h"
 
+const std::chrono::duration<uint64_t, std::milli> WindowNode::RETRY_DELAY(100);
+
 WindowNode::WindowNode(std::string name,
                        const std::shared_ptr<uvw::Loop> &loop,
                        const IPv4Endpoint &listen_endpoint,
@@ -21,9 +23,30 @@ WindowNode::WindowNode(std::string name,
                            )) {
   configureServer();
   for (size_t i = 0; i < targets_.size(); ++i) {
-    configureTarget(targets_[i]);
-    targets_[i]->connect(target_endpoints[i].host, target_endpoints[i].port);
+    configureTarget(targets_[i], target_endpoints[i]);
   }
+}
+
+void WindowNode::configureTarget(std::shared_ptr<uvw::TCPHandle> &target, const IPv4Endpoint &endpoint) {
+  auto& loop = target->loop();
+  auto connect_timer = loop.resource<uvw::TimerHandle>();
+  connect_timer->on<uvw::TimerEvent>([this, &loop, &target, endpoint](const uvw::TimerEvent& event, uvw::TimerHandle& timer) {
+    spdlog::get(name_)->debug("Retrying connection to {}:{}", endpoint.host, endpoint.port);
+    target = loop.resource<uvw::TCPHandle>();
+    configureTarget(target, endpoint);
+  });
+
+  target->once<uvw::ConnectEvent>([connect_timer, this](const uvw::ConnectEvent& event, uvw::TCPHandle& target) {
+    spdlog::get(name_)->info("Successfully connected to {}:{}", target.peer().ip, target.peer().port);
+    connect_timer->stop();
+  });
+
+  target->on<uvw::ErrorEvent>([connect_timer, this](const uvw::ErrorEvent& event, uvw::TCPHandle& target) {
+    spdlog::get(name_)->error(event.what());
+    connect_timer->start(RETRY_DELAY, std::chrono::duration<uint64_t, std::milli>(0));
+  });
+
+  target->connect(endpoint.host, endpoint.port);
 }
 
 void WindowNode::configureServer() {
@@ -43,7 +66,7 @@ void WindowNode::configureServer() {
     });
 
     client->once<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::TCPHandle& client) {
-      spdlog::get(name_)->error("Error: {}", event.what());
+      spdlog::get(name_)->error(event.what());
       send();
       stop();
       client.close();
@@ -58,16 +81,6 @@ void WindowNode::configureServer() {
 
     server.accept(*client);
     client->read();
-  });
-}
-
-void WindowNode::configureTarget(const std::shared_ptr<uvw::TCPHandle> &target) {
-  target->once<uvw::ConnectEvent>([this](const uvw::ConnectEvent& event, uvw::TCPHandle& target) {
-    spdlog::get(name_)->info("Successfully connected to {}:{}", target.peer().ip, target.peer().port);
-  });
-
-  target->on<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::TCPHandle& target) {
-    spdlog::get(name_)->error(event.what());
   });
 }
 

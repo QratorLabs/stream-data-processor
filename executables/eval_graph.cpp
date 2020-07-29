@@ -15,21 +15,12 @@ int main(int argc, char** argv) {
 
   auto loop = uvw::Loop::getDefault();
 
-  std::ofstream oss(std::string(argv[0]) + "_result.txt");
-  FinalizeNode finalize_node("finalize_node", loop, {"127.0.0.1", 4250}, oss);
-
-  std::vector<std::string> aggregate_columns({"tag"});
-  AggregateHandler::AggregateOptions aggregate_options{{{"sum", {"first", "last", "min", "max"}},
-                                                        {"diff", {"first", "last", "min", "max"}}},
-                                                       true};
-  EvalNode aggregate_node("aggregate_node", loop,
-                          {"127.0.0.1", 4242},
-                          {
-                              {"127.0.0.1", 4250}
-                          },
-                          std::make_shared<AggregateHandler>(aggregate_columns,
-                                                             aggregate_options,
-                                                             "ts"));
+  EvalNode pass_node("pass_node", loop,
+                     {"127.0.0.1", 4240},
+                     {
+                         {"127.0.0.1", 4241}
+                     },
+                     std::make_shared<DataParser>(std::make_shared<CSVParser>()));
 
   auto field_ts = arrow::field("ts", arrow::timestamp(arrow::TimeUnit::SECOND));
   auto field0 = arrow::field("operand1", arrow::int64());
@@ -52,12 +43,21 @@ int main(int argc, char** argv) {
                      },
                      std::make_shared<MapHandler>(schema, expressions));
 
-  EvalNode pass_node("pass_node", loop,
-                     {"127.0.0.1", 4240},
-                     {
-                         {"127.0.0.1", 4241}
-                     },
-                     std::make_shared<DataParser>(std::make_shared<CSVParser>()));
+  std::vector<std::string> aggregate_columns({"tag"});
+  AggregateHandler::AggregateOptions aggregate_options{{{"sum", {"first", "last", "min", "max"}},
+                                                        {"diff", {"first", "last", "min", "max"}}},
+                                                       true};
+  EvalNode aggregate_node("aggregate_node", loop,
+                          {"127.0.0.1", 4242},
+                          {
+                              {"127.0.0.1", 4250}
+                          },
+                          std::make_shared<AggregateHandler>(aggregate_columns,
+                                                             aggregate_options,
+                                                             "ts"));
+
+  std::ofstream oss(std::string(argv[0]) + "_result.txt");
+  FinalizeNode finalize_node("finalize_node", loop, {"127.0.0.1", 4250}, oss);
 
   loop->run();
 
