@@ -10,7 +10,7 @@
 class AggregateHandler : public DataHandler {
  public:
   struct AggregateOptions {
-    std::vector<std::pair<std::string, std::vector<std::string>>> aggregate_columns;
+    std::unordered_map<std::string, std::vector<std::string>> aggregate_columns;
     bool add_time_window_columns_{false};
   };
 

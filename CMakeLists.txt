@@ -23,6 +23,7 @@ set(STREAM_DATA_PROCESSOR_SOURCES
   src/nodes/window_node.cpp
   src/data_handlers/aggregate_handler.cpp
   src/data_handlers/data_parser.cpp
+  src/data_handlers/default_handler.cpp
   src/data_handlers/filter_handler.cpp
   src/data_handlers/group_handler.cpp
   src/data_handlers/map_handler.cpp

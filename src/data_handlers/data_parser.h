@@ -13,7 +13,6 @@ class DataParser : public DataHandler {
 
  private:
   std::shared_ptr<Parser> parser_;
-  std::shared_ptr<arrow::Schema> record_batches_schema_{nullptr};
 };
 
 
