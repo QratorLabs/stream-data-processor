@@ -114,8 +114,47 @@ TEST(DefaultHandlerTest, EmptyTest) {
   });
 }
 
-int main(int argc, char *argv[])
-{
+TEST(DefaultHandlerTest, SimpleTest) {
+  auto schema = arrow::schema({arrow::field("field", arrow::null())});
+
+  DefaultHandler::DefaultHandlerOptions options{
+      {{"int64_field", 42}},
+      {{"double_field", 3.14}},
+      {{"string_field", "Hello, world!"}}
+  };
+  std::shared_ptr<DataHandler> default_handler = std::make_shared<DefaultHandler>(std::move(options));
+
+  arrow::NullBuilder builder;
+  ASSERT_TRUE(arrowAssertNotOk(builder.AppendNull()));
+  std::shared_ptr<arrow::Array> array;
+  ASSERT_TRUE(arrowAssertNotOk(builder.Finish(&array)));
+  auto record_batch = arrow::RecordBatch::Make(schema, 1, {array});
+
+  std::shared_ptr<arrow::Buffer> source, target;
+  ASSERT_TRUE(arrowAssertNotOk(Serializer::serializeRecordBatches(schema, {record_batch}, &source)));
+
+  ASSERT_TRUE(arrowAssertNotOk(default_handler->handle(source, &target)));
+
+  arrow::RecordBatchVector record_batch_vector;
+  ASSERT_TRUE(arrowAssertNotOk(Serializer::deserializeRecordBatches(target, &record_batch_vector)));
+
+  ASSERT_EQ(1, record_batch_vector.size());
+  checkSize(record_batch_vector[0], 1, 4);
+  checkColumnsArePresent(record_batch_vector[0], {
+      "field",
+      "int64_field",
+      "double_field",
+      "string_field"
+  });
+  checkValue<int64_t, arrow::Int64Scalar>(42, record_batch_vector[0],
+                                          "int64_field", 0);
+  checkValue<double, arrow::DoubleScalar>(3.14, record_batch_vector[0],
+                                          "double_field", 0);
+  checkValue<std::string, arrow::StringScalar>("Hello, world!", record_batch_vector[0],
+                                          "string_field", 0);
+}
+
+int main(int argc, char *argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

@@ -10,7 +10,8 @@ const std::unordered_map<std::string, std::shared_ptr<AggregateFunction>> Aggreg
     {"first", std::make_shared<FirstAggregateFunction>()},
     {"last", std::make_shared<LastAggregateFunction>()},
     {"max", std::make_shared<MaxAggregateFunction>()},
-    {"min", std::make_shared<MinAggregateFunction>()}
+    {"min", std::make_shared<MinAggregateFunction>()},
+    {"mean", std::make_shared<MeanAggregateFunction>()}
 };
 
 AggregateHandler::AggregateHandler(std::vector<std::string> grouping_columns,

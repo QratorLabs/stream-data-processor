@@ -32,6 +32,7 @@ set(STREAM_DATA_PROCESSOR_SOURCES
   src/data_handlers/aggregate_functions/max_aggregate_function.cpp
   src/data_handlers/aggregate_functions/first_aggregate_function.cpp
   src/data_handlers/aggregate_functions/last_aggregate_function.cpp
+  src/data_handlers/aggregate_functions/mean_aggregate_function.cpp
   src/utils/parsers/csv_parser.cpp
   src/utils/parsers/graphite_parser.cpp
   src/utils/compute_utils.cpp
