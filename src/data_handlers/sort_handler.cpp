@@ -8,7 +8,7 @@ SortHandler::SortHandler(std::vector<std::string> column_names) : column_names_(
 
 }
 
-arrow::Status SortHandler::handle(std::shared_ptr<arrow::Buffer> source, std::shared_ptr<arrow::Buffer> *target) {
+arrow::Status SortHandler::handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer> *target) {
   std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
   ARROW_RETURN_NOT_OK(Serializer::deserializeRecordBatches(source, &record_batches));
   if (record_batches.empty()) {

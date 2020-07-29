@@ -20,7 +20,7 @@ MapHandler::MapHandler(const std::shared_ptr<arrow::Schema>& input_schema, const
   }
 }
 
-arrow::Status MapHandler::handle(std::shared_ptr<arrow::Buffer> source, std::shared_ptr<arrow::Buffer> *target) {
+arrow::Status MapHandler::handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer> *target) {
   std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
   ARROW_RETURN_NOT_OK(Serializer::deserializeRecordBatches(source, &record_batches));
   ARROW_RETURN_NOT_OK(eval(record_batches));

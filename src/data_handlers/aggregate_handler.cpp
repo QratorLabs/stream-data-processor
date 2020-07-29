@@ -22,7 +22,7 @@ AggregateHandler::AggregateHandler(std::vector<std::string> grouping_columns,
 
 }
 
-arrow::Status AggregateHandler::handle(std::shared_ptr<arrow::Buffer> source, std::shared_ptr<arrow::Buffer> *target) {
+arrow::Status AggregateHandler::handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer> *target) {
   // Converting arrow::Buffer to arrow::RecordBatchVector
   std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
   ARROW_RETURN_NOT_OK(Serializer::deserializeRecordBatches(source, &record_batches));

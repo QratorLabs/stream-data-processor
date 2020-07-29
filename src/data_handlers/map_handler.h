@@ -13,7 +13,7 @@ class MapHandler : public DataHandler {
  public:
   MapHandler(const std::shared_ptr<arrow::Schema>& input_schema, const gandiva::ExpressionVector& expressions);
 
-  arrow::Status handle(std::shared_ptr<arrow::Buffer> source, std::shared_ptr<arrow::Buffer>* target) override;
+  arrow::Status handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer>* target) override;
 
  private:
   arrow::Status eval(arrow::RecordBatchVector& record_batches);

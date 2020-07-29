@@ -18,7 +18,7 @@ class AggregateHandler : public DataHandler {
       AggregateOptions options,
       std::string ts_column_name = "");
 
-  arrow::Status handle(std::shared_ptr<arrow::Buffer> source, std::shared_ptr<arrow::Buffer>* target) override;
+  arrow::Status handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer>* target) override;
 
  private:
   arrow::Status findTsColumnName(const std::shared_ptr<arrow::RecordBatch>& record_batch);

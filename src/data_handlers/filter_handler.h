@@ -11,7 +11,7 @@ class FilterHandler : public DataHandler {
  public:
   FilterHandler(std::shared_ptr<arrow::Schema>  schema, const std::vector<gandiva::ConditionPtr> & conditions);
 
-  arrow::Status handle(std::shared_ptr<arrow::Buffer> source, std::shared_ptr<arrow::Buffer>* target) override;
+  arrow::Status handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer>* target) override;
 
  private:
   std::shared_ptr<arrow::Schema> schema_;
