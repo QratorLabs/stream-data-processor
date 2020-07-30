@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
                                                              "ts"));
 
   std::ofstream oss(std::string(argv[0]) + "_result.txt");
-  FinalizeNode finalize_node("finalize_node", loop, {"127.0.0.1", 4250}, oss);
+  PrintNode finalize_node("finalize_node", loop, {"127.0.0.1", 4250}, oss);
 
   loop->run();
 

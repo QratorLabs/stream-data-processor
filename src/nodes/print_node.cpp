@@ -5,20 +5,22 @@
 
 #include <spdlog/spdlog.h>
 
-#include "finalize_node.h"
+#include <bprinter/table_printer.h>
+
+#include "print_node.h"
 #include "utils/utils.h"
 
-FinalizeNode::FinalizeNode(std::string name,
-    const std::shared_ptr<uvw::Loop>& loop,
-    const IPv4Endpoint &listen_endpoint,
-    std::ofstream& ostrm)
+PrintNode::PrintNode(std::string name,
+                     const std::shared_ptr<uvw::Loop>& loop,
+                     const IPv4Endpoint &listen_endpoint,
+                     std::ofstream& ostrm)
     : NodeBase(std::move(name), loop, listen_endpoint)
     , buffer_builder_(std::make_shared<arrow::BufferBuilder>())
     , ostrm_(ostrm) {
   configureServer();
 }
 
-void FinalizeNode::configureServer() {
+void PrintNode::configureServer() {
   server_->once<uvw::ListenEvent>([this](const uvw::ListenEvent& event, uvw::TCPHandle& server) {
     spdlog::get(name_)->info("New client connection");
 
@@ -55,7 +57,7 @@ void FinalizeNode::configureServer() {
   });
 }
 
-void FinalizeNode::writeData() {
+void PrintNode::writeData() {
   std::shared_ptr<arrow::Buffer> buffer;
   if (!buffer_builder_->Finish(&buffer).ok() || buffer->size() == 0) {
     spdlog::get(name_)->debug("No data to write");
@@ -71,11 +73,45 @@ void FinalizeNode::writeData() {
 
   spdlog::get(name_)->info("Writing data");
   for (auto& record_batch : record_batches) {
-    ostrm_ << record_batch->ToString() << std::endl;
+    writeRecordBatch(record_batch);
+    ostrm_ << std::endl;
   }
 }
 
-void FinalizeNode::stop() {
+void PrintNode::stop() {
   spdlog::get(name_)->info("Stopping node");
   server_->close();
+}
+
+void PrintNode::writeRecordBatch(const std::shared_ptr<arrow::RecordBatch>& record_batch) {
+  bprinter::TablePrinter table_printer(&ostrm_);
+  for (auto& field : record_batch->schema()->fields()) {
+    switch (field->type()->id()) {
+      case arrow::Type::INT64:
+        table_printer.AddColumn(field->name(), 10);
+        break;
+      case arrow::Type::DOUBLE:
+        table_printer.AddColumn(field->name(), 15);
+        break;
+      case arrow::Type::STRING:
+        table_printer.AddColumn(field->name(), 25);
+        break;
+      default:
+        table_printer.AddColumn(field->name(), 15);
+    }
+  }
+
+  table_printer.PrintHeader();
+  for (size_t i = 0; i < record_batch->num_rows(); ++i) {
+    for (auto& column : record_batch->columns()) {
+      auto value_result = column->GetScalar(i);
+      if (!value_result.ok()) {
+        spdlog::get(name_)->error(value_result.status().ToString());
+      }
+
+      table_printer << value_result.ValueOrDie()->ToString();
+    }
+  }
+
+  table_printer.PrintFooter();
 }

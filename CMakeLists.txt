@@ -15,11 +15,14 @@ message(STATUS "Gandiva lib dir: ${Gandiva_DIR}")
 
 find_package(spdlog REQUIRED)
 
+set(USE_BOOST_KARMA OFF)
+add_subdirectory(third_party/bprinter)
+
 set(STREAM_DATA_PROCESSOR_SOURCES
   src/nodes/node_base.cpp
   src/nodes/pass_node_base.cpp
   src/nodes/eval_node.cpp
-  src/nodes/finalize_node.cpp
+  src/nodes/print_node.cpp
   src/nodes/window_node.cpp
   src/data_handlers/aggregate_handler.cpp
   src/data_handlers/data_parser.cpp
@@ -46,13 +49,15 @@ set(STREAM_DATA_PROCESSOR_INCLUDE_DIRS
 
 set(PROJECT_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bprinter/include"
   ${STREAM_DATA_PROCESSOR_INCLUDE_DIRS})
 
 set(PROJECT_DEPENDENCIES
   uvw::uvw-static
   arrow_shared
   gandiva_shared
-  spdlog::spdlog)
+  spdlog::spdlog
+  bprinter)
 
 set(LIBRARY_NAME "stream_data_processor")
 

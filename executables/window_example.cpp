@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
   auto loop = uvw::Loop::getDefault();
 
   std::ofstream oss(std::string(argv[0]) + "_result.txt");
-  FinalizeNode finalize_node("finalize_node", loop, {"127.0.0.1", 4250}, oss);
+  PrintNode finalize_node("finalize_node", loop, {"127.0.0.1", 4250}, oss);
 
   WindowNode window_node("window_node", loop, {"127.0.0.1", 4241},
                          {
