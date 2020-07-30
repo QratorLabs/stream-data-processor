@@ -1,3 +1,6 @@
 [submodule "third_party/uvw"]
 	path = third_party/uvw
 	url = https://github.com/skypjack/uvw.git
+[submodule "third_party/bprinter"]
+	path = third_party/bprinter
+	url = https://github.com/dattanchu/bprinter.git
