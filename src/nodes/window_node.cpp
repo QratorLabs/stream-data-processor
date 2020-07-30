@@ -58,7 +58,7 @@ void WindowNode::configureServer() {
     client->on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::TCPHandle& client) {
       spdlog::get(name_)->debug("Data received, size: {}", event.length);
       for (auto& data_part : NetworkUtils::splitMessage(event.data.get(), event.length)) {
-        auto append_status = appendData(data_part.first, data_part.second);
+        auto append_status = appendData(data_part.c_str(), data_part.length());
         if (!append_status.ok()) {
           spdlog::get(name_)->error(append_status.ToString());
         }
@@ -84,7 +84,7 @@ void WindowNode::configureServer() {
   });
 }
 
-arrow::Status WindowNode::appendData(char* data, size_t length) {
+arrow::Status WindowNode::appendData(const char *data, size_t length) {
   auto data_buffer = std::make_shared<arrow::Buffer>(reinterpret_cast<const uint8_t *>(data), length);
   arrow::RecordBatchVector record_batches;
   ARROW_RETURN_NOT_OK(Serializer::deserializeRecordBatches(data_buffer, &record_batches));

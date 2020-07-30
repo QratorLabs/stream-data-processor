@@ -19,7 +19,7 @@ class NetworkUtils {
   static arrow::Status terminate(const std::shared_ptr<arrow::Buffer>& buffer, // TODO: Use ResizableBuffer
                                  std::shared_ptr<arrow::Buffer>* terminated_buffer);
 
-  static std::vector<std::pair<char*, size_t>> splitMessage(char* message_data, size_t length);
+  static std::vector<std::string> splitMessage(char* message_data, size_t length);
 };
 
 

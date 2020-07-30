@@ -1,3 +1,4 @@
+#include <ctime>
 #include <sstream>
 
 #include "graphite_parser.h"
@@ -63,7 +64,7 @@ arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Bu
     if (metric->timestamp != -1) {
       ARROW_RETURN_NOT_OK(timestamp_builder.Append(metric->timestamp));
     } else {
-      ARROW_RETURN_NOT_OK(timestamp_builder.AppendNull());
+      ARROW_RETURN_NOT_OK(timestamp_builder.Append(std::time(nullptr)));
     }
 
     // Building measurement field
@@ -108,7 +109,7 @@ arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Bu
   column_arrays.emplace_back();
   ARROW_RETURN_NOT_OK(timestamp_builder.Finish(&column_arrays.back()));
   if (column_arrays.back()->null_count() != column_arrays.back()->length()) {
-    fields.push_back(arrow::field("timestamp", arrow::timestamp(arrow::TimeUnit::SECOND)));
+    fields.push_back(arrow::field("time", arrow::timestamp(arrow::TimeUnit::SECOND)));
   } else {
     column_arrays.pop_back();
   }
@@ -144,6 +145,7 @@ arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Bu
   record_batches.push_back(arrow::RecordBatch::Make(arrow::schema(fields),
       parsed_metrics_.size(),
       column_arrays));
+  parsed_metrics_.clear();
   return arrow::Status::OK();
 }
 
@@ -154,12 +156,12 @@ arrow::Type::type GraphiteParser::determineFieldType(const std::string& value) c
 
   char* str_end;
   auto int64_value = std::strtoll(value.c_str(), &str_end, 10);
-  if (errno != ERANGE && int64_value != 0) {
+  if (errno != ERANGE && int64_value != 0 && str_end == &*value.end()) {
     return arrow::Type::INT64;
   }
 
   auto double_value = std::strtod(value.c_str(), &str_end);
-  if (errno != ERANGE && double_value != 0) {
+  if (errno != ERANGE && double_value != 0 && str_end == &*value.end()) {
     return arrow::Type::DOUBLE;
   }
 
@@ -208,7 +210,7 @@ void GraphiteParser::Metric::mergeWith(const Metric& other) {
   }
 
   for (auto& field : other.fields) {
-    if (fields.find(field.first) != fields.end()) {
+    if (fields.find(field.first) == fields.end()) {
       fields[field.first] = field.second;
     }
   }

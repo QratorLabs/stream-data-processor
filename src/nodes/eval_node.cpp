@@ -60,7 +60,7 @@ void EvalNode::configureServer() {
     client->on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::TCPHandle& client) {
       spdlog::get(name_)->debug("Data received, size: {}", event.length);
       for (auto& data_part : NetworkUtils::splitMessage(event.data.get(), event.length)) {
-        auto append_status = buffer_builder_->Append(data_part.first, data_part.second);
+        auto append_status = buffer_builder_->Append(data_part.c_str(), data_part.length());
         if (!append_status.ok()) {
           spdlog::get(name_)->error(append_status.ToString());
         }

@@ -20,12 +20,13 @@ TEST(GraphiteParserTest, SimpleTest) {
   ASSERT_TRUE(arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector)));
 
   ASSERT_EQ(1, record_batch_vector.size());
-  checkSize(record_batch_vector[0], 1, 3);
+  checkSize(record_batch_vector[0], 1, 4);
 
   checkColumnsArePresent(record_batch_vector[0], {
     "measurement",
     "region",
-    "idle_percent"
+    "idle_percent",
+    "time"
   });
 
   checkValue<std::string, arrow::StringScalar>("cpu_usage", record_batch_vector[0],
@@ -44,12 +45,13 @@ TEST(GraphiteParserTest, MultipleEndingTest) {
   ASSERT_TRUE(arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector)));
 
   ASSERT_EQ(1, record_batch_vector.size());
-  checkSize(record_batch_vector[0], 1, 3);
+  checkSize(record_batch_vector[0], 1, 4);
 
   checkColumnsArePresent(record_batch_vector[0], {
       "measurement",
       "region",
-      "value"
+      "value",
+      "time"
   });
 
   checkValue<std::string, arrow::StringScalar>("cpu.load", record_batch_vector[0],
@@ -72,13 +74,14 @@ TEST(GraphiteParserTest, MultipleTemplatesTest) {
   ASSERT_TRUE(arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector)));
 
   ASSERT_EQ(1, record_batch_vector.size());
-  checkSize(record_batch_vector[0], 2, 4);
+  checkSize(record_batch_vector[0], 2, 5);
 
   checkColumnsArePresent(record_batch_vector[0], {
       "measurement",
       "region",
       "host",
-      "value"
+      "value",
+      "time"
   });
   
   size_t metric_0 = 0;
@@ -119,13 +122,14 @@ TEST(GraphiteParserTest, FilterTest) {
   ASSERT_TRUE(arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector)));
 
   ASSERT_EQ(1, record_batch_vector.size());
-  checkSize(record_batch_vector[0], 2, 4);
+  checkSize(record_batch_vector[0], 2, 5);
 
   checkColumnsArePresent(record_batch_vector[0], {
       "measurement",
       "region",
       "host",
-      "value"
+      "value",
+      "time"
   });
 
   size_t metric_0 = 0;
@@ -163,13 +167,14 @@ TEST(GraphiteParserTest, AdditionalTagsTest) {
   ASSERT_TRUE(arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector)));
 
   ASSERT_EQ(1, record_batch_vector.size());
-  checkSize(record_batch_vector[0], 1, 4);
+  checkSize(record_batch_vector[0], 1, 5);
 
   checkColumnsArePresent(record_batch_vector[0], {
       "measurement",
       "region",
       "idle",
-      "datacenter"
+      "datacenter",
+      "time"
   });
 
   checkValue<std::string, arrow::StringScalar>("cpu.usage", record_batch_vector[0],
@@ -199,7 +204,7 @@ TEST(GraphiteParserTest, TimestampTest) {
       "measurement",
       "region",
       "idle.percent",
-      "timestamp"
+      "time"
   });
 
   checkValue<std::string, arrow::StringScalar>("cpu.usage", record_batch_vector[0],
@@ -209,7 +214,39 @@ TEST(GraphiteParserTest, TimestampTest) {
   checkValue<int64_t, arrow::Int64Scalar>(100, record_batch_vector[0],
                                           "idle.percent", 0);
   checkValue<int64_t, arrow::Int64Scalar>(now, record_batch_vector[0],
-                                          "timestamp", 0);
+                                          "time", 0);
+}
+
+TEST(GraphiteParserTest, MetricMergingTest) {
+  std::vector<std::string> templates{"measurement.measurement.field.field.region"};
+  std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(templates);
+  auto now = std::time(nullptr);
+  std::stringstream metric_string_builder;
+  metric_string_builder << "cpu.usage.idle.percent.eu-east 100 " << now << "\n"
+                        << "cpu.usage.cpu.value.eu-east 50 " << now;
+  auto metric_buffer = std::make_shared<arrow::Buffer>(metric_string_builder.str());
+  arrow::RecordBatchVector record_batch_vector;
+  ASSERT_TRUE(arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector)));
+
+  ASSERT_EQ(1, record_batch_vector.size());
+  checkSize(record_batch_vector[0], 1, 5);
+
+  checkColumnsArePresent(record_batch_vector[0], {
+      "measurement",
+      "region",
+      "idle.percent",
+      "cpu.value",
+      "time"
+  });
+
+  checkValue<std::string, arrow::StringScalar>("cpu.usage", record_batch_vector[0],
+                                               "measurement", 0);
+  checkValue<std::string, arrow::StringScalar>("eu-east", record_batch_vector[0],
+                                               "region", 0);
+  checkValue<int64_t, arrow::Int64Scalar>(100, record_batch_vector[0],
+                                          "idle.percent", 0);
+  checkValue<int64_t, arrow::Int64Scalar>(50, record_batch_vector[0],
+                                          "cpu.value", 0);
 }
 
 int main(int argc, char *argv[]) {

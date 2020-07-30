@@ -15,8 +15,8 @@
 }
 
 void checkSize(const std::shared_ptr<arrow::RecordBatch>& record_batch, size_t num_rows, size_t num_columns) {
-  ASSERT_EQ(num_columns, record_batch->columns().size());
   ASSERT_EQ(num_rows, record_batch->num_rows());
+  ASSERT_EQ(num_columns, record_batch->columns().size());
 }
 
 void checkColumnsArePresent(const std::shared_ptr<arrow::RecordBatch>& record_batch,
