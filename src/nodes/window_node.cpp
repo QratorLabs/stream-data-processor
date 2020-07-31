@@ -7,8 +7,6 @@
 #include "window_node.h"
 #include "utils/utils.h"
 
-const std::chrono::duration<uint64_t, std::milli> WindowNode::RETRY_DELAY(100);
-
 WindowNode::WindowNode(std::string name,
                        const std::shared_ptr<uvw::Loop> &loop,
                        const IPv4Endpoint &listen_endpoint,
@@ -22,31 +20,6 @@ WindowNode::WindowNode(std::string name,
                            window_range / window_period + (window_range % window_period > 0 ? 1 : 0) - 1, 0
                            )) {
   configureServer();
-  for (size_t i = 0; i < targets_.size(); ++i) {
-    configureTarget(targets_[i], target_endpoints[i]);
-  }
-}
-
-void WindowNode::configureTarget(std::shared_ptr<uvw::TCPHandle> &target, const IPv4Endpoint &endpoint) {
-  auto& loop = target->loop();
-  auto connect_timer = loop.resource<uvw::TimerHandle>();
-  connect_timer->on<uvw::TimerEvent>([this, &loop, &target, endpoint](const uvw::TimerEvent& event, uvw::TimerHandle& timer) {
-    spdlog::get(name_)->debug("Retrying connection to {}:{}", endpoint.host, endpoint.port);
-    target = loop.resource<uvw::TCPHandle>();
-    configureTarget(target, endpoint);
-  });
-
-  target->once<uvw::ConnectEvent>([connect_timer, this](const uvw::ConnectEvent& event, uvw::TCPHandle& target) {
-    spdlog::get(name_)->info("Successfully connected to {}:{}", target.peer().ip, target.peer().port);
-    connect_timer->stop();
-  });
-
-  target->on<uvw::ErrorEvent>([connect_timer, this](const uvw::ErrorEvent& event, uvw::TCPHandle& target) {
-    spdlog::get(name_)->error(event.what());
-    connect_timer->start(RETRY_DELAY, std::chrono::duration<uint64_t, std::milli>(0));
-  });
-
-  target->connect(endpoint.host, endpoint.port);
 }
 
 void WindowNode::configureServer() {
@@ -58,7 +31,7 @@ void WindowNode::configureServer() {
     client->on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::TCPHandle& client) {
       spdlog::get(name_)->debug("Data received, size: {}", event.length);
       for (auto& data_part : NetworkUtils::splitMessage(event.data.get(), event.length)) {
-        auto append_status = appendData(data_part.c_str(), data_part.length());
+        auto append_status = appendData(data_part.first, data_part.second);
         if (!append_status.ok()) {
           spdlog::get(name_)->error(append_status.ToString());
         }

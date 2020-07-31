@@ -18,12 +18,12 @@ class EvalNode : public PassNodeBase {
       const std::shared_ptr<uvw::Loop>& loop,
       const IPv4Endpoint& listen_endpoint,
       const std::vector<IPv4Endpoint>& target_endpoints,
-      std::shared_ptr<DataHandler> data_handler);
+      std::shared_ptr<DataHandler> data_handler, bool is_input_node = false);
 
  private:
   void configureServer();
-  void configureTarget(std::shared_ptr<uvw::TCPHandle> &target, const IPv4Endpoint &endpoint);
 
+  arrow::Status appendData(const char *data, size_t length);
   arrow::Status processData(std::shared_ptr<arrow::Buffer>& processed_data);
   void send();
   void stop();
@@ -32,9 +32,9 @@ class EvalNode : public PassNodeBase {
   std::shared_ptr<DataHandler> data_handler_;
   std::shared_ptr<uvw::TimerHandle> timer_;
   std::shared_ptr<arrow::BufferBuilder> buffer_builder_;
+  bool is_input_node_;
 
   static const std::chrono::duration<uint64_t> SILENCE_TIMEOUT;
-  static const std::chrono::duration<uint64_t, std::milli> RETRY_DELAY;
 };
 
 

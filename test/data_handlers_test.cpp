@@ -26,7 +26,7 @@ TEST(FilterHandlerTest, SimpleTest) {
       gandiva::TreeExprBuilder::MakeField(field)
     }, arrow::boolean());
   std::vector<gandiva::ConditionPtr> conditions{gandiva::TreeExprBuilder::MakeCondition(equal_node)};
-  std::shared_ptr<DataHandler> filter_handler = std::make_shared<FilterHandler>(schema, conditions);
+  std::shared_ptr<DataHandler> filter_handler = std::make_shared<FilterHandler>(std::move(conditions));
 
   std::shared_ptr<arrow::Buffer> source, target;
   ASSERT_TRUE(arrowAssertNotOk(Serializer::serializeRecordBatches(schema, {record_batch}, &source)));

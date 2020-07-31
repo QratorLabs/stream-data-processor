@@ -22,7 +22,6 @@ class WindowNode : public PassNodeBase {
 
  private:
   void configureServer();
-  void configureTarget(std::shared_ptr<uvw::TCPHandle> &target, const IPv4Endpoint &endpoint);
 
   arrow::Status appendData(const char *data, size_t length);
   void send();

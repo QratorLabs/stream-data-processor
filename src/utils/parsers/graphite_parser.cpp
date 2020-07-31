@@ -17,7 +17,7 @@ arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Bu
   parseMetricStrings(metric_strings);
 
   auto pool = arrow::default_memory_pool();
-  KVContainer<arrow::StringBuilder> tags_id_to_builders;
+  SortedKVContainer<arrow::StringBuilder> tags_id_to_builders;
   KVContainer<arrow::Type::type> fields_types;
   for (auto& metric : parsed_metrics_) {
     // Adding builders for tags
@@ -39,7 +39,7 @@ arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Bu
   }
 
   // Adding builders for fields depending on their types
-  KVContainer<std::shared_ptr<arrow::ArrayBuilder>> field_builders;
+  SortedKVContainer<std::shared_ptr<arrow::ArrayBuilder>> field_builders;
   for (auto& field : fields_types) {
     switch (field.second) {
       case arrow::Type::INT64:

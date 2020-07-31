@@ -12,6 +12,7 @@
 
 int main(int argc, char** argv) {
   spdlog::set_level(spdlog::level::debug);
+  spdlog::flush_on(spdlog::level::info);
 
   auto loop = uvw::Loop::getDefault();
 
@@ -29,7 +30,8 @@ int main(int argc, char** argv) {
                       {
                          {"127.0.0.1", 4241}
                      },
-                      std::make_shared<DataParser>(std::make_shared<CSVParser>()));
+                      std::make_shared<DataParser>(std::make_shared<CSVParser>()),
+                          true);
 
   loop->run();
 

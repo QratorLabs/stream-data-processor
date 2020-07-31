@@ -12,15 +12,17 @@
 
 int main(int argc, char** argv) {
   spdlog::set_level(spdlog::level::debug);
+  spdlog::flush_on(spdlog::level::info);
 
   auto loop = uvw::Loop::getDefault();
 
-  EvalNode pass_node("pass_node", loop,
-                     {"127.0.0.1", 4240},
-                     {
+  EvalNode input_node("input_node", loop,
+                      {"127.0.0.1", 4240},
+                      {
                          {"127.0.0.1", 4241}
                      },
-                     std::make_shared<DataParser>(std::make_shared<CSVParser>()));
+                      std::make_shared<DataParser>(std::make_shared<CSVParser>()),
+                      true);
 
   auto field_ts = arrow::field("ts", arrow::timestamp(arrow::TimeUnit::SECOND));
   auto field0 = arrow::field("operand1", arrow::int64());
@@ -41,7 +43,7 @@ int main(int argc, char** argv) {
                      {
                          {"127.0.0.1", 4242}
                      },
-                     std::make_shared<MapHandler>(schema, expressions));
+                     std::make_shared<MapHandler>(std::move(expressions)));
 
   std::vector<std::string> aggregate_columns({"tag"});
   AggregateHandler::AggregateOptions aggregate_options{{{"sum", {"first", "last", "min", "max"}},
@@ -57,7 +59,7 @@ int main(int argc, char** argv) {
                                                              "ts"));
 
   std::ofstream oss(std::string(argv[0]) + "_result.txt");
-  PrintNode finalize_node("finalize_node", loop, {"127.0.0.1", 4250}, oss);
+  PrintNode print_node("print_node", loop, {"127.0.0.1", 4250}, oss);
 
   loop->run();
 
