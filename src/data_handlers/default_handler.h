@@ -16,7 +16,11 @@ class DefaultHandler : public DataHandler {
     std::unordered_map<std::string, std::string> string_columns_default_values;
   };
 
-  explicit DefaultHandler(DefaultHandlerOptions&& options);
+  template <typename U>
+  explicit DefaultHandler(U&& options)
+      : options_(std::forward<U>(options)) {
+
+  }
 
   arrow::Status handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer>* target) override;
 

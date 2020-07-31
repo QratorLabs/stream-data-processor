@@ -11,7 +11,11 @@
 
 class MapHandler : public DataHandler {
  public:
-  explicit MapHandler(gandiva::ExpressionVector&& expressions);
+  template <typename U>
+  explicit MapHandler(U&& expressions)
+      : expressions_(std::forward<U>(expressions)) {
+
+  }
 
   arrow::Status handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer>* target) override;
 

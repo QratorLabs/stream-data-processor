@@ -44,15 +44,23 @@ int main(int argc, char** argv) {
                                std::make_shared<DataParser>(std::make_shared<GraphiteParser>(template_strings)),
                                    true);
 
-//  EvalNode load_filter_node("load_filter_node", loop,
-//                            {"127.0.0.1", 4201},
-//                            {
-//                                {"127.0.0.1", 4202}
-//                            },
-//                            std::make_shared<FilterHandler>())
+  std::vector<gandiva::ConditionPtr> load_filter_node_conditions{
+      gandiva::TreeExprBuilder::MakeCondition(gandiva::TreeExprBuilder::MakeFunction(
+          "equal", {
+            gandiva::TreeExprBuilder::MakeField(arrow::field("measurement", arrow::utf8())),
+            gandiva::TreeExprBuilder::MakeStringLiteral("load")
+          }, arrow::boolean()
+          ))
+  };
+  EvalNode load_filter_node("load_filter_node", loop,
+                            {"127.0.0.1", 4201},
+                            {
+                                {"127.0.0.1", 4202}
+                            },
+                            std::make_shared<FilterHandler>(std::move(load_filter_node_conditions)));
 
   std::ofstream oss(std::string(argv[0]) + "_result.txt");
-  PrintNode print_node("print_node", loop, {"127.0.0.1", 4201}, oss);
+  PrintNode print_node("print_node", loop, {"127.0.0.1", 4202}, oss);
 
   loop->run();
 

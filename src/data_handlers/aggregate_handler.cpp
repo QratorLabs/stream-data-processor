@@ -14,15 +14,6 @@ const std::unordered_map<std::string, std::shared_ptr<AggregateFunction>> Aggreg
     {"mean", std::make_shared<MeanAggregateFunction>()}
 };
 
-AggregateHandler::AggregateHandler(std::vector<std::string> grouping_columns,
-                                   AggregateOptions options,
-                                   std::string ts_column_name)
-                                   : grouping_columns_(std::move(grouping_columns))
-                                   , options_(std::move(options))
-                                   , ts_column_name_(std::move(ts_column_name)) {
-
-}
-
 arrow::Status AggregateHandler::handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer> *target) {
   // Converting arrow::Buffer to arrow::RecordBatchVector
   std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;

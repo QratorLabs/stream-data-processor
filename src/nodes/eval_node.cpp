@@ -34,7 +34,7 @@ void EvalNode::configureServer() {
     auto client = server.loop().resource<uvw::TCPHandle>();
 
     client->on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::TCPHandle& client) {
-      spdlog::get(name_)->debug("Data received, size: {}", event.length);
+      spdlog::get(name_)->info("Data received, size: {}", event.length);
       auto append_status = appendData(event.data.get(), event.length);
       if (!append_status.ok()) {
         spdlog::get(name_)->error(append_status.ToString());

@@ -4,10 +4,6 @@
 
 #include "utils/utils.h"
 
-SortHandler::SortHandler(std::vector<std::string> column_names) : column_names_(std::move(column_names)) {
-
-}
-
 arrow::Status SortHandler::handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer> *target) {
   std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
   ARROW_RETURN_NOT_OK(Serializer::deserializeRecordBatches(source, &record_batches));

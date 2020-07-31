@@ -4,11 +4,6 @@
 
 #include "utils/serializer.h"
 
-MapHandler::MapHandler(gandiva::ExpressionVector&& expressions)
-    : expressions_(std::forward<gandiva::ExpressionVector>(expressions)) {
-
-}
-
 arrow::Status MapHandler::handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer> *target) {
   std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
   ARROW_RETURN_NOT_OK(Serializer::deserializeRecordBatches(source, &record_batches));

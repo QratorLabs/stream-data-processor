@@ -14,9 +14,13 @@ class AggregateHandler : public DataHandler {
     bool add_time_window_columns_{false};
   };
 
-  AggregateHandler(std::vector<std::string> grouping_columns,
-      AggregateOptions options,
-      std::string ts_column_name = "");
+  template <typename U>
+  AggregateHandler(U&& grouping_columns, AggregateOptions options, std::string ts_column_name = "")
+      : grouping_columns_(std::forward<U>(grouping_columns))
+      , options_(std::move(options))
+      , ts_column_name_(std::move(ts_column_name)) {
+
+  }
 
   arrow::Status handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer>* target) override;
 

@@ -1,17 +1,9 @@
-#include <iostream>
-#include <utility>
-
 #include <arrow/compute/api.h>
 #include <gandiva/selection_vector.h>
 #include <gandiva/tree_expr_builder.h>
 
 #include "filter_handler.h"
 #include "utils/serializer.h"
-
-FilterHandler::FilterHandler(std::vector<gandiva::ConditionPtr>&& conditions)
-    : conditions_(std::forward<std::vector<gandiva::ConditionPtr>>(conditions)) {
-
-}
 
 arrow::Status FilterHandler::handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer> *target) {
   std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;

@@ -2,11 +2,6 @@
 
 #include "utils/serializer.h"
 
-DefaultHandler::DefaultHandler(DefaultHandler::DefaultHandlerOptions &&options)
-    : options_(std::forward<DefaultHandlerOptions>(options)) {
-
-}
-
 template <>
 arrow::Status DefaultHandler::addMissingColumn<int64_t>(const std::unordered_map<std::string, int64_t> &missing_columns,
                                                         arrow::RecordBatchVector &record_batches) const {

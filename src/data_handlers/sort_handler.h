@@ -10,7 +10,10 @@
 
 class SortHandler : public DataHandler {
  public:
-  explicit SortHandler(std::vector<std::string> column_names);
+  template <typename U>
+  explicit SortHandler(U&& column_names) : column_names_(std::forward<U>(column_names)) {
+
+  }
 
   arrow::Status handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer>* target) override;
 

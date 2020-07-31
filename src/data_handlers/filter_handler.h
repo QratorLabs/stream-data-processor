@@ -9,7 +9,11 @@
 
 class FilterHandler : public DataHandler {
  public:
-  explicit FilterHandler(std::vector<gandiva::ConditionPtr>&& conditions);
+  template <typename U>
+  explicit FilterHandler(U&& conditions)
+      : conditions_(std::forward<U>(conditions)) {
+
+  }
 
   arrow::Status handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer>* target) override;
 
