@@ -39,7 +39,7 @@ void PrintNode::configureServer() {
     });
 
     client->once<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::TCPHandle& client) {
-      spdlog::get(name_)->error(event.what());
+      spdlog::get(name_)->error("Error code: {}. {}", event.code(), event.what());
       writeData();
       stop();
       client.close();
@@ -91,7 +91,7 @@ void PrintNode::writeRecordBatch(const std::shared_ptr<arrow::RecordBatch>& reco
         table_printer.AddColumn(field->name(), 10);
         break;
       case arrow::Type::DOUBLE:
-        table_printer.AddColumn(field->name(), 15);
+        table_printer.AddColumn(field->name(), 20);
         break;
       case arrow::Type::STRING:
         table_printer.AddColumn(field->name(), 25);

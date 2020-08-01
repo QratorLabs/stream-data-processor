@@ -39,7 +39,7 @@ void WindowNode::configureServer() {
     });
 
     client->once<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::TCPHandle& client) {
-      spdlog::get(name_)->error(event.what());
+      spdlog::get(name_)->error("Error code: {}. {}", event.code(), event.what());
       send();
       stop();
       client.close();

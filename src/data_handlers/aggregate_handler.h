@@ -15,9 +15,9 @@ class AggregateHandler : public DataHandler {
   };
 
   template <typename U>
-  AggregateHandler(U&& grouping_columns, AggregateOptions options, std::string ts_column_name = "")
-      : grouping_columns_(std::forward<U>(grouping_columns))
-      , options_(std::move(options))
+  AggregateHandler(std::vector<std::string> grouping_columns, U&& options, std::string ts_column_name = "")
+      : grouping_columns_(std::move(grouping_columns))
+      , options_(std::forward<U>(options))
       , ts_column_name_(std::move(ts_column_name)) {
 
   }
@@ -35,6 +35,13 @@ class AggregateHandler : public DataHandler {
 
   arrow::Status aggregateTsColumn(const arrow::RecordBatchVector& groups, const std::string& aggregate_function,
       arrow::ArrayVector &result_arrays, arrow::MemoryPool *pool = arrow::default_memory_pool()) const;
+
+  arrow::Status makeArrayBuilder(arrow::Type::type type,
+                                 std::shared_ptr<arrow::ArrayBuilder> &builder,
+                                 arrow::MemoryPool *pool) const;
+  arrow::Status appendToBuilder(const std::shared_ptr<arrow::Scalar>& value,
+                                const std::shared_ptr<arrow::ArrayBuilder>& builder,
+                                    arrow::Type::type type) const;
 
  private:
   std::vector<std::string> grouping_columns_;

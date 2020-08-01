@@ -34,8 +34,10 @@ void PassNodeBase::configureTarget(std::shared_ptr<uvw::TCPHandle> &target, cons
   });
 
   target->on<uvw::ErrorEvent>([connect_timer, this](const uvw::ErrorEvent& event, uvw::TCPHandle& target) {
-    spdlog::get(name_)->error(event.what());
-    connect_timer->start(RETRY_DELAY, std::chrono::duration<uint64_t, std::milli>(0));
+    spdlog::get(name_)->error("Error code: {}. {}", event.code(), event.what());
+    if (event.code() == -61) { // connection refused, try again later
+      connect_timer->start(RETRY_DELAY, std::chrono::duration<uint64_t, std::milli>(0));
+    }
   });
 
   target->connect(endpoint.host, endpoint.port);

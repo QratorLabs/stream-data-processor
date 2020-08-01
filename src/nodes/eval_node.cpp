@@ -42,7 +42,7 @@ void EvalNode::configureServer() {
     });
 
     client->once<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::TCPHandle& client) {
-      spdlog::get(name_)->error(event.what());
+      spdlog::get(name_)->error("Error code: {}. {}", event.code(), event.what());
       send();
       stop();
       client.close();
@@ -65,7 +65,7 @@ void EvalNode::send() {
   std::shared_ptr<arrow::Buffer> processed_data;
   auto processing_status = processData(processed_data);
   if (!processing_status.ok()) {
-    spdlog::get(name_)->debug(processing_status.ToString());
+    spdlog::get(name_)->error(processing_status.ToString());
     return;
   }
 

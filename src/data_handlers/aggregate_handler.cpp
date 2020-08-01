@@ -93,8 +93,8 @@ arrow::Status AggregateHandler::fillResultSchema(const std::shared_ptr<arrow::Re
   arrow::FieldVector result_fields;
   if (options_.add_time_window_columns_) {
     auto ts_column_type = record_batch->GetColumnByName(ts_column_name_)->type();
-    result_fields.push_back(arrow::field("from_ts", ts_column_type));
-    result_fields.push_back(arrow::field("to_ts", ts_column_type));
+    result_fields.push_back(arrow::field("from_time", ts_column_type));
+    result_fields.push_back(arrow::field("to_time", ts_column_type));
   }
 
   for (auto& grouping_column_name : grouping_columns_) {
@@ -108,12 +108,15 @@ arrow::Status AggregateHandler::fillResultSchema(const std::shared_ptr<arrow::Re
 
   for (auto& aggregate_column : options_.aggregate_columns) {
     auto column = record_batch->GetColumnByName(aggregate_column.first);
+    std::shared_ptr<arrow::DataType> column_type;
     if (column == nullptr) {
-      return arrow::Status::Invalid("RecordBatch doesn't have such column: " + aggregate_column.first);
+      column_type = arrow::null();
+    } else {
+      column_type = column->type();
     }
 
     for (auto& aggregate_function : aggregate_column.second) {
-      result_fields.push_back(arrow::field(aggregate_column.first + '_' + aggregate_function, column->type()));
+      result_fields.push_back(arrow::field(aggregate_column.first + '_' + aggregate_function, column_type));
     }
   }
 
@@ -127,27 +130,27 @@ arrow::Status AggregateHandler::aggregate(const arrow::RecordBatchVector &groups
                                           arrow::ArrayVector &result_arrays,
                                           arrow::MemoryPool *pool) const {
   auto aggregate_column_field = groups.front()->schema()->GetFieldByName(aggregate_column_name);
-  if (!aggregate_column_field->type()->Equals(arrow::int64())) {
-    return arrow::Status::NotImplemented("Aggregation currently support arrow::int64 type fields only"); // TODO: support any type
+  if (aggregate_column_field == nullptr) {
+    arrow::NullBuilder null_builder;
+    ARROW_RETURN_NOT_OK(null_builder.AppendNulls(groups.size()));
+    result_arrays.emplace_back();
+    ARROW_RETURN_NOT_OK(null_builder.Finish(&result_arrays.back()));
+    return arrow::Status::OK();
   }
 
-  arrow::Int64Builder builder(pool);
+  std::shared_ptr<arrow::ArrayBuilder> builder;
+  ARROW_RETURN_NOT_OK(makeArrayBuilder(aggregate_column_field->type()->id(), builder, pool));
   for (auto& group : groups) {
     std::shared_ptr<arrow::Scalar> aggregated_value;
     ARROW_RETURN_NOT_OK(NAMES_TO_FUNCTIONS.at(aggregate_function)->aggregate(group,
                                                                              aggregate_column_name,
                                                                              &aggregated_value,
                                                                              ts_column_name_));
-    auto value_cast_result = aggregated_value->CastTo(arrow::int64());
-    if (!value_cast_result.ok()) {
-      return value_cast_result.status();
-    }
-
-    ARROW_RETURN_NOT_OK(builder.Append(std::static_pointer_cast<arrow::Int64Scalar>(value_cast_result.ValueOrDie())->value));
+    ARROW_RETURN_NOT_OK(appendToBuilder(aggregated_value, builder, aggregate_column_field->type()->id()));
   }
 
-  result_arrays.push_back(std::shared_ptr<arrow::Int64Array>());
-  ARROW_RETURN_NOT_OK(builder.Finish(&result_arrays.back()));
+  result_arrays.emplace_back();
+  ARROW_RETURN_NOT_OK(builder->Finish(&result_arrays.back()));
   return arrow::Status::OK();
 }
 
@@ -216,4 +219,47 @@ arrow::Status AggregateHandler::fillGroupingColumns(const arrow::RecordBatchVect
   }
 
   return arrow::Status();
+}
+
+arrow::Status AggregateHandler::makeArrayBuilder(arrow::Type::type type,
+                                                 std::shared_ptr<arrow::ArrayBuilder> &builder,
+                                                 arrow::MemoryPool *pool) const {
+  switch (type) {
+    case arrow::Type::INT64:
+      builder = std::make_shared<arrow::Int64Builder>(pool);
+      return arrow::Status::OK();
+    case arrow::Type::DOUBLE:
+      builder = std::make_shared<arrow::DoubleBuilder>(pool);
+      return arrow::Status::OK();
+    case arrow::Type::STRING:
+      builder = std::make_shared<arrow::StringBuilder>(pool);
+      return arrow::Status::OK();
+    default:
+      return arrow::Status::NotImplemented("Aggregation currently support one of "
+                                           "{arrow::int64, arrow::float64, arrow::utf8} types fields only"); // TODO: support any type
+  }
+}
+
+arrow::Status AggregateHandler::appendToBuilder(const std::shared_ptr<arrow::Scalar> &value,
+                                                const std::shared_ptr<arrow::ArrayBuilder> & builder,
+                                                arrow::Type::type type) const {
+  switch (type) {
+    case arrow::Type::INT64:
+      ARROW_RETURN_NOT_OK(std::static_pointer_cast<arrow::Int64Builder>(builder)->Append(
+          std::static_pointer_cast<arrow::Int64Scalar>(value)->value
+          ));
+      return arrow::Status::OK();
+    case arrow::Type::DOUBLE:
+      ARROW_RETURN_NOT_OK(std::static_pointer_cast<arrow::DoubleBuilder>(builder)->Append(
+          std::static_pointer_cast<arrow::DoubleScalar>(value)->value
+      ));
+      return arrow::Status::OK();
+    case arrow::Type::STRING:
+      ARROW_RETURN_NOT_OK(std::static_pointer_cast<arrow::StringBuilder>(builder)->Append(
+          std::static_pointer_cast<arrow::StringScalar>(value)->value->ToString()
+      ));
+      return arrow::Status::OK();
+    default:
+      return arrow::Status::NotImplemented("Expected one of {arrow::int64, arrow::float64, arrow::utf8} types"); // TODO: support any type
+  }
 }
