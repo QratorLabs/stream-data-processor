@@ -15,32 +15,36 @@ PassNodeBase::PassNodeBase(std::string name,
   for (size_t i = 0; i < target_endpoints.size(); ++i) {
     spdlog::get(name_)->info("Configuring target {}:{}", target_endpoints[i].host, target_endpoints[i].port);
     targets_.push_back(server_->loop().resource<uvw::TCPHandle>());
-    configureTarget(targets_[i], target_endpoints[i]);
+    connect_timers_.push_back(server_->loop().resource<uvw::TimerHandle>());
+    configureConnectTimer(i, target_endpoints[i]);
+    configureTarget(i, target_endpoints[i]);
   }
 }
 
-void PassNodeBase::configureTarget(std::shared_ptr<uvw::TCPHandle> &target, const IPv4Endpoint &endpoint) {
-  auto& loop = target->loop();
-  auto connect_timer = loop.resource<uvw::TimerHandle>();
-  connect_timer->on<uvw::TimerEvent>([this, &loop, &target, endpoint](const uvw::TimerEvent& event, uvw::TimerHandle& timer) {
+void PassNodeBase::configureConnectTimer(size_t target_idx, const IPv4Endpoint &endpoint) {
+  connect_timers_[target_idx]->on<uvw::TimerEvent>([this, target_idx, endpoint](const uvw::TimerEvent& event, uvw::TimerHandle& timer) {
     spdlog::get(name_)->info("Retrying connection to {}:{}", endpoint.host, endpoint.port);
-    target = loop.resource<uvw::TCPHandle>();
-    configureTarget(target, endpoint);
+    targets_[target_idx]->close();
+    targets_[target_idx] = server_->loop().resource<uvw::TCPHandle>();
+    configureTarget(target_idx, endpoint);
   });
+}
 
-  target->once<uvw::ConnectEvent>([connect_timer, this](const uvw::ConnectEvent& event, uvw::TCPHandle& target) {
+void PassNodeBase::configureTarget(size_t target_idx, const IPv4Endpoint &endpoint) {
+  targets_[target_idx]->once<uvw::ConnectEvent>([this, target_idx](const uvw::ConnectEvent& event, uvw::TCPHandle& target) {
     spdlog::get(name_)->info("Successfully connected to {}:{}", target.peer().ip, target.peer().port);
-    connect_timer->stop();
+    connect_timers_[target_idx]->stop();
+    connect_timers_[target_idx]->close();
   });
 
-  target->on<uvw::ErrorEvent>([connect_timer, this](const uvw::ErrorEvent& event, uvw::TCPHandle& target) {
+  targets_[target_idx]->on<uvw::ErrorEvent>([this, target_idx](const uvw::ErrorEvent& event, uvw::TCPHandle& target) {
     spdlog::get(name_)->error("Error code: {}. {}", event.code(), event.what());
     if (event.code() == -61) { // connection refused, try again later
-      connect_timer->start(RETRY_DELAY, std::chrono::duration<uint64_t, std::milli>(0));
+      connect_timers_[target_idx]->start(RETRY_DELAY, std::chrono::duration<uint64_t, std::milli>(0));
     }
   });
 
-  target->connect(endpoint.host, endpoint.port);
+  targets_[target_idx]->connect(endpoint.host, endpoint.port);
 }
 
 void PassNodeBase::sendData(const std::shared_ptr<arrow::Buffer> &data) {

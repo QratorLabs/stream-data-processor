@@ -88,7 +88,7 @@ void PrintNode::writeRecordBatch(const std::shared_ptr<arrow::RecordBatch>& reco
   for (auto& field : record_batch->schema()->fields()) {
     switch (field->type()->id()) {
       case arrow::Type::INT64:
-        table_printer.AddColumn(field->name(), 10);
+        table_printer.AddColumn(field->name(), 15);
         break;
       case arrow::Type::DOUBLE:
         table_printer.AddColumn(field->name(), 20);

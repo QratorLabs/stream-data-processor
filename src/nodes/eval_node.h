@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <arrow/api.h>
+#include <iostream>
 
 #include "uvw.hpp"
 

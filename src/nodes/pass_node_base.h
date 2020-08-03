@@ -12,13 +12,15 @@ class PassNodeBase : public NodeBase {
                const std::vector<IPv4Endpoint>& target_endpoints);
 
  protected:
-  void configureTarget(std::shared_ptr<uvw::TCPHandle> &target, const IPv4Endpoint &endpoint);
+  void configureConnectTimer(size_t target_idx, const IPv4Endpoint &endpoint);
+  void configureTarget(size_t target_idx, const IPv4Endpoint &endpoint);
   void sendData(const std::shared_ptr<arrow::Buffer>& data);
 
  protected:
   static const std::chrono::duration<uint64_t, std::milli> RETRY_DELAY;
 
   std::vector<std::shared_ptr<uvw::TCPHandle>> targets_;
+  std::vector<std::shared_ptr<uvw::TimerHandle>> connect_timers_;
 };
 
 

@@ -14,6 +14,7 @@ class DefaultHandler : public DataHandler {
     std::unordered_map<std::string, int64_t> int64_columns_default_values;
     std::unordered_map<std::string, double> double_columns_default_values;
     std::unordered_map<std::string, std::string> string_columns_default_values;
+    std::unordered_map<std::string, bool> bool_columns_default_values;
   };
 
   template <typename U>

@@ -38,8 +38,6 @@ class WindowNode : public PassNodeBase {
   std::vector<size_t> separation_idx_;
   std::deque<std::shared_ptr<arrow::Buffer>> data_buffers_;
   std::time_t first_ts_in_current_batch_{0};
-
-  static const std::chrono::duration<uint64_t, std::milli> RETRY_DELAY;
 };
 
 
