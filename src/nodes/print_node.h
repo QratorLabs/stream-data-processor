@@ -8,18 +8,21 @@
 
 #include "uvw.hpp"
 
+#include <zmq.hpp>
+
 #include "node_base.h"
 
 class PrintNode : public NodeBase {
  public:
   PrintNode(std::string name,
             const std::shared_ptr<uvw::Loop>& loop,
-            const IPv4Endpoint& listen_endpoint,
+            TransportUtils::Subscriber&& subscriber,
             std::ofstream& ostrm);
 
  private:
   void configureServer();
 
+  arrow::Status appendData(const char *data, size_t length);
   void writeData();
   void stop();
 

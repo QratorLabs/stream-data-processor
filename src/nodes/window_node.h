@@ -15,8 +15,8 @@ class WindowNode : public PassNodeBase {
  public:
   WindowNode(std::string name,
              const std::shared_ptr<uvw::Loop>& loop,
-             const IPv4Endpoint& listen_endpoint,
-             const std::vector<IPv4Endpoint>& target_endpoints,
+             TransportUtils::Subscriber&& subscriber,
+             TransportUtils::Publisher&& publisher,
              uint64_t window_range, uint64_t window_period,
              std::string ts_column_name);
 

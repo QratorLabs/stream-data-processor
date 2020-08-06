@@ -7,18 +7,24 @@
 
 #include "uvw.hpp"
 
-#include "utils/network_utils.h"
+#include <zmq.hpp>
+
+#include "utils/transport_utils.h"
 
 class NodeBase {
  public:
   NodeBase(std::string name,
            const std::shared_ptr<uvw::Loop>& loop,
-           const IPv4Endpoint& listen_endpoint);
+           TransportUtils::Subscriber&& subscriber);
+
+ protected:
+  zmq::message_t readMessage();
 
  protected:
   std::string name_;
   std::shared_ptr<spdlog::logger> logger_;
-  std::shared_ptr<uvw::TCPHandle> server_;
+  TransportUtils::Subscriber subscriber_;
+  std::shared_ptr<uvw::PollHandle> poller_;
 };
 
 

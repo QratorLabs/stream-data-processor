@@ -6,6 +6,19 @@ set(CMAKE_CXX_STANDARD 17)
 set(BUILD_UVW_LIBS ON)
 add_subdirectory(third_party/uvw)
 
+find_package(PkgConfig)
+pkg_check_modules(PC_ZeroMQ QUIET zmq)
+find_path(ZeroMQ_INCLUDE_DIR
+  NAMES zmq.hpp
+  PATHS ${PC_ZeroMQ_INCLUDE_DIRS}
+  )
+find_library(ZeroMQ_LIBRARY
+  NAMES zmq
+  PATHS ${PC_ZeroMQ_LIBRARY_DIRS}
+  )
+message(STATUS "ZeroMQ include dir: ${ZeroMQ_INCLUDE_DIR}")
+message(STATUS "ZeroMQ lib dir: ${ZeroMQ_LIBRARY}")
+
 find_package(Arrow REQUIRED)
 message(STATUS "Arrow lib dir: ${Arrow_DIR}")
 
@@ -40,7 +53,7 @@ set(STREAM_DATA_PROCESSOR_SOURCES
   src/utils/parsers/graphite_parser.cpp
   src/utils/compute_utils.cpp
   src/utils/data_converter.cpp
-  src/utils/network_utils.cpp
+  src/utils/transport_utils.cpp
   src/utils/serializer.cpp
   src/utils/string_utils.cpp)
 
@@ -50,14 +63,16 @@ set(STREAM_DATA_PROCESSOR_INCLUDE_DIRS
 set(PROJECT_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src"
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bprinter/include"
-  ${STREAM_DATA_PROCESSOR_INCLUDE_DIRS})
+  ${STREAM_DATA_PROCESSOR_INCLUDE_DIRS}
+  ${ZeroMQ_INCLUDE_DIR})
 
 set(PROJECT_DEPENDENCIES
   uvw::uvw-static
   arrow_shared
   gandiva_shared
   spdlog::spdlog
-  bprinter)
+  bprinter
+  ${ZeroMQ_LIBRARY})
 
 set(LIBRARY_NAME "stream_data_processor")
 

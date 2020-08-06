@@ -12,49 +12,36 @@
 
 PrintNode::PrintNode(std::string name,
                      const std::shared_ptr<uvw::Loop>& loop,
-                     const IPv4Endpoint &listen_endpoint,
+                     TransportUtils::Subscriber&& subscriber,
                      std::ofstream& ostrm)
-    : NodeBase(std::move(name), loop, listen_endpoint)
+    : NodeBase(std::move(name), loop, std::move(subscriber))
     , buffer_builder_(std::make_shared<arrow::BufferBuilder>())
     , ostrm_(ostrm) {
   configureServer();
 }
 
 void PrintNode::configureServer() {
-  server_->once<uvw::ListenEvent>([this](const uvw::ListenEvent& event, uvw::TCPHandle& server) {
-    spdlog::get(name_)->info("New client connection");
-
-    auto client = server.loop().resource<uvw::TCPHandle>();
-
-    client->on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::TCPHandle& client) {
-      spdlog::get(name_)->debug("Data received, size: {}", event.length);
-      for (auto& data_part : NetworkUtils::splitMessage(event.data.get(), event.length)) {
-        auto append_status = buffer_builder_->Append(data_part.first, data_part.second);
-        if (!append_status.ok()) {
-          spdlog::get(name_)->error(append_status.ToString());
-        }
-
-        writeData();
+  poller_->on<uvw::PollEvent>([this](const uvw::PollEvent& event, uvw::PollHandle& poller) {
+    if (subscriber_.subscriber_socket().getsockopt<int>(ZMQ_EVENTS) & ZMQ_POLLIN) {
+      auto message = readMessage();
+      if (!subscriber_.isReady()) {
+        spdlog::get(name_)->info("Connected to publisher");
+        subscriber_.confirmConnection();
+      } else if (message.to_string() != TransportUtils::CONNECT_MESSAGE) {
+        auto append_status = appendData(static_cast<const char *>(message.data()), message.size());
       }
-    });
 
-    client->once<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::TCPHandle& client) {
-      spdlog::get(name_)->error("Error code: {}. {}", event.code(), event.what());
+      writeData();
+    }
+
+    if (event.flags & uvw::PollHandle::Event::DISCONNECT) {
+      spdlog::get(name_)->info("Closed connection with publisher");
       writeData();
       stop();
-      client.close();
-    });
-
-    client->once<uvw::EndEvent>([this](const uvw::EndEvent& event, uvw::TCPHandle& client) {
-      spdlog::get(name_)->info("Closed connection with client");
-      writeData();
-      stop();
-      client.close();
-    });
-
-    server.accept(*client);
-    client->read();
+    }
   });
+
+  poller_->start(uvw::Flags<uvw::PollHandle::Event>::from<uvw::PollHandle::Event::READABLE, uvw::PollHandle::Event::DISCONNECT>());
 }
 
 void PrintNode::writeData() {
@@ -80,7 +67,9 @@ void PrintNode::writeData() {
 
 void PrintNode::stop() {
   spdlog::get(name_)->info("Stopping node");
-  server_->close();
+  poller_->close();
+  subscriber_.subscriber_socket().close();
+  subscriber_.synchronize_socket().close();
 }
 
 void PrintNode::writeRecordBatch(const std::shared_ptr<arrow::RecordBatch>& record_batch) {
@@ -114,4 +103,10 @@ void PrintNode::writeRecordBatch(const std::shared_ptr<arrow::RecordBatch>& reco
   }
 
   table_printer.PrintFooter();
+}
+
+arrow::Status PrintNode::appendData(const char *data, size_t length) {
+  spdlog::get(name_)->debug("Appending data of size {} to buffer", length);
+  ARROW_RETURN_NOT_OK(buffer_builder_->Append(data, length));
+  return arrow::Status::OK();
 }
