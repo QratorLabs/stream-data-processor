@@ -1,47 +1,15 @@
 #include <utility>
 
-#include <arrow/api.h>
-
 #include <spdlog/spdlog.h>
 
 #include "window_node.h"
 #include "utils/utils.h"
 
-WindowNode::WindowNode(std::string name,
-                       const std::shared_ptr<uvw::Loop> &loop,
-                       TransportUtils::Subscriber&& subscriber,
-                       TransportUtils::Publisher&& publisher,
-                       uint64_t window_range, uint64_t window_period,
-                       std::string ts_column_name)
-                       : PassNodeBase(std::move(name), loop, std::move(subscriber), std::move(publisher))
-                       , window_period_(window_period)
-                       , ts_column_name_(std::move(ts_column_name))
-                       , separation_idx_(std::vector<size_t>(
-                           window_range / window_period + (window_range % window_period > 0 ? 1 : 0) - 1, 0
-                           )) {
-  configureServer();
-}
-
-void WindowNode::configureServer() {
-  poller_->on<uvw::PollEvent>([this](const uvw::PollEvent& event, uvw::PollHandle& poller) {
-    if (subscriber_.subscriber_socket().getsockopt<int>(ZMQ_EVENTS) & ZMQ_POLLIN) {
-      auto message = readMessage();
-      if (!subscriber_.isReady()) {
-        spdlog::get(name_)->info("Connected to publisher");
-        subscriber_.confirmConnection();
-      } else if (message.to_string() != TransportUtils::CONNECT_MESSAGE) {
-        auto append_status = appendData(static_cast<const char *>(message.data()), message.size());
-      }
-    }
-
-    if (event.flags & uvw::PollHandle::Event::DISCONNECT) {
-      spdlog::get(name_)->info("Closed connection with publisher");
-      send();
-      stop();
-    }
-  });
-
-  poller_->start(uvw::Flags<uvw::PollHandle::Event>::from<uvw::PollHandle::Event::READABLE, uvw::PollHandle::Event::DISCONNECT>());
+void WindowNode::handleData(const char *data, size_t length) {
+  auto append_result = appendData(data, length);
+  if (!append_result.ok()) {
+    spdlog::get(name_)->error(append_result.message());
+  }
 }
 
 arrow::Status WindowNode::appendData(const char *data, size_t length) {
@@ -82,7 +50,7 @@ arrow::Status WindowNode::appendData(const char *data, size_t length) {
                                                         &data_buffers_.back()));
     }
 
-    send();
+    pass();
 
     auto ts_result = record_batch->GetColumnByName(ts_column_name_)->GetScalar(divide_index);
     if (!ts_result.ok()) {
@@ -135,7 +103,7 @@ arrow::Status WindowNode::tsLowerBound(const std::shared_ptr<arrow::RecordBatch>
   return arrow::Status::OK();
 }
 
-void WindowNode::send() {
+void WindowNode::pass() {
   std::shared_ptr<arrow::Buffer> window_data;
   auto window_status = buildWindow(window_data);
   if (!window_status.ok()) {
@@ -143,17 +111,20 @@ void WindowNode::send() {
     return;
   }
 
-  sendData(window_data);
+  passData(window_data);
   removeOldBuffers();
 }
 
+void WindowNode::start() {
+  spdlog::get(name_)->info("Node started");
+}
+
 void WindowNode::stop() {
+  pass();
   spdlog::get(name_)->info("Stopping node");
-  poller_->close();
-  subscriber_.subscriber_socket().close();
-  subscriber_.synchronize_socket().close();
-  publisher_.publisher_socket().close();
-  publisher_.synchronize_socket().close();
+  for (auto& consumer : consumers_) {
+    consumer->stop();
+  }
 }
 
 arrow::Status WindowNode::buildWindow(std::shared_ptr<arrow::Buffer> &window_data) {

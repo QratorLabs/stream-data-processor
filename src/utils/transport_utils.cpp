@@ -8,6 +8,7 @@
 
 const size_t TransportUtils::MESSAGE_SIZE_STRING_LENGTH{10};
 const std::string TransportUtils::CONNECT_MESSAGE{"connect"};
+const std::string TransportUtils::END_MESSAGE{"end"};
 
 arrow::Status TransportUtils::wrapMessage(const std::shared_ptr<arrow::Buffer>& buffer, // TODO: Use ResizableBuffer
                         std::shared_ptr<arrow::Buffer>* terminated_buffer) {
@@ -33,17 +34,17 @@ std::vector<std::pair<const char *, size_t>> TransportUtils::splitMessage(const 
   return parts;
 }
 
-inline bool TransportUtils::send(zmq::socket_t & socket, const std::string & string, int flags) {
+bool TransportUtils::send(zmq::socket_t & socket, const std::string & string, zmq::send_flags flags) {
   zmq::message_t message(string.size());
   memcpy (message.data(), string.data(), string.size());
 
-  bool rc = socket.send(message, flags);
-  return (rc);
+  auto rc = socket.send(message, flags);
+  return rc.has_value();
 }
 
-inline std::string TransportUtils::receive(zmq::socket_t & socket, int flags) {
+std::string TransportUtils::receive(zmq::socket_t & socket, zmq::recv_flags flags) {
   zmq::message_t message;
-  socket.recv(&message, flags);
+  socket.recv(message, flags);
 
   return std::string(static_cast<char*>(message.data()), message.size());
 }
@@ -68,19 +69,21 @@ size_t TransportUtils::parseMessageSize(const std::string &size_string) {
   return message_size;
 }
 
-TransportUtils::Publisher::Publisher(zmq::socket_t &&publisher_socket,
-                                     zmq::socket_t &&synchronize_socket,
-                                     int64_t expected_subscribers)
-                                     : publisher_socket_(std::move(publisher_socket))
-                                     , synchronize_socket_(std::move(synchronize_socket))
-                                     , expected_subscribers_(expected_subscribers) {
+zmq::message_t TransportUtils::readMessage(zmq::socket_t& socket, zmq::recv_flags flags) {
+  zmq::message_t message;
+  auto recv_result = socket.recv(message, flags);
+  if (!recv_result.has_value()) {
+    throw std::runtime_error("Error while receiving message, error code: " + std::to_string(zmq_errno()));
+  }
 
+  return message;
 }
 
-TransportUtils::Publisher::Publisher(Publisher&& other) noexcept
-    : publisher_socket_(std::move(other.publisher_socket_))
-    , synchronize_socket_(std::move(other.synchronize_socket_))
-    , expected_subscribers_(other.expected_subscribers_.load()) {
+TransportUtils::Publisher::Publisher(std::shared_ptr<zmq::socket_t> publisher_socket,
+                                     std::vector<std::shared_ptr<zmq::socket_t>> synchronize_sockets)
+                                     : publisher_socket_(std::move(publisher_socket))
+                                     , synchronize_sockets_(std::move(synchronize_sockets))
+                                     , expected_subscribers_(synchronize_sockets_.size()) {
 
 }
 
@@ -88,33 +91,30 @@ bool TransportUtils::Publisher::isReady() const {
   return expected_subscribers_ <= 0;
 }
 
-zmq::socket_t &TransportUtils::Publisher::publisher_socket() {
+std::shared_ptr<zmq::socket_t> TransportUtils::Publisher::publisher_socket() {
   return publisher_socket_;
 }
 
-zmq::socket_t &TransportUtils::Publisher::synchronize_socket() {
-  return synchronize_socket_;
+std::vector<std::shared_ptr<zmq::socket_t>> &TransportUtils::Publisher::synchronize_sockets() {
+  return synchronize_sockets_;
 }
 
-void TransportUtils::Publisher::startConnecting() {
-  while (expected_subscribers_ > 0) {
-    send(publisher_socket_, CONNECT_MESSAGE);
-    zmq::message_t message;
-    auto recv_result = synchronize_socket_.recv(message, zmq::recv_flags::dontwait);
-    if (recv_result.has_value()) {
-      --expected_subscribers_;
-    }
+bool TransportUtils::Publisher::trySynchronize() {
+  if (isReady()) {
+    return true;
   }
+
+  send(*publisher_socket_, CONNECT_MESSAGE);
+  return false;
 }
 
-TransportUtils::Subscriber::Subscriber(zmq::socket_t &&subscriber_socket, zmq::socket_t &&synchronize_socket)
+void TransportUtils::Publisher::addConnection() {
+  --expected_subscribers_;
+}
+
+TransportUtils::Subscriber::Subscriber(std::shared_ptr<zmq::socket_t> subscriber_socket,
+                                       std::shared_ptr<zmq::socket_t> synchronize_socket)
     : subscriber_socket_(std::move(subscriber_socket)), synchronize_socket_(std::move(synchronize_socket)) {
-
-}
-
-TransportUtils::Subscriber::Subscriber(TransportUtils::Subscriber &&other) noexcept
-    : subscriber_socket_(std::move(other.subscriber_socket_))
-    , synchronize_socket_(std::move(other.synchronize_socket_)) {
 
 }
 
@@ -123,14 +123,14 @@ bool TransportUtils::Subscriber::isReady() const {
 }
 
 zmq::socket_t &TransportUtils::Subscriber::subscriber_socket() {
-  return subscriber_socket_;
+  return *subscriber_socket_;
 }
 zmq::socket_t &TransportUtils::Subscriber::synchronize_socket() {
-  return synchronize_socket_;
+  return *synchronize_socket_;
 }
 
 void TransportUtils::Subscriber::confirmConnection() {
-  if (send(synchronize_socket_, "")) {
+  if (send(*synchronize_socket_, "")) {
     is_ready_ = true;
   }
 }

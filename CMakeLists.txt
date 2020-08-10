@@ -32,10 +32,10 @@ set(USE_BOOST_KARMA OFF)
 add_subdirectory(third_party/bprinter)
 
 set(STREAM_DATA_PROCESSOR_SOURCES
-  src/nodes/node_base.cpp
-  src/nodes/pass_node_base.cpp
+  src/consumers/print_consumer.cpp
+  src/consumers/publisher_consumer.cpp
+  src/nodes/node.cpp
   src/nodes/eval_node.cpp
-  src/nodes/print_node.cpp
   src/nodes/window_node.cpp
   src/data_handlers/aggregate_handler.cpp
   src/data_handlers/data_parser.cpp
@@ -49,13 +49,17 @@ set(STREAM_DATA_PROCESSOR_SOURCES
   src/data_handlers/aggregate_functions/first_aggregate_function.cpp
   src/data_handlers/aggregate_functions/last_aggregate_function.cpp
   src/data_handlers/aggregate_functions/mean_aggregate_function.cpp
+  src/producers/producer.cpp
+  src/producers/external_listener_producer.cpp
+  src/producers/subscriber_producer.cpp
   src/utils/parsers/csv_parser.cpp
   src/utils/parsers/graphite_parser.cpp
   src/utils/compute_utils.cpp
   src/utils/data_converter.cpp
   src/utils/transport_utils.cpp
   src/utils/serializer.cpp
-  src/utils/string_utils.cpp)
+  src/utils/string_utils.cpp
+  src/node_pipeline/node_pipeline.cpp)
 
 set(STREAM_DATA_PROCESSOR_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/src")

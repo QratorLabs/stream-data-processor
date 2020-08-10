@@ -1,6 +1,5 @@
 #pragma once
 
-#include <atomic>
 #include <memory>
 #include <string>
 #include <vector>
@@ -18,39 +17,30 @@ class TransportUtils {
  public:
   static const size_t MESSAGE_SIZE_STRING_LENGTH;
   static const std::string CONNECT_MESSAGE;
+  static const std::string END_MESSAGE;
 
   class Publisher {
    public:
-    Publisher(zmq::socket_t&& publisher_socket, zmq::socket_t&& synchronize_socket, int64_t expected_subscribers = 0);
-
-    Publisher(const Publisher&) = delete;
-    Publisher& operator=(const Publisher&) = delete;
-
-    Publisher(Publisher&& other) noexcept;
-    Publisher& operator=(Publisher&& other) = delete;
+    Publisher(std::shared_ptr<zmq::socket_t> publisher_socket,
+              std::vector<std::shared_ptr<zmq::socket_t>> synchronize_sockets);
 
     bool isReady() const;
 
-    zmq::socket_t& publisher_socket();
-    zmq::socket_t& synchronize_socket();
+    std::shared_ptr<zmq::socket_t> publisher_socket();
+    std::vector<std::shared_ptr<zmq::socket_t>>& synchronize_sockets();
 
-    void startConnecting();
+    bool trySynchronize();
+    void addConnection();
 
    private:
-    zmq::socket_t publisher_socket_;
-    zmq::socket_t synchronize_socket_;
-    std::atomic<int64_t> expected_subscribers_;
+    std::shared_ptr<zmq::socket_t> publisher_socket_;
+    std::vector<std::shared_ptr<zmq::socket_t>> synchronize_sockets_;
+    int64_t expected_subscribers_;
   };
 
   class Subscriber {
    public:
-    Subscriber(zmq::socket_t&& subscriber_socket, zmq::socket_t&& synchronize_socket);
-
-    Subscriber(const Subscriber&) = delete;
-    Subscriber& operator=(const Subscriber&) = delete;
-
-    Subscriber(Subscriber&& other) noexcept;
-    Subscriber& operator=(Subscriber&& other) = delete;
+    Subscriber(std::shared_ptr<zmq::socket_t> subscriber_socket, std::shared_ptr<zmq::socket_t> synchronize_socket);
 
     [[nodiscard]] bool isReady() const;
 
@@ -60,8 +50,8 @@ class TransportUtils {
     void confirmConnection();
 
    private:
-    zmq::socket_t subscriber_socket_;
-    zmq::socket_t synchronize_socket_;
+    std::shared_ptr<zmq::socket_t> subscriber_socket_;
+    std::shared_ptr<zmq::socket_t> synchronize_socket_;
     bool is_ready_{false};
   };
 
@@ -71,8 +61,9 @@ class TransportUtils {
 
   static std::vector<std::pair<const char *, size_t>> splitMessage(const char *message_data, size_t length);
 
-  inline static bool send(zmq::socket_t & socket, const std::string & string, int flags = 0);
-  inline static std::string receive(zmq::socket_t & socket, int flags = 0);
+  static bool send(zmq::socket_t & socket, const std::string & string, zmq::send_flags flags = zmq::send_flags::none);
+  static std::string receive(zmq::socket_t & socket, zmq::recv_flags flags = zmq::recv_flags::none);
+  static zmq::message_t readMessage(zmq::socket_t& socket, zmq::recv_flags flags = zmq::recv_flags::none);
 
  private:
   static std::string getSizeString(size_t size);
