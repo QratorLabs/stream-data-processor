@@ -1,60 +1,15 @@
 #include <utility>
 
-#include <arrow/api.h>
-
 #include <spdlog/spdlog.h>
 
 #include "window_node.h"
 #include "utils/utils.h"
 
-WindowNode::WindowNode(std::string name,
-                       const std::shared_ptr<uvw::Loop> &loop,
-                       const IPv4Endpoint &listen_endpoint,
-                       const std::vector<IPv4Endpoint> &target_endpoints,
-                       uint64_t window_range, uint64_t window_period,
-                       std::string ts_column_name)
-                       : PassNodeBase(std::move(name), loop, listen_endpoint, target_endpoints)
-                       , window_period_(window_period)
-                       , ts_column_name_(std::move(ts_column_name))
-                       , separation_idx_(std::vector<size_t>(
-                           window_range / window_period + (window_range % window_period > 0 ? 1 : 0) - 1, 0
-                           )) {
-  configureServer();
-}
-
-void WindowNode::configureServer() {
-  server_->once<uvw::ListenEvent>([this](const uvw::ListenEvent& event, uvw::TCPHandle& server) {
-    spdlog::get(name_)->info("New client connection");
-
-    auto client = server.loop().resource<uvw::TCPHandle>();
-
-    client->on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::TCPHandle& client) {
-      spdlog::get(name_)->debug("Data received, size: {}", event.length);
-      for (auto& data_part : NetworkUtils::splitMessage(event.data.get(), event.length)) {
-        auto append_status = appendData(data_part.first, data_part.second);
-        if (!append_status.ok()) {
-          spdlog::get(name_)->error(append_status.ToString());
-        }
-      }
-    });
-
-    client->once<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::TCPHandle& client) {
-      spdlog::get(name_)->error("Error code: {}. {}", event.code(), event.what());
-      send();
-      stop();
-      client.close();
-    });
-
-    client->once<uvw::EndEvent>([this](const uvw::EndEvent& event, uvw::TCPHandle& client) {
-      spdlog::get(name_)->info("Closed connection with client");
-      send();
-      stop();
-      client.close();
-    });
-
-    server.accept(*client);
-    client->read();
-  });
+void WindowNode::handleData(const char *data, size_t length) {
+  auto append_result = appendData(data, length);
+  if (!append_result.ok()) {
+    spdlog::get(name_)->error(append_result.message());
+  }
 }
 
 arrow::Status WindowNode::appendData(const char *data, size_t length) {
@@ -95,7 +50,7 @@ arrow::Status WindowNode::appendData(const char *data, size_t length) {
                                                         &data_buffers_.back()));
     }
 
-    send();
+    pass();
 
     auto ts_result = record_batch->GetColumnByName(ts_column_name_)->GetScalar(divide_index);
     if (!ts_result.ok()) {
@@ -148,7 +103,7 @@ arrow::Status WindowNode::tsLowerBound(const std::shared_ptr<arrow::RecordBatch>
   return arrow::Status::OK();
 }
 
-void WindowNode::send() {
+void WindowNode::pass() {
   std::shared_ptr<arrow::Buffer> window_data;
   auto window_status = buildWindow(window_data);
   if (!window_status.ok()) {
@@ -156,15 +111,19 @@ void WindowNode::send() {
     return;
   }
 
-  sendData(window_data);
+  passData(window_data);
   removeOldBuffers();
 }
 
+void WindowNode::start() {
+  spdlog::get(name_)->info("Node started");
+}
+
 void WindowNode::stop() {
+  pass();
   spdlog::get(name_)->info("Stopping node");
-  server_->close();
-  for (auto& target : targets_) {
-    target->close();
+  for (auto& consumer : consumers_) {
+    consumer->stop();
   }
 }
 

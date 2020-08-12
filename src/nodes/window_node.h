@@ -9,23 +9,31 @@
 
 #include "uvw.hpp"
 
-#include "pass_node_base.h"
+#include "node.h"
 
-class WindowNode : public PassNodeBase {
+class WindowNode : public Node {
  public:
+  template <typename U>
   WindowNode(std::string name,
-             const std::shared_ptr<uvw::Loop>& loop,
-             const IPv4Endpoint& listen_endpoint,
-             const std::vector<IPv4Endpoint>& target_endpoints,
+             U&& consumers,
              uint64_t window_range, uint64_t window_period,
-             std::string ts_column_name);
+             std::string ts_column_name)
+      : Node(std::move(name), std::forward<U>(consumers))
+      , window_period_(window_period)
+      , ts_column_name_(std::move(ts_column_name))
+      , separation_idx_(std::vector<size_t>(
+          window_range / window_period + (window_range % window_period > 0 ? 1 : 0) - 1, 0
+      )) {
+
+  }
+
+  void start() override;
+  void handleData(const char *data, size_t length) override;
+  void stop() override;
 
  private:
-  void configureServer();
-
   arrow::Status appendData(const char *data, size_t length);
-  void send();
-  void stop();
+  void pass();
 
   void removeOldBuffers();
   arrow::Status buildWindow(std::shared_ptr<arrow::Buffer>& window_data);
