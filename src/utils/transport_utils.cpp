@@ -99,13 +99,12 @@ std::vector<std::shared_ptr<zmq::socket_t>> &TransportUtils::Publisher::synchron
   return synchronize_sockets_;
 }
 
-bool TransportUtils::Publisher::trySynchronize() {
+void TransportUtils::Publisher::trySynchronize() {
   if (isReady()) {
-    return true;
+    return;
   }
 
   send(*publisher_socket_, CONNECT_MESSAGE);
-  return false;
 }
 
 void TransportUtils::Publisher::addConnection() {
@@ -129,8 +128,6 @@ zmq::socket_t &TransportUtils::Subscriber::synchronize_socket() {
   return *synchronize_socket_;
 }
 
-void TransportUtils::Subscriber::confirmConnection() {
-  if (send(*synchronize_socket_, "")) {
-    is_ready_ = true;
-  }
+void TransportUtils::Subscriber::prepareForListening() {
+  is_ready_ = true;
 }

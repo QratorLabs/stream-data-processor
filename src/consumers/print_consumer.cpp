@@ -71,6 +71,5 @@ FilePrintConsumer::FilePrintConsumer(const std::string& file_name)
 }
 
 FilePrintConsumer::~FilePrintConsumer() {
-  PrintConsumer::~PrintConsumer();
   ostrm_obj_.close();
 }

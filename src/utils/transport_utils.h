@@ -29,7 +29,7 @@ class TransportUtils {
     std::shared_ptr<zmq::socket_t> publisher_socket();
     std::vector<std::shared_ptr<zmq::socket_t>>& synchronize_sockets();
 
-    bool trySynchronize();
+    void trySynchronize();
     void addConnection();
 
    private:
@@ -47,7 +47,7 @@ class TransportUtils {
     zmq::socket_t& subscriber_socket();
     zmq::socket_t& synchronize_socket();
 
-    void confirmConnection();
+    void prepareForListening();
 
    private:
     std::shared_ptr<zmq::socket_t> subscriber_socket_;

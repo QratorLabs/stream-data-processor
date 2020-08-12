@@ -1,25 +1,27 @@
-#include "external_listener_producer.h"
+#include "tcp_producer.h"
 #include "utils/transport_utils.h"
 
-ExternalListenerProducer::ExternalListenerProducer(std::shared_ptr<Node> node,
-                                                   const IPv4Endpoint &listen_endpoint,
-                                                   const std::shared_ptr<uvw::Loop>& loop)
+TCPProducer::TCPProducer(std::shared_ptr<Node> node,
+                         const IPv4Endpoint &listen_endpoint,
+                         const std::shared_ptr<uvw::Loop> &loop,
+                         bool is_external)
     : Producer(std::move(node))
-    , listener_(loop->resource<uvw::TCPHandle>()) {
+    , listener_(loop->resource<uvw::TCPHandle>())
+    , is_external_(is_external) {
   configureListener();
   listener_->bind(listen_endpoint.host, listen_endpoint.port);
 }
 
-void ExternalListenerProducer::start() {
+void TCPProducer::start() {
   listener_->listen();
 }
 
-void ExternalListenerProducer::stop() {
+void TCPProducer::stop() {
   listener_->close();
   node_->stop();
 }
 
-void ExternalListenerProducer::configureListener() {
+void TCPProducer::configureListener() {
   listener_->once<uvw::ListenEvent>([this](const uvw::ListenEvent& event, uvw::TCPHandle& server) {
     node_->log("New client connection", spdlog::level::info);
 
@@ -27,7 +29,7 @@ void ExternalListenerProducer::configureListener() {
 
     client->on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::TCPHandle& client) {
       node_->log("Data received, size: " + std::to_string(event.length), spdlog::level::info);
-      node_->handleData(event.data.get(), event.length);
+      handleData(event.data.get(), event.length);
     });
 
     client->once<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::TCPHandle& client) {
@@ -46,3 +48,14 @@ void ExternalListenerProducer::configureListener() {
     client->read();
   });
 }
+
+void TCPProducer::handleData(const char *data, size_t length) {
+  if (is_external_) {
+    node_->handleData(data, length);
+  } else {
+    for (auto &data_part : TransportUtils::splitMessage(data, length)) {
+      node_->handleData(data_part.first, data_part.second);
+    }
+  }
+}
+

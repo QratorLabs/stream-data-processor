@@ -35,20 +35,13 @@ int main(int argc, char** argv) {
   int64_t crit_host_level = 85;
 
   auto loop = uvw::Loop::getDefault();
-  zmq::context_t zmq_context(1);
 
   std::vector<NodePipeline> pipelines;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto parse_graphite_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
-  parse_graphite_publisher_socket->bind("inproc://parse_graphite_node");
-  auto parse_graphite_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  parse_graphite_publisher_synchronize_socket->bind("inproc://parse_graphite_node_sync");
-  std::shared_ptr<Consumer> parse_graphite_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
-      parse_graphite_publisher_socket,
-      {parse_graphite_publisher_synchronize_socket}
-  ), loop);
+  std::vector<IPv4Endpoint> parse_graphite_targets{{"127.0.0.1", 4201}};
+  std::shared_ptr<Consumer> parse_graphite_consumer = std::make_shared<TCPConsumer>(parse_graphite_targets, loop, false);
 
 
   std::vector parse_graphite_consumers{parse_graphite_consumer};
@@ -60,8 +53,8 @@ int main(int argc, char** argv) {
 
 
   IPv4Endpoint parse_graphite_producer_endpoint{"127.0.0.1", 4200};
-  std::shared_ptr<Producer> parse_graphite_producer = std::make_shared<ExternalListenerProducer>(
-      parse_graphite_node, parse_graphite_producer_endpoint, loop
+  std::shared_ptr<Producer> parse_graphite_producer = std::make_shared<TCPProducer>(
+      parse_graphite_node, parse_graphite_producer_endpoint, loop, true
   );
 
 
@@ -73,19 +66,11 @@ int main(int argc, char** argv) {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto cputime_all_filter_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
-  cputime_all_filter_publisher_socket->bind("inproc://cputime_all_filter_node");
-  auto cputime_all_filter_to_cputime_all_group_by_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  cputime_all_filter_to_cputime_all_group_by_publisher_synchronize_socket->bind("inproc://cputime_all_filter_node_sync_to_cputime_all_group_by");
-  auto cputime_all_filter_to_cputime_all_win_window_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  cputime_all_filter_to_cputime_all_win_window_publisher_synchronize_socket->bind("inproc://cputime_all_filter_node_sync_to_cputime_all_win_window");
-  std::shared_ptr<Consumer> cputime_all_filter_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
-      cputime_all_filter_publisher_socket,
-      {
-        cputime_all_filter_to_cputime_all_group_by_publisher_synchronize_socket,
-        cputime_all_filter_to_cputime_all_win_window_publisher_synchronize_socket
-      }
-  ), loop);
+  std::vector<IPv4Endpoint> cputime_all_filter_targets{
+    {"127.0.0.1", 4202},
+    {"127.0.0.1", 4300}
+  };
+  std::shared_ptr<Consumer> cputime_all_filter_consumer = std::make_shared<TCPConsumer>(cputime_all_filter_targets, loop, false);
 
 
   std::vector<gandiva::ConditionPtr> cputime_all_filter_node_conditions{
@@ -103,16 +88,9 @@ int main(int argc, char** argv) {
   );
 
 
-  auto cputime_all_filter_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_all_filter_subscriber_socket->connect("inproc://parse_graphite_node");
-  cputime_all_filter_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_all_filter_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_all_filter_subscriber_synchronize_socket->connect("inproc://parse_graphite_node_sync");
-  std::shared_ptr<Producer> cputime_all_filter_producer = std::make_shared<SubscriberProducer>(
-      cputime_all_filter_node, TransportUtils::Subscriber(
-          cputime_all_filter_subscriber_socket,
-          cputime_all_filter_subscriber_synchronize_socket
-      ), loop
+  IPv4Endpoint cputime_all_filter_producer_endpoint{"127.0.0.1", 4201};
+  std::shared_ptr<Producer> cputime_all_filter_producer = std::make_shared<TCPProducer>(
+      cputime_all_filter_node, cputime_all_filter_producer_endpoint, loop, false
   );
 
 
@@ -124,14 +102,8 @@ int main(int argc, char** argv) {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto cputime_all_group_by_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
-  cputime_all_group_by_publisher_socket->bind("inproc://cputime_all_group_by_node");
-  auto cputime_all_group_by_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  cputime_all_group_by_publisher_synchronize_socket->bind("inproc://cputime_all_group_by_node_sync");
-  std::shared_ptr<Consumer> cputime_all_group_by_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
-      cputime_all_group_by_publisher_socket,
-      {cputime_all_group_by_publisher_synchronize_socket}
-  ), loop);
+  std::vector<IPv4Endpoint> cputime_all_group_by_targets{{"127.0.0.1", 4203}};
+  std::shared_ptr<Consumer> cputime_all_group_by_consumer = std::make_shared<TCPConsumer>(cputime_all_group_by_targets, loop, false);
 
 
   std::vector<std::string> cputime_all_grouping_columns{"host", "type"};
@@ -142,16 +114,9 @@ int main(int argc, char** argv) {
   );
 
 
-  auto cputime_all_group_by_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_all_group_by_subscriber_socket->connect("inproc://cputime_all_filter_node");
-  cputime_all_group_by_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_all_group_by_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_all_group_by_subscriber_synchronize_socket->connect("inproc://cputime_all_filter_node_sync_to_cputime_all_group_by");
-  std::shared_ptr<Producer> cputime_all_group_by_producer = std::make_shared<SubscriberProducer>(
-      cputime_all_group_by_node, TransportUtils::Subscriber(
-          cputime_all_group_by_subscriber_socket,
-          cputime_all_group_by_subscriber_synchronize_socket
-      ), loop
+  IPv4Endpoint cputime_all_group_by_producer_endpoint{"127.0.0.1", 4202};
+  std::shared_ptr<Producer> cputime_all_group_by_producer = std::make_shared<TCPProducer>(
+      cputime_all_group_by_node, cputime_all_group_by_producer_endpoint, loop, false
   );
 
 
@@ -163,14 +128,8 @@ int main(int argc, char** argv) {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto cputime_host_last_aggregate_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
-  cputime_host_last_aggregate_publisher_socket->bind("inproc://cputime_host_last_aggregate_node");
-  auto cputime_host_last_aggregate_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  cputime_host_last_aggregate_publisher_synchronize_socket->bind("inproc://cputime_host_last_aggregate_node_sync");
-  std::shared_ptr<Consumer> cputime_host_last_aggregate_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
-      cputime_host_last_aggregate_publisher_socket,
-      {cputime_host_last_aggregate_publisher_synchronize_socket}
-  ), loop);
+  std::vector<IPv4Endpoint> cputime_host_last_aggregate_targets{{"127.0.0.1", 4204}};
+  std::shared_ptr<Consumer> cputime_host_last_aggregate_consumer = std::make_shared<TCPConsumer>(cputime_host_last_aggregate_targets, loop, false);
 
 
   AggregateHandler::AggregateOptions cputime_host_last_options{{
@@ -192,16 +151,10 @@ int main(int argc, char** argv) {
       )
   );
 
-  auto cputime_host_last_aggregate_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_host_last_aggregate_subscriber_socket->connect("inproc://cputime_all_group_by_node");
-  cputime_host_last_aggregate_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_host_last_aggregate_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_host_last_aggregate_subscriber_synchronize_socket->connect("inproc://cputime_all_group_by_node_sync");
-  std::shared_ptr<Producer> cputime_host_last_aggregate_producer = std::make_shared<SubscriberProducer>(
-      cputime_host_last_aggregate_node, TransportUtils::Subscriber(
-          cputime_host_last_aggregate_subscriber_socket,
-          cputime_host_last_aggregate_subscriber_synchronize_socket
-      ), loop
+
+  IPv4Endpoint cputime_host_last_aggregate_producer_endpoint{"127.0.0.1", 4203};
+  std::shared_ptr<Producer> cputime_host_last_aggregate_producer = std::make_shared<TCPProducer>(
+      cputime_host_last_aggregate_node, cputime_host_last_aggregate_producer_endpoint, loop, false
   );
 
 
@@ -213,14 +166,8 @@ int main(int argc, char** argv) {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto cputime_host_calc_default_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
-  cputime_host_calc_default_publisher_socket->bind("inproc://cputime_host_calc_default_node");
-  auto cputime_host_calc_default_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  cputime_host_calc_default_publisher_synchronize_socket->bind("inproc://cputime_host_calc_default_node_sync");
-  std::shared_ptr<Consumer> cputime_host_calc_default_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
-      cputime_host_calc_default_publisher_socket,
-      {cputime_host_calc_default_publisher_synchronize_socket}
-  ), loop);
+  std::vector<IPv4Endpoint> cputime_host_calc_default_targets{{"127.0.0.1", 4205}};
+  std::shared_ptr<Consumer> cputime_host_calc_default_consumer = std::make_shared<TCPConsumer>(cputime_host_calc_default_targets, loop, false);
 
 
   DefaultHandler::DefaultHandlerOptions cputime_host_calc_options{{},
@@ -245,16 +192,9 @@ int main(int argc, char** argv) {
   );
 
 
-  auto cputime_host_calc_default_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_host_calc_default_subscriber_socket->connect("inproc://cputime_host_last_aggregate_node");
-  cputime_host_calc_default_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_host_calc_default_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_host_calc_default_subscriber_synchronize_socket->connect("inproc://cputime_host_last_aggregate_node_sync");
-  std::shared_ptr<Producer> cputime_host_calc_default_producer = std::make_shared<SubscriberProducer>(
-      cputime_host_calc_default_node, TransportUtils::Subscriber(
-          cputime_host_calc_default_subscriber_socket,
-          cputime_host_calc_default_subscriber_synchronize_socket
-      ), loop
+  IPv4Endpoint cputime_host_calc_default_producer_endpoint{"127.0.0.1", 4204};
+  std::shared_ptr<Producer> cputime_host_calc_default_producer = std::make_shared<TCPProducer>(
+      cputime_host_calc_default_node, cputime_host_calc_default_producer_endpoint, loop, false
   );
 
 
@@ -296,16 +236,9 @@ int main(int argc, char** argv) {
   );
 
 
-  auto cputime_host_calc_map_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_host_calc_map_subscriber_socket->connect("inproc://cputime_host_calc_default_node");
-  cputime_host_calc_map_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_host_calc_map_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_host_calc_map_subscriber_synchronize_socket->connect("inproc://cputime_host_calc_default_node_sync");
-  std::shared_ptr<Producer> cputime_host_calc_map_producer = std::make_shared<SubscriberProducer>(
-      cputime_host_calc_map_node, TransportUtils::Subscriber(
-          cputime_host_calc_map_subscriber_socket,
-          cputime_host_calc_map_subscriber_synchronize_socket
-      ), loop
+  IPv4Endpoint cputime_host_calc_map_producer_endpoint{"127.0.0.1", 4205};
+  std::shared_ptr<Producer> cputime_host_calc_map_producer = std::make_shared<TCPProducer>(
+      cputime_host_calc_map_node, cputime_host_calc_map_producer_endpoint, loop, false
   );
 
 
@@ -317,14 +250,8 @@ int main(int argc, char** argv) {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto cputime_all_win_window_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
-  cputime_all_win_window_publisher_socket->bind("inproc://cputime_all_win_window_node");
-  auto cputime_all_win_window_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  cputime_all_win_window_publisher_synchronize_socket->bind("inproc://cputime_all_win_window_node_sync");
-  std::shared_ptr<Consumer> cputime_all_win_window_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
-      cputime_all_win_window_publisher_socket,
-      {cputime_all_win_window_publisher_synchronize_socket}
-  ), loop);
+  std::vector<IPv4Endpoint> cputime_all_win_window_targets{{"127.0.0.1", 4301}};
+  std::shared_ptr<Consumer> cputime_all_win_window_consumer = std::make_shared<TCPConsumer>(cputime_all_win_window_targets, loop, false);
 
 
   std::vector cputime_all_win_window_consumers{cputime_all_win_window_consumer};
@@ -336,16 +263,9 @@ int main(int argc, char** argv) {
   );
 
 
-  auto cputime_all_win_window_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_all_win_window_subscriber_socket->connect("inproc://cputime_all_filter_node");
-  cputime_all_win_window_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_all_win_window_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_all_win_window_subscriber_synchronize_socket->connect("inproc://cputime_all_filter_node_sync_to_cputime_all_win_window");
-  std::shared_ptr<Producer> cputime_all_win_window_producer = std::make_shared<SubscriberProducer>(
-      cputime_all_win_window_node, TransportUtils::Subscriber(
-          cputime_all_win_window_subscriber_socket,
-          cputime_all_win_window_subscriber_synchronize_socket
-      ), loop
+  IPv4Endpoint cputime_all_win_window_producer_endpoint{"127.0.0.1", 4300};
+  std::shared_ptr<Producer> cputime_all_win_window_producer = std::make_shared<TCPProducer>(
+      cputime_all_win_window_node, cputime_all_win_window_producer_endpoint, loop, false
   );
 
 
@@ -357,14 +277,8 @@ int main(int argc, char** argv) {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto cputime_win_last_aggregate_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
-  cputime_win_last_aggregate_publisher_socket->bind("inproc://cputime_win_last_aggregate_node");
-  auto cputime_win_last_aggregate_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  cputime_win_last_aggregate_publisher_synchronize_socket->bind("inproc://cputime_win_last_aggregate_node_sync");
-  std::shared_ptr<Consumer> cputime_win_last_aggregate_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
-      cputime_win_last_aggregate_publisher_socket,
-      {cputime_win_last_aggregate_publisher_synchronize_socket}
-  ), loop);
+  std::vector<IPv4Endpoint> cputime_win_last_aggregate_targets{{"127.0.0.1", 4302}};
+  std::shared_ptr<Consumer> cputime_win_last_aggregate_consumer = std::make_shared<TCPConsumer>(cputime_win_last_aggregate_targets, loop, false);
 
 
   std::vector<std::string> cputime_win_last_grouping_columns{"cpu", "host", "type"};
@@ -377,16 +291,9 @@ int main(int argc, char** argv) {
   );
 
 
-  auto cputime_win_last_aggregate_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_win_last_aggregate_subscriber_socket->connect("inproc://cputime_all_win_window_node");
-  cputime_win_last_aggregate_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_win_last_aggregate_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_win_last_aggregate_subscriber_synchronize_socket->connect("inproc://cputime_all_win_window_node_sync");
-  std::shared_ptr<Producer> cputime_win_last_aggregate_producer = std::make_shared<SubscriberProducer>(
-      cputime_win_last_aggregate_node, TransportUtils::Subscriber(
-          cputime_win_last_aggregate_subscriber_socket,
-          cputime_win_last_aggregate_subscriber_synchronize_socket
-      ), loop
+  IPv4Endpoint cputime_win_last_aggregate_producer_endpoint{"127.0.0.1", 4301};
+  std::shared_ptr<Producer> cputime_win_last_aggregate_producer = std::make_shared<TCPProducer>(
+      cputime_win_last_aggregate_node, cputime_win_last_aggregate_producer_endpoint, loop, false
   );
 
 
@@ -398,14 +305,8 @@ int main(int argc, char** argv) {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto cputime_win_calc_default_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
-  cputime_win_calc_default_publisher_socket->bind("inproc://cputime_win_calc_default_node");
-  auto cputime_win_calc_default_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  cputime_win_calc_default_publisher_synchronize_socket->bind("inproc://cputime_win_calc_default_node_sync");
-  std::shared_ptr<Consumer> cputime_win_calc_default_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
-      cputime_win_calc_default_publisher_socket,
-      {cputime_win_calc_default_publisher_synchronize_socket}
-  ), loop);
+  std::vector<IPv4Endpoint> cputime_win_calc_default_targets{{"127.0.0.1", 4303}};
+  std::shared_ptr<Consumer> cputime_win_calc_default_consumer = std::make_shared<TCPConsumer>(cputime_win_calc_default_targets, loop, false);
 
 
   DefaultHandler::DefaultHandlerOptions cputime_win_calc_options{{},
@@ -431,16 +332,9 @@ int main(int argc, char** argv) {
   );
 
 
-  auto cputime_win_calc_default_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_win_calc_default_subscriber_socket->connect("inproc://cputime_win_last_aggregate_node");
-  cputime_win_calc_default_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_win_calc_default_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_win_calc_default_subscriber_synchronize_socket->connect("inproc://cputime_win_last_aggregate_node_sync");
-  std::shared_ptr<Producer> cputime_win_calc_default_producer = std::make_shared<SubscriberProducer>(
-      cputime_win_calc_default_node, TransportUtils::Subscriber(
-          cputime_win_calc_default_subscriber_socket,
-          cputime_win_calc_default_subscriber_synchronize_socket
-      ), loop
+  IPv4Endpoint cputime_win_calc_default_producer_endpoint{"127.0.0.1", 4302};
+  std::shared_ptr<Producer> cputime_win_calc_default_producer = std::make_shared<TCPProducer>(
+      cputime_win_calc_default_node, cputime_win_calc_default_producer_endpoint, loop, false
   );
 
 
@@ -482,16 +376,9 @@ int main(int argc, char** argv) {
   );
 
 
-  auto cputime_win_calc_map_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_win_calc_map_subscriber_socket->connect("inproc://cputime_win_calc_default_node");
-  cputime_win_calc_map_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_win_calc_map_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_win_calc_map_subscriber_synchronize_socket->connect("inproc://cputime_win_calc_default_node_sync");
-  std::shared_ptr<Producer> cputime_win_calc_map_producer = std::make_shared<SubscriberProducer>(
-      cputime_win_calc_map_node, TransportUtils::Subscriber(
-          cputime_win_calc_map_subscriber_socket,
-          cputime_win_calc_map_subscriber_synchronize_socket
-      ), loop
+  IPv4Endpoint cputime_win_calc_map_producer_endpoint{"127.0.0.1", 4303};
+  std::shared_ptr<Producer> cputime_win_calc_map_producer = std::make_shared<TCPProducer>(
+      cputime_win_calc_map_node, cputime_win_calc_map_producer_endpoint, loop, false
   );
 
 

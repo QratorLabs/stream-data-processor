@@ -20,13 +20,17 @@ class SubscriberProducer : public Producer {
   void stop() override;
 
  private:
-  void configurePoller();
+  void configurePollers();
 
   zmq::message_t readMessage();
+
+  void confirmConnection();
 
  private:
   TransportUtils::Subscriber subscriber_;
   std::shared_ptr<uvw::PollHandle> poller_;
+  std::shared_ptr<uvw::PollHandle> synchronize_poller_;
+  bool ready_to_confirm_connection_{false};
 };
 
 
