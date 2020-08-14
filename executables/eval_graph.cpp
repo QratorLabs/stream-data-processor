@@ -1,4 +1,5 @@
 #include <fstream>
+#include <iostream>
 
 #include <gandiva/tree_expr_builder.h>
 
@@ -20,18 +21,25 @@ int main(int argc, char** argv) {
   spdlog::flush_on(spdlog::level::info);
 
   auto loop = uvw::Loop::getDefault();
+  zmq::context_t zmq_context(1);
 
   std::vector<NodePipeline> pipelines;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  std::vector<IPv4Endpoint> input_targets{{"127.0.0.1", 4201}};
-  std::shared_ptr<Consumer> input_consumer = std::make_shared<TCPConsumer>(input_targets, loop, false);
+  auto input_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
+  input_publisher_socket->bind("inproc://input_node");
+  auto input_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
+  input_publisher_synchronize_socket->bind("inproc://input_node_sync");
+  std::shared_ptr<Consumer> input_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
+      input_publisher_socket,
+      {input_publisher_synchronize_socket}
+  ), loop);
 
 
   std::vector input_consumers{input_consumer};
   std::shared_ptr<Node> input_node = std::make_shared<EvalNode>(
-      "input_node", std::move(input_consumers), loop,
+      "input_node", std::move(input_consumers),
       std::make_shared<DataParser>(std::make_shared<CSVParser>())
   );
 
@@ -49,8 +57,14 @@ int main(int argc, char** argv) {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  std::vector<IPv4Endpoint> eval_targets{{"127.0.0.1", 4202}};
-  std::shared_ptr<Consumer> eval_consumer = std::make_shared<TCPConsumer>(eval_targets, loop, false);
+  auto eval_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
+  eval_publisher_socket->bind("inproc://eval_node");
+  auto eval_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
+  eval_publisher_synchronize_socket->bind("inproc://eval_node_sync");
+  std::shared_ptr<Consumer> eval_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
+      eval_publisher_socket,
+      {eval_publisher_synchronize_socket}
+  ), loop);
 
 
   auto field_ts = arrow::field("ts", arrow::timestamp(arrow::TimeUnit::SECOND));
@@ -69,22 +83,28 @@ int main(int argc, char** argv) {
 
   std::vector eval_consumers{eval_consumer};
   std::shared_ptr<Node> eval_node = std::make_shared<EvalNode>(
-      "eval_node", std::move(eval_consumers), loop,
+      "eval_node", std::move(eval_consumers),
       std::make_shared<MapHandler>(std::move(expressions))
   );
 
 
-  IPv4Endpoint eval_producer_endpoint{"127.0.0.1", 4201};
-  std::shared_ptr<Producer> eval_producer = std::make_shared<TCPProducer>(
-      eval_node, eval_producer_endpoint, loop, false
-      );
+  auto eval_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
+  eval_subscriber_socket->connect("inproc://input_node");
+  eval_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
+  auto eval_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
+  eval_subscriber_synchronize_socket->connect("inproc://input_node_sync");
+  std::shared_ptr<Producer> eval_producer = std::make_shared<SubscriberProducer>(
+      eval_node, TransportUtils::Subscriber(
+          eval_subscriber_socket,
+          eval_subscriber_synchronize_socket
+      ), loop
+  );
 
-  
   pipelines.emplace_back();
   pipelines.back().addConsumer(eval_consumer);
   pipelines.back().setProducer(eval_producer);
   pipelines.back().setNode(eval_node);
-  
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<Consumer> aggregate_consumer = std::make_shared<FilePrintConsumer>(std::string(argv[0]) + "_result.txt");
@@ -95,18 +115,25 @@ int main(int argc, char** argv) {
                                                        true};
   std::vector aggregate_consumers{aggregate_consumer};
   std::shared_ptr<Node> aggregate_node = std::make_shared<EvalNode>(
-      "aggregate_node", std::move(aggregate_consumers), loop,
+      "aggregate_node", std::move(aggregate_consumers),
       std::make_shared<AggregateHandler>(aggregate_columns,
                                          aggregate_options,
                                          "ts")
   );
 
 
-  IPv4Endpoint aggregate_producer_endpoint{"127.0.0.1", 4202};
-  std::shared_ptr<Producer> aggregate_producer = std::make_shared<TCPProducer>(
-      aggregate_node, aggregate_producer_endpoint, loop, false
-      );
-  
+  auto aggregate_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
+  aggregate_subscriber_socket->connect("inproc://eval_node");
+  aggregate_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
+  auto aggregate_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
+  aggregate_subscriber_synchronize_socket->connect("inproc://eval_node_sync");
+  std::shared_ptr<Producer> aggregate_producer = std::make_shared<SubscriberProducer>(
+      aggregate_node, TransportUtils::Subscriber(
+          aggregate_subscriber_socket,
+          aggregate_subscriber_synchronize_socket
+      ), loop
+  );
+
   
   pipelines.emplace_back();
   pipelines.back().addConsumer(aggregate_consumer);

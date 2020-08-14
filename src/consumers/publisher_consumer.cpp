@@ -20,21 +20,15 @@ void PublisherConsumer::consume(const char *data, size_t length) {
 void PublisherConsumer::stop() {
   startSending();
 
-  zmq::message_t message(TransportUtils::END_MESSAGE.size());
-  memcpy(message.data(), TransportUtils::END_MESSAGE.data(), TransportUtils::END_MESSAGE.size());
-  auto send_result = publisher_.publisher_socket()->send(message, zmq::send_flags::none);
-  if (!send_result.has_value()) {
+  if (!TransportUtils::send(*publisher_.publisher_socket(), TransportUtils::END_MESSAGE)) {
     throw std::runtime_error("Error while sending, error code: " + std::to_string(zmq_errno()));
   }
 
+  connect_timer_->close();
   publisher_poller_->close();
-  publisher_.publisher_socket()->close();
   for (size_t i = 0; i < synchronize_pollers_.size(); ++i) {
     synchronize_pollers_[i]->close();
-    publisher_.synchronize_sockets()[i]->close();
   }
-
-  connect_timer_->close();
 }
 
 void PublisherConsumer::configureHandles() {
@@ -57,15 +51,24 @@ void PublisherConsumer::configureHandles() {
         TransportUtils::readMessage(*publisher_.synchronize_sockets()[i]);
         publisher_.addConnection();
         synchronize_pollers_[i]->close();
-        publisher_.synchronize_sockets()[i]->close();
         return;
       }
 
       if (event.flags & uvw::PollHandle::Event::DISCONNECT) {
         synchronize_pollers_[i]->close();
-        publisher_.synchronize_sockets()[i]->close();
       }
     });
+  }
+}
+
+void PublisherConsumer::startSending() {
+  while (publisher_.publisher_socket()->getsockopt<int>(ZMQ_EVENTS) & ZMQ_POLLOUT) {
+    socket_is_writeable_ = true;
+    if (publisher_.isReady() && !data_buffers_.empty()) {
+      flushBuffer();
+    } else {
+      break;
+    }
   }
 }
 
@@ -79,16 +82,5 @@ void PublisherConsumer::flushBuffer() {
     data_buffers_.pop();
   } else {
     throw std::runtime_error("Error while sending, error code: " + std::to_string(zmq_errno()));
-  }
-}
-
-void PublisherConsumer::startSending() {
-  while (publisher_.publisher_socket()->getsockopt<int>(ZMQ_EVENTS) & ZMQ_POLLOUT) {
-    socket_is_writeable_ = true;
-    if (publisher_.isReady() && !data_buffers_.empty()) {
-      flushBuffer();
-    } else {
-      break;
-    }
   }
 }

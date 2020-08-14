@@ -4,16 +4,11 @@
 
 #include "eval_node.h"
 
-const std::chrono::duration<uint64_t> EvalNode::SILENCE_TIMEOUT(10);
-
 void EvalNode::configureNode() {
-  timer_->on<uvw::TimerEvent>([this](const uvw::TimerEvent& event, uvw::TimerHandle& timer) {
-    pass();
-  });
+
 }
 
 void EvalNode::start() {
-  timer_->start(SILENCE_TIMEOUT, SILENCE_TIMEOUT);
   spdlog::get(name_)->info("Node started");
 }
 
@@ -23,13 +18,13 @@ void EvalNode::handleData(const char *data, size_t length) {
   if (!append_status.ok()) {
     spdlog::get(name_)->error(append_status.message());
   }
+
+  pass();
 }
 
 void EvalNode::stop() {
   pass();
   spdlog::get(name_)->info("Stopping node");
-  timer_->stop();
-  timer_->close();
   for (auto& consumer : consumers_) {
     consumer->stop();
   }

@@ -22,6 +22,7 @@ class SubscriberProducer : public Producer {
  private:
   void configurePollers();
 
+  void fetchSocketEvents();
   zmq::message_t readMessage();
 
   void confirmConnection();
