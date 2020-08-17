@@ -139,14 +139,14 @@ arrow::Status AggregateHandler::aggregate(const arrow::RecordBatchVector &groups
   }
 
   std::shared_ptr<arrow::ArrayBuilder> builder;
-  ARROW_RETURN_NOT_OK(makeArrayBuilder(aggregate_column_field->type()->id(), builder, pool));
+  ARROW_RETURN_NOT_OK(ArrowUtils::makeArrayBuilder(aggregate_column_field->type()->id(), builder, pool));
   for (auto& group : groups) {
     std::shared_ptr<arrow::Scalar> aggregated_value;
     ARROW_RETURN_NOT_OK(NAMES_TO_FUNCTIONS.at(aggregate_function)->aggregate(group,
                                                                              aggregate_column_name,
                                                                              &aggregated_value,
                                                                              ts_column_name_));
-    ARROW_RETURN_NOT_OK(appendToBuilder(aggregated_value, builder, aggregate_column_field->type()->id()));
+    ARROW_RETURN_NOT_OK(ArrowUtils::appendToBuilder(aggregated_value, builder, aggregate_column_field->type()->id()));
   }
 
   result_arrays.emplace_back();
@@ -160,7 +160,8 @@ arrow::Status AggregateHandler::aggregateTsColumn(const arrow::RecordBatchVector
                                             arrow::MemoryPool *pool) const {
   auto ts_column_type = groups.front()->GetColumnByName(ts_column_name_)->type();
   if (!ts_column_type->Equals(arrow::timestamp(arrow::TimeUnit::SECOND))) {
-    return arrow::Status::NotImplemented("Aggregation currently supports arrow::timestamp type for timestamp field only"); // TODO: support any numeric type
+    return arrow::Status::NotImplemented("Aggregation currently supports arrow::timestamp(SECOND) type for timestamp "
+                                         "field only"); // TODO: support any numeric type
   }
 
   arrow::NumericBuilder<arrow::TimestampType> ts_builder(ts_column_type, pool);
@@ -219,47 +220,4 @@ arrow::Status AggregateHandler::fillGroupingColumns(const arrow::RecordBatchVect
   }
 
   return arrow::Status();
-}
-
-arrow::Status AggregateHandler::makeArrayBuilder(arrow::Type::type type,
-                                                 std::shared_ptr<arrow::ArrayBuilder> &builder,
-                                                 arrow::MemoryPool *pool) const {
-  switch (type) {
-    case arrow::Type::INT64:
-      builder = std::make_shared<arrow::Int64Builder>(pool);
-      return arrow::Status::OK();
-    case arrow::Type::DOUBLE:
-      builder = std::make_shared<arrow::DoubleBuilder>(pool);
-      return arrow::Status::OK();
-    case arrow::Type::STRING:
-      builder = std::make_shared<arrow::StringBuilder>(pool);
-      return arrow::Status::OK();
-    default:
-      return arrow::Status::NotImplemented("Aggregation currently support one of "
-                                           "{arrow::int64, arrow::float64, arrow::utf8} types fields only"); // TODO: support any type
-  }
-}
-
-arrow::Status AggregateHandler::appendToBuilder(const std::shared_ptr<arrow::Scalar> &value,
-                                                const std::shared_ptr<arrow::ArrayBuilder> & builder,
-                                                arrow::Type::type type) const {
-  switch (type) {
-    case arrow::Type::INT64:
-      ARROW_RETURN_NOT_OK(std::static_pointer_cast<arrow::Int64Builder>(builder)->Append(
-          std::static_pointer_cast<arrow::Int64Scalar>(value)->value
-          ));
-      return arrow::Status::OK();
-    case arrow::Type::DOUBLE:
-      ARROW_RETURN_NOT_OK(std::static_pointer_cast<arrow::DoubleBuilder>(builder)->Append(
-          std::static_pointer_cast<arrow::DoubleScalar>(value)->value
-      ));
-      return arrow::Status::OK();
-    case arrow::Type::STRING:
-      ARROW_RETURN_NOT_OK(std::static_pointer_cast<arrow::StringBuilder>(builder)->Append(
-          std::static_pointer_cast<arrow::StringScalar>(value)->value->ToString()
-      ));
-      return arrow::Status::OK();
-    default:
-      return arrow::Status::NotImplemented("Expected one of {arrow::int64, arrow::float64, arrow::utf8} types"); // TODO: support any type
-  }
 }

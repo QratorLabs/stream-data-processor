@@ -96,7 +96,7 @@ TEST(GraphiteParserTest, MultipleTemplatesTest) {
                                                "measurement", metric_0);
   checkValue<std::string, arrow::StringScalar>("cn.south", record_batch_vector[0],
                                                "region", metric_0);
-  checkIsInvalid(record_batch_vector[0], "host", metric_0);
+  checkIsNull(record_batch_vector[0], "host", metric_0);
   checkValue<int64_t, arrow::Int64Scalar>(50, record_batch_vector[0],
                                           "value", metric_0);
 
@@ -144,13 +144,13 @@ TEST(GraphiteParserTest, FilterTest) {
                                                "measurement", metric_0);
   checkValue<std::string, arrow::StringScalar>("eu-east", record_batch_vector[0],
                                                "region", metric_0);
-  checkIsInvalid(record_batch_vector[0], "host", metric_0);
+  checkIsNull(record_batch_vector[0], "host", metric_0);
   checkValue<int64_t, arrow::Int64Scalar>(100, record_batch_vector[0],
                                           "value", metric_0);
 
   checkValue<std::string, arrow::StringScalar>("mem.cached", record_batch_vector[0],
                                                "measurement", metric_1);
-  checkIsInvalid(record_batch_vector[0], "region", metric_1);
+  checkIsNull(record_batch_vector[0], "region", metric_1);
   checkValue<std::string, arrow::StringScalar>("localhost", record_batch_vector[0],
                                                "host", metric_1);
   checkValue<int64_t, arrow::Int64Scalar>(256, record_batch_vector[0],

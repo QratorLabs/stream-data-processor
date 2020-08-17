@@ -10,19 +10,23 @@
 #include "uvw.hpp"
 
 #include "node.h"
+#include "period_handlers/period_handler.h"
 
-class WindowNode : public Node {
+class PeriodNode : public Node {
  public:
   template <typename U>
-  WindowNode(std::string name,
+  PeriodNode(const std::string& name,
              U&& consumers,
-             uint64_t window_range, uint64_t window_period,
-             std::string ts_column_name)
-      : Node(std::move(name), std::forward<U>(consumers))
-      , window_period_(window_period)
+             uint64_t range, uint64_t period,
+             std::string ts_column_name,
+             std::shared_ptr<PeriodHandler> period_handler)
+      : Node(name, std::forward<U>(consumers))
+      , period_(period)
       , ts_column_name_(std::move(ts_column_name))
+      , period_handler_(std::move(period_handler))
+      /* Not quite fair window range. Actually it considers to be a multiple of window period */
       , separation_idx_(std::vector<size_t>(
-          window_range / window_period + (window_range % window_period > 0 ? 1 : 0) - 1, 0
+          range / period + (range % period > 0 ? 1 : 0) - 1, 0
       )) {
 
   }
@@ -36,13 +40,13 @@ class WindowNode : public Node {
   void pass();
 
   void removeOldBuffers();
-  arrow::Status buildWindow(std::shared_ptr<arrow::Buffer>& window_data);
   arrow::Status tsLowerBound(const std::shared_ptr<arrow::RecordBatch>& record_batch,
                              const std::function<bool (std::time_t)>& pred, size_t &lower_bound);
 
  private:
-  uint64_t window_period_;
+  uint64_t period_;
   std::string ts_column_name_;
+  std::shared_ptr<PeriodHandler> period_handler_;
   std::vector<size_t> separation_idx_;
   std::deque<std::shared_ptr<arrow::Buffer>> data_buffers_;
   std::time_t first_ts_in_current_batch_{0};

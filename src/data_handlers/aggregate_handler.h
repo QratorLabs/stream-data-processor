@@ -36,13 +36,6 @@ class AggregateHandler : public DataHandler {
   arrow::Status aggregateTsColumn(const arrow::RecordBatchVector& groups, const std::string& aggregate_function,
       arrow::ArrayVector &result_arrays, arrow::MemoryPool *pool = arrow::default_memory_pool()) const;
 
-  arrow::Status makeArrayBuilder(arrow::Type::type type,
-                                 std::shared_ptr<arrow::ArrayBuilder> &builder,
-                                 arrow::MemoryPool *pool) const;
-  arrow::Status appendToBuilder(const std::shared_ptr<arrow::Scalar>& value,
-                                const std::shared_ptr<arrow::ArrayBuilder>& builder,
-                                    arrow::Type::type type) const;
-
  private:
   std::vector<std::string> grouping_columns_;
   AggregateOptions options_;

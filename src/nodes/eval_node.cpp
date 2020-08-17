@@ -13,26 +13,10 @@ void EvalNode::start() {
 }
 
 void EvalNode::handleData(const char *data, size_t length) {
-  spdlog::get(name_)->debug("Appending data of size {} to buffer", length);
-  auto append_status = buffer_builder_->Append(data, length);
-  if (!append_status.ok()) {
-    spdlog::get(name_)->error(append_status.message());
-  }
-
-  pass();
-}
-
-void EvalNode::stop() {
-  pass();
-  spdlog::get(name_)->info("Stopping node");
-  for (auto& consumer : consumers_) {
-    consumer->stop();
-  }
-}
-
-void EvalNode::pass() {
+  spdlog::get(name_)->debug("Process data of size {}", length);
+  auto data_buffer = std::make_shared<arrow::Buffer>(reinterpret_cast<const uint8_t*>(data), length);
   std::shared_ptr<arrow::Buffer> processed_data;
-  auto processing_status = processData(processed_data);
+  auto processing_status = processData(data_buffer, processed_data);
   if (!processing_status.ok()) {
     spdlog::get(name_)->error(processing_status.ToString());
     return;
@@ -41,14 +25,15 @@ void EvalNode::pass() {
   passData(processed_data);
 }
 
-arrow::Status EvalNode::processData(std::shared_ptr<arrow::Buffer>& processed_data) {
-  std::shared_ptr<arrow::Buffer> buffer;
-  ARROW_RETURN_NOT_OK(buffer_builder_->Finish(&buffer));
-  if (buffer->size() == 0) {
-    return arrow::Status::CapacityError("No data to handle");
+void EvalNode::stop() {
+  spdlog::get(name_)->info("Stopping node");
+  for (auto& consumer : consumers_) {
+    consumer->stop();
   }
+}
 
-  ARROW_RETURN_NOT_OK(data_handler_->handle(buffer, &processed_data));
-
+arrow::Status EvalNode::processData(const std::shared_ptr<arrow::Buffer> &data_buffer,
+                                    std::shared_ptr<arrow::Buffer> &processed_data) {
+  ARROW_RETURN_NOT_OK(data_handler_->handle(data_buffer, &processed_data));
   return arrow::Status::OK();
 }

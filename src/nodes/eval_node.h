@@ -13,12 +13,11 @@
 class EvalNode : public Node {
  public:
   template <typename U>
-  EvalNode(std::string name,
-           U&& consumer,
+  EvalNode(const std::string& name,
+           U&& consumers,
            std::shared_ptr<DataHandler> data_handler)
-      : Node(std::move(name), std::forward<U>(consumer))
-      , data_handler_(std::move(data_handler))
-      , buffer_builder_(std::make_shared<arrow::BufferBuilder>()) {
+      : Node(name, std::forward<U>(consumers))
+      , data_handler_(std::move(data_handler)) {
     configureNode();
   }
 
@@ -29,12 +28,11 @@ class EvalNode : public Node {
  private:
   void configureNode();
 
-  void pass();
-  arrow::Status processData(std::shared_ptr<arrow::Buffer>& processed_data);
+  arrow::Status processData(const std::shared_ptr<arrow::Buffer> &data_buffer,
+                            std::shared_ptr<arrow::Buffer> &processed_data);
 
  private:
   std::shared_ptr<DataHandler> data_handler_;
-  std::shared_ptr<arrow::BufferBuilder> buffer_builder_;
 };
 
 

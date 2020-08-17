@@ -8,6 +8,7 @@
 
 #include "consumers/consumers.h"
 #include "data_handlers/data_handlers.h"
+#include "period_handlers/period_handlers.h"
 #include "nodes/nodes.h"
 #include "node_pipeline/node_pipeline.h"
 #include "producers/producers.h"
@@ -53,11 +54,12 @@ int main(int argc, char** argv) {
   std::shared_ptr<Consumer> window_consumer = std::make_shared<FilePrintConsumer>(std::string(argv[0]) + "_result.txt");
 
   std::vector window_consumers{window_consumer};
-  std::shared_ptr<Node> window_node = std::make_shared<WindowNode>(
+  std::shared_ptr<Node> window_node = std::make_shared<PeriodNode>(
       "window_node", std::move(window_consumers),
       30,
       10,
-      "ts"
+      "ts",
+      std::make_shared<WindowHandler>()
   );
 
   auto window_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);

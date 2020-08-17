@@ -14,6 +14,7 @@
 
 #include "consumers/consumers.h"
 #include "data_handlers/data_handlers.h"
+#include "period_handlers/period_handlers.h"
 #include "nodes/nodes.h"
 #include "node_pipeline/node_pipeline.h"
 #include "producers/producers.h"
@@ -328,11 +329,12 @@ int main(int argc, char** argv) {
 
 
   std::vector cputime_all_win_window_consumers{cputime_all_win_window_consumer};
-  std::shared_ptr<Node> cputime_all_win_window_node = std::make_shared<WindowNode>(
+  std::shared_ptr<Node> cputime_all_win_window_node = std::make_shared<PeriodNode>(
       "cputime_all_win_window_node", std::move(cputime_all_win_window_consumers),
       std::chrono::duration_cast<std::chrono::seconds>(win_period).count(),
       std::chrono::duration_cast<std::chrono::seconds>(win_every).count(),
-      "time"
+      "time",
+      std::make_shared<WindowHandler>()
   );
 
 

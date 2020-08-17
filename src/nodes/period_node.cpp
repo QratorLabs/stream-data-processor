@@ -2,17 +2,17 @@
 
 #include <spdlog/spdlog.h>
 
-#include "window_node.h"
+#include "period_node.h"
 #include "utils/utils.h"
 
-void WindowNode::handleData(const char *data, size_t length) {
+void PeriodNode::handleData(const char *data, size_t length) {
   auto append_result = appendData(data, length);
   if (!append_result.ok()) {
     spdlog::get(name_)->error(append_result.message());
   }
 }
 
-arrow::Status WindowNode::appendData(const char *data, size_t length) {
+arrow::Status PeriodNode::appendData(const char *data, size_t length) {
   auto data_buffer = std::make_shared<arrow::Buffer>(reinterpret_cast<const uint8_t *>(data), length);
   arrow::RecordBatchVector record_batches;
   ARROW_RETURN_NOT_OK(Serializer::deserializeRecordBatches(data_buffer, &record_batches));
@@ -36,10 +36,10 @@ arrow::Status WindowNode::appendData(const char *data, size_t length) {
   }
 
   std::time_t max_ts(std::static_pointer_cast<arrow::Int64Scalar>(max_ts_result.ValueOrDie())->value);
-  while (max_ts - first_ts_in_current_batch_ >= window_period_) {
+  while (max_ts - first_ts_in_current_batch_ >= period_) {
     size_t divide_index;
     ARROW_RETURN_NOT_OK(tsLowerBound(record_batch, [this](std::time_t ts) {
-      return ts - first_ts_in_current_batch_ >= window_period_;
+      return ts - first_ts_in_current_batch_ >= period_;
     }, divide_index));
 
     if (divide_index > 0) {
@@ -68,7 +68,7 @@ arrow::Status WindowNode::appendData(const char *data, size_t length) {
   return arrow::Status::OK();
 }
 
-arrow::Status WindowNode::tsLowerBound(const std::shared_ptr<arrow::RecordBatch> &record_batch,
+arrow::Status PeriodNode::tsLowerBound(const std::shared_ptr<arrow::RecordBatch> &record_batch,
                                        const std::function<bool(std::time_t)>& pred,
                                        size_t &lower_bound) {
   size_t left_bound = 0;
@@ -103,23 +103,23 @@ arrow::Status WindowNode::tsLowerBound(const std::shared_ptr<arrow::RecordBatch>
   return arrow::Status::OK();
 }
 
-void WindowNode::pass() {
-  std::shared_ptr<arrow::Buffer> window_data;
-  auto window_status = buildWindow(window_data);
-  if (!window_status.ok()) {
-    spdlog::get(name_)->debug(window_status.ToString());
+void PeriodNode::pass() {
+  std::shared_ptr<arrow::Buffer> period_data;
+  auto handle_status = period_handler_->handle(data_buffers_, period_data);
+  if (!handle_status.ok()) {
+    spdlog::get(name_)->debug(handle_status.ToString());
     return;
   }
 
-  passData(window_data);
+  passData(period_data);
   removeOldBuffers();
 }
 
-void WindowNode::start() {
+void PeriodNode::start() {
   spdlog::get(name_)->info("Node started");
 }
 
-void WindowNode::stop() {
+void PeriodNode::stop() {
   pass();
   spdlog::get(name_)->info("Stopping node");
   for (auto& consumer : consumers_) {
@@ -127,23 +127,7 @@ void WindowNode::stop() {
   }
 }
 
-arrow::Status WindowNode::buildWindow(std::shared_ptr<arrow::Buffer> &window_data) {
-  arrow::RecordBatchVector window_vector;
-  for (auto& buffer : data_buffers_) {
-    arrow::RecordBatchVector record_batch_vector;
-    ARROW_RETURN_NOT_OK(Serializer::deserializeRecordBatches(buffer, &record_batch_vector));
-    for (auto& record_batch : record_batch_vector) {
-      window_vector.push_back(record_batch);
-    }
-  }
-
-  std::shared_ptr<arrow::RecordBatch> record_batch;
-  ARROW_RETURN_NOT_OK(DataConverter::concatenateRecordBatches(window_vector, &record_batch));
-  ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(record_batch->schema(), {record_batch}, &window_data));
-  return arrow::Status::OK();
-}
-
-void WindowNode::removeOldBuffers() {
+void PeriodNode::removeOldBuffers() {
   size_t shift = separation_idx_.front();
   data_buffers_.erase(data_buffers_.begin(), data_buffers_.begin() + shift);
 

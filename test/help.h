@@ -69,8 +69,8 @@ bool equals<std::string, arrow::StringScalar> (const std::string& expected_value
   return expected_value == std::static_pointer_cast<arrow::StringScalar>(field_result.ValueOrDie())->value->ToString();
 }
 
-void checkIsInvalid(const std::shared_ptr<arrow::RecordBatch>& record_batch,
-                    const std::string& column_name, size_t i) {
+void checkIsNull(const std::shared_ptr<arrow::RecordBatch>& record_batch,
+                 const std::string& column_name, size_t i) {
   auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
   ASSERT_TRUE(arrowAssertNotOk(field_result.status()));
   ASSERT_TRUE(!field_result.ValueOrDie()->is_valid);

@@ -37,7 +37,7 @@ set(STREAM_DATA_PROCESSOR_SOURCES
   src/consumers/tcp_consumer.cpp
   src/nodes/node.cpp
   src/nodes/eval_node.cpp
-  src/nodes/window_node.cpp
+  src/nodes/period_node.cpp
   src/data_handlers/aggregate_handler.cpp
   src/data_handlers/data_parser.cpp
   src/data_handlers/default_handler.cpp
@@ -50,9 +50,12 @@ set(STREAM_DATA_PROCESSOR_SOURCES
   src/data_handlers/aggregate_functions/first_aggregate_function.cpp
   src/data_handlers/aggregate_functions/last_aggregate_function.cpp
   src/data_handlers/aggregate_functions/mean_aggregate_function.cpp
+  src/period_handlers/window_handler.cpp
+  src/period_handlers/join_handler.cpp
   src/producers/producer.cpp
   src/producers/tcp_producer.cpp
   src/producers/subscriber_producer.cpp
+  src/utils/arrow_utils.cpp
   src/utils/parsers/csv_parser.cpp
   src/utils/parsers/graphite_parser.cpp
   src/utils/compute_utils.cpp
