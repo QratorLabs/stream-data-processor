@@ -1,0 +1,35 @@
+image: gcc
+
+stages:
+  - configure
+  - build
+  - test
+
+stream_data_processor_configure:
+  stage: configure
+  script:
+    - mkdir build
+    - cd build
+    - cmake ..
+  artifacts:
+    paths:
+      - build
+
+stream_data_processor_build:
+  stage: build
+  script:
+    - cd build
+    - make test_main
+  artifacts:
+    paths:
+      - build
+  dependencies:
+    - stream_data_processor_configure
+
+stream_data_processor_test:
+  stage: test
+  script:
+    - cd build/test
+    - ctest . -C Debug
+  dependencies:
+    - stream_data_processor_build
