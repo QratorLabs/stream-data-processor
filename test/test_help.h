@@ -4,25 +4,26 @@
 
 #include <arrow/api.h>
 
-#include <gtest/gtest.h>
+#include <catch2/catch.hpp>
 
-inline ::testing::AssertionResult arrowAssertNotOk(const arrow::Status& status) {
+inline void arrowAssertNotOk(const arrow::Status& status) {
   if (!status.ok()) {
-    return ::testing::AssertionFailure() << status.ToString();
+    INFO(status.ToString());
+    FAIL();
   }
 
-  return ::testing::AssertionSuccess();
+  SUCCEED();
 }
 
 inline void checkSize(const std::shared_ptr<arrow::RecordBatch>& record_batch, size_t num_rows, size_t num_columns) {
-  ASSERT_EQ(num_rows, record_batch->num_rows());
-  ASSERT_EQ(num_columns, record_batch->columns().size());
+  REQUIRE( record_batch->num_rows() == num_rows );
+  REQUIRE( record_batch->columns().size() == num_columns );
 }
 
 inline void checkColumnsArePresent(const std::shared_ptr<arrow::RecordBatch>& record_batch,
                             const std::vector<std::string>& column_names) {
   for (auto& column_name : column_names) {
-    ASSERT_NE(nullptr, record_batch->GetColumnByName(column_name));
+    REQUIRE( record_batch->GetColumnByName(column_name) != nullptr );
   }
 }
 
@@ -30,8 +31,8 @@ template<typename T, typename ArrowType>
 inline void checkValue(const T& expected_value, const std::shared_ptr<arrow::RecordBatch>& record_batch,
                 const std::string& column_name, size_t i) {
   auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
-  ASSERT_TRUE(arrowAssertNotOk(field_result.status()));
-  ASSERT_EQ(expected_value, std::static_pointer_cast<ArrowType>(field_result.ValueOrDie())->value);
+  arrowAssertNotOk(field_result.status());
+  REQUIRE( std::static_pointer_cast<ArrowType>(field_result.ValueOrDie())->value == expected_value );
 }
 
 template<>
@@ -39,8 +40,8 @@ inline void checkValue<std::string, arrow::StringScalar> (const std::string& exp
                                                    const std::shared_ptr<arrow::RecordBatch>& record_batch,
                                                    const std::string& column_name, size_t i) {
   auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
-  ASSERT_TRUE(arrowAssertNotOk(field_result.status()));
-  ASSERT_EQ(expected_value, std::static_pointer_cast<arrow::StringScalar>(field_result.ValueOrDie())->value->ToString());
+  arrowAssertNotOk(field_result.status());
+  REQUIRE( std::static_pointer_cast<arrow::StringScalar>(field_result.ValueOrDie())->value->ToString() == expected_value );
 }
 
 
@@ -72,13 +73,13 @@ inline bool equals<std::string, arrow::StringScalar> (const std::string& expecte
 inline void checkIsNull(const std::shared_ptr<arrow::RecordBatch>& record_batch,
                  const std::string& column_name, size_t i) {
   auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
-  ASSERT_TRUE(arrowAssertNotOk(field_result.status()));
-  ASSERT_TRUE(!field_result.ValueOrDie()->is_valid);
+  arrowAssertNotOk(field_result.status());
+  REQUIRE( !field_result.ValueOrDie()->is_valid );
 }
 
 inline void checkIsValid(const std::shared_ptr<arrow::RecordBatch>& record_batch,
                   const std::string& column_name, size_t i) {
   auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
-  ASSERT_TRUE(arrowAssertNotOk(field_result.status()));
-  ASSERT_TRUE(field_result.ValueOrDie()->is_valid);
+  arrowAssertNotOk(field_result.status());
+  REQUIRE( field_result.ValueOrDie()->is_valid );
 }

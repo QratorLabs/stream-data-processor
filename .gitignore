@@ -51,3 +51,4 @@ _deps
 /executables/experiments.cpp
 *.DS_Store
 *.pytest_cache
+/build/

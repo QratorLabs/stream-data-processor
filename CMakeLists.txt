@@ -28,7 +28,7 @@ message(STATUS "Gandiva lib dir: ${Gandiva_DIR}")
 
 find_package(spdlog REQUIRED)
 
-set(USE_BOOST_KARMA OFF)
+set(USE_BOOST_KARMA OFF CACHE BOOL "" FORCE)
 add_subdirectory(third_party/bprinter)
 
 set(STREAM_DATA_PROCESSOR_SOURCES
@@ -89,6 +89,7 @@ target_include_directories(${LIBRARY_NAME} PUBLIC "${PROJECT_INCLUDE_DIRS}")
 target_link_libraries(${LIBRARY_NAME} "${PROJECT_DEPENDENCIES}")
 
 function(add_exec_target file_path)
+  message(STATUS "Adding target for source file: ${file_path}")
   get_filename_component(file_name "${file_path}" NAME_WE)
   add_executable("${file_name}" "${file_path}")
   target_link_libraries("${file_name}" ${LIBRARY_NAME})
@@ -99,4 +100,5 @@ foreach(file ${exec_files})
   add_exec_target(${file})
 endforeach()
 
+enable_testing()
 add_subdirectory(test)

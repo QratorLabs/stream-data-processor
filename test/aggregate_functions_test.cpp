@@ -2,43 +2,43 @@
 
 #include <arrow/api.h>
 
-#include <gtest/gtest.h>
+#include <catch2/catch.hpp>
 
 #include "data_handlers/aggregate_functions/aggregate_functions.h"
 #include "test_help.h"
 
-TEST(MeanAggregateFunctionTest, SimpleTest) {
+TEST_CASE( "mean of two even integers is integer", "[MeanAggregateFunction]" ) {
   std::shared_ptr<AggregateFunction> mean_function = std::make_shared<MeanAggregateFunction>();
 
   auto field = arrow::field("field_name", arrow::int64());
   auto schema = arrow::schema({field});
 
   arrow::Int64Builder array_builder;
-  ASSERT_TRUE(arrowAssertNotOk(array_builder.Append(0)));
-  ASSERT_TRUE(arrowAssertNotOk(array_builder.Append(2)));
+  arrowAssertNotOk(array_builder.Append(0));
+  arrowAssertNotOk(array_builder.Append(2));
   std::shared_ptr<arrow::Array> array;
-  ASSERT_TRUE(arrowAssertNotOk(array_builder.Finish(&array)));
+  arrowAssertNotOk(array_builder.Finish(&array));
   auto record_batch = arrow::RecordBatch::Make(schema, 2, {array});
 
   std::shared_ptr<arrow::Scalar> result;
-  ASSERT_TRUE(arrowAssertNotOk(mean_function->aggregate(record_batch, "field_name", &result)));
-  ASSERT_EQ(1, std::static_pointer_cast<arrow::DoubleScalar>(result)->value);
+  arrowAssertNotOk(mean_function->aggregate(record_batch, "field_name", &result));
+  REQUIRE( std::static_pointer_cast<arrow::DoubleScalar>(result)->value == 1 );
 }
 
-TEST(MeanAggregateFunctionTest, NonIntegerResultTest) {
+TEST_CASE( "mean of even and odd integers is non integer", "[MeanAggregateFunction]" ) {
   std::shared_ptr<AggregateFunction> mean_function = std::make_shared<MeanAggregateFunction>();
 
   auto field = arrow::field("field_name", arrow::int64());
   auto schema = arrow::schema({field});
 
   arrow::Int64Builder array_builder;
-  ASSERT_TRUE(arrowAssertNotOk(array_builder.Append(0)));
-  ASSERT_TRUE(arrowAssertNotOk(array_builder.Append(1)));
+  arrowAssertNotOk(array_builder.Append(0));
+  arrowAssertNotOk(array_builder.Append(1));
   std::shared_ptr<arrow::Array> array;
-  ASSERT_TRUE(arrowAssertNotOk(array_builder.Finish(&array)));
+  arrowAssertNotOk(array_builder.Finish(&array));
   auto record_batch = arrow::RecordBatch::Make(schema, 2, {array});
 
   std::shared_ptr<arrow::Scalar> result;
-  ASSERT_TRUE(arrowAssertNotOk(mean_function->aggregate(record_batch, "field_name", &result)));
-  ASSERT_EQ(0.5, std::static_pointer_cast<arrow::DoubleScalar>(result)->value);
+  arrowAssertNotOk(mean_function->aggregate(record_batch, "field_name", &result));
+  REQUIRE( std::static_pointer_cast<arrow::DoubleScalar>(result)->value == 0.5 );
 }

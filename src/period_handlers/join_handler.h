@@ -34,7 +34,7 @@ class JoinHandler : public PeriodHandler {
 
   class JoinValueCompare {
    public:
-    bool operator()(const JoinValue& v1, const JoinValue& v2) {
+    bool operator()(const JoinValue& v1, const JoinValue& v2) const {
       if (v1.time == v2.time) {
         if (v1.record_batch_idx == v2.record_batch_idx) {
           return v1.row_idx < v2.row_idx;

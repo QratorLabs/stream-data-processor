@@ -1,5 +1,6 @@
-enable_testing()
-find_package(GTest REQUIRED)
+find_package(Catch2 REQUIRED)
+include(CTest)
+include(ParseAndAddCatchTests)
 
 function(add_test_target file_path)
   add_exec_target(${file_path})
@@ -7,11 +8,8 @@ function(add_test_target file_path)
   file(GLOB test_files "./*_test.cpp")
   target_sources(${file_name} PRIVATE "${test_files}")
   message(STATUS "Adding test: ${file_name}")
-  target_link_libraries(${file_name} GTest::GTest GTest::Main)
-  add_test(
-    NAME ${file_name}
-    COMMAND ${file_name}
-  )
+  target_link_libraries(${file_name} Catch2::Catch2)
+  ParseAndAddCatchTests(${file_name})
 endfunction()
 
 add_test_target(test_main.cpp)
