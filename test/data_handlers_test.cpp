@@ -7,7 +7,7 @@
 #include <gtest/gtest.h>
 
 #include "data_handlers/data_handlers.h"
-#include "help.h"
+#include "test_help.h"
 #include "utils/serializer.h"
 
 TEST(FilterHandlerTest, SimpleTest) {
@@ -185,9 +185,4 @@ TEST(DefaultHandlerTest, SimpleTest) {
                                           "double_field", 0);
   checkValue<std::string, arrow::StringScalar>("Hello, world!", record_batch_vector[0],
                                           "string_field", 0);
-}
-
-int main(int argc, char *argv[]) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

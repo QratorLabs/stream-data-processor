@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-::testing::AssertionResult arrowAssertNotOk(const arrow::Status& status) {
+inline ::testing::AssertionResult arrowAssertNotOk(const arrow::Status& status) {
   if (!status.ok()) {
     return ::testing::AssertionFailure() << status.ToString();
   }
@@ -14,12 +14,12 @@
   return ::testing::AssertionSuccess();
 }
 
-void checkSize(const std::shared_ptr<arrow::RecordBatch>& record_batch, size_t num_rows, size_t num_columns) {
+inline void checkSize(const std::shared_ptr<arrow::RecordBatch>& record_batch, size_t num_rows, size_t num_columns) {
   ASSERT_EQ(num_rows, record_batch->num_rows());
   ASSERT_EQ(num_columns, record_batch->columns().size());
 }
 
-void checkColumnsArePresent(const std::shared_ptr<arrow::RecordBatch>& record_batch,
+inline void checkColumnsArePresent(const std::shared_ptr<arrow::RecordBatch>& record_batch,
                             const std::vector<std::string>& column_names) {
   for (auto& column_name : column_names) {
     ASSERT_NE(nullptr, record_batch->GetColumnByName(column_name));
@@ -27,7 +27,7 @@ void checkColumnsArePresent(const std::shared_ptr<arrow::RecordBatch>& record_ba
 }
 
 template<typename T, typename ArrowType>
-void checkValue(const T& expected_value, const std::shared_ptr<arrow::RecordBatch>& record_batch,
+inline void checkValue(const T& expected_value, const std::shared_ptr<arrow::RecordBatch>& record_batch,
                 const std::string& column_name, size_t i) {
   auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
   ASSERT_TRUE(arrowAssertNotOk(field_result.status()));
@@ -35,7 +35,7 @@ void checkValue(const T& expected_value, const std::shared_ptr<arrow::RecordBatc
 }
 
 template<>
-void checkValue<std::string, arrow::StringScalar> (const std::string& expected_value,
+inline void checkValue<std::string, arrow::StringScalar> (const std::string& expected_value,
                                                    const std::shared_ptr<arrow::RecordBatch>& record_batch,
                                                    const std::string& column_name, size_t i) {
   auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
@@ -45,7 +45,7 @@ void checkValue<std::string, arrow::StringScalar> (const std::string& expected_v
 
 
 template<typename T, typename ArrowType>
-bool equals(const T& expected_value, const std::shared_ptr<arrow::RecordBatch>& record_batch,
+inline bool equals(const T& expected_value, const std::shared_ptr<arrow::RecordBatch>& record_batch,
             const std::string& column_name, size_t i) {
   auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
   if (!field_result.ok()) {
@@ -57,7 +57,7 @@ bool equals(const T& expected_value, const std::shared_ptr<arrow::RecordBatch>& 
 }
 
 template<>
-bool equals<std::string, arrow::StringScalar> (const std::string& expected_value,
+inline bool equals<std::string, arrow::StringScalar> (const std::string& expected_value,
                                                const std::shared_ptr<arrow::RecordBatch>& record_batch,
                                                const std::string& column_name, size_t i) {
   auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
@@ -69,14 +69,14 @@ bool equals<std::string, arrow::StringScalar> (const std::string& expected_value
   return expected_value == std::static_pointer_cast<arrow::StringScalar>(field_result.ValueOrDie())->value->ToString();
 }
 
-void checkIsNull(const std::shared_ptr<arrow::RecordBatch>& record_batch,
+inline void checkIsNull(const std::shared_ptr<arrow::RecordBatch>& record_batch,
                  const std::string& column_name, size_t i) {
   auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
   ASSERT_TRUE(arrowAssertNotOk(field_result.status()));
   ASSERT_TRUE(!field_result.ValueOrDie()->is_valid);
 }
 
-void checkIsValid(const std::shared_ptr<arrow::RecordBatch>& record_batch,
+inline void checkIsValid(const std::shared_ptr<arrow::RecordBatch>& record_batch,
                   const std::string& column_name, size_t i) {
   auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
   ASSERT_TRUE(arrowAssertNotOk(field_result.status()));

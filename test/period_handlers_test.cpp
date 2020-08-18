@@ -7,7 +7,7 @@
 #include <gtest/gtest.h>
 
 #include "period_handlers/period_handlers.h"
-#include "help.h"
+#include "test_help.h"
 #include "utils/serializer.h"
 
 TEST(JoinHandlerTest, SimpleTest) {
@@ -224,9 +224,4 @@ TEST(JoinHandlerTest, ToleranceTest) {
                                           "field_1", 0);
   checkValue<double, arrow::DoubleScalar>(3.14, record_batch_vector[0],
                                           "field_2", 0);
-}
-
-int main(int argc, char *argv[]) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

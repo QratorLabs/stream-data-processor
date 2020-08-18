@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "data_handlers/aggregate_functions/aggregate_functions.h"
-#include "help.h"
+#include "test_help.h"
 
 TEST(MeanAggregateFunctionTest, SimpleTest) {
   std::shared_ptr<AggregateFunction> mean_function = std::make_shared<MeanAggregateFunction>();
@@ -41,9 +41,4 @@ TEST(MeanAggregateFunctionTest, NonIntegerResultTest) {
   std::shared_ptr<arrow::Scalar> result;
   ASSERT_TRUE(arrowAssertNotOk(mean_function->aggregate(record_batch, "field_name", &result)));
   ASSERT_EQ(0.5, std::static_pointer_cast<arrow::DoubleScalar>(result)->value);
-}
-
-int main(int argc, char *argv[]) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

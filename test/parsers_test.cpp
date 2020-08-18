@@ -9,7 +9,7 @@
 
 #include <gtest/gtest.h>
 
-#include "help.h"
+#include "test_help.h"
 #include "utils/parsers/graphite_parser.h"
 
 TEST(GraphiteParserTest, SimpleTest) {
@@ -247,9 +247,4 @@ TEST(GraphiteParserTest, MetricMergingTest) {
                                           "idle.percent", 0);
   checkValue<int64_t, arrow::Int64Scalar>(50, record_batch_vector[0],
                                           "cpu.value", 0);
-}
-
-int main(int argc, char *argv[]) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }
