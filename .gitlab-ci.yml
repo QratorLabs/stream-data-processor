@@ -36,5 +36,4 @@ stream_data_processor:
     - cd build
     - cmake ..
     - make test_main
-    - cd test
-    - ctest .
+    - ./test/test_main
