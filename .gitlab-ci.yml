@@ -1,25 +1,30 @@
-image: gcc
+image: gcc:10.2.0
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
+  LIBZMQ_VERSION: 4.3.2
+  CPPZMQ_VERSION: 4.6.0
 
 before_script:
-  - apt update
-  - apt install -y -V cmake make wget tar pkg-config ca-certificates lsb-release git
-  - if [ $(lsb_release --codename --short) = "stretch" ]; then tee /etc/apt/sources.list.d/backports.list <<APT_LINE; deb http://deb.debian.org/debian $(lsb_release --codename --short)-backports main; APT_LINE; fi
-  - wget https://apache.bintray.com/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-archive-keyring-latest-$(lsb_release --codename --short).deb
-  - apt install -y -V ./apache-arrow-archive-keyring-latest-$(lsb_release --codename --short).deb
-  - apt update
-  - apt install -y -V libarrow-dev libgandiva-dev
+  - apt-get update
+  - apt-get install -y -V cmake make wget tar pkg-config ca-certificates lsb-release git
+  - if [ "${ARROW_DEB_PCKG_SHA256}" = "" ]; then echo "arrow deb package sha256 hash sum environment variable is empty. Exiting..." ; exit 1 ; fi
+  - wget https://apache.bintray.com/arrow/debian/apache-arrow-archive-keyring-latest-buster.deb
+  - if [ "$(sha256sum apache-arrow-archive-keyring-latest-buster.deb)" != "${ARROW_DEB_PCKG_SHA256}" ]; then echo "Bad SHA256 hash sum of apache-arrow-archive-keyring-latest-buster.deb" ; exit 1 ; fi
+  - apt-get install -y -V ./apache-arrow-archive-keyring-latest-$(lsb_release --codename --short).deb
+  - apt-get update
+  - apt-get install -y -V libarrow-dev libgandiva-dev
   - git clone https://github.com/gabime/spdlog.git
   - cd spdlog && mkdir build && cd build
   - cmake .. && make -j install && cd ../..
-  - wget https://github.com/zeromq/libzmq/archive/v4.3.2.tar.gz
-  - if [ $(sha256sum v4.3.2.tar.gz) != $LIBZMQ_SHA256 ]; then exit 1; fi
-  - tar -xvzf v4.3.2.tar.gz && cd libzmq-4.3.2 && mkdir build && cd build && cmake .. && make -j4 install && cd ../..
-  - wget https://github.com/zeromq/cppzmq/archive/v4.6.0.tar.gz
-  - if [ $(sha256sum v4.6.0.tar.gz) != $CPPZMQ_SHA256 ]; then exit 1; fi
-  - tar -xvzf v4.6.0.tar.gz && cd cppzmq-4.6.0 && mkdir build && cd build && cmake .. && make -j4 install && cd ../..
+  - if [ "${LIBZMQ_SHA256}" = "" ]; then echo "libzmq sha256 hash sum environment variable is empty. Exiting..." ; exit 1 ; fi
+  - wget https://github.com/zeromq/libzmq/archive/v${LIBZMQ_VERSION}.tar.gz
+  - if [ "$(sha256sum v${LIBZMQ_VERSION}.tar.gz)" != "${LIBZMQ_SHA256}" ]; then echo "Bad SHA256 hash sum of v${LIBZMQ_VERSION}.tar.gz" ; exit 1 ; fi
+  - tar -xvzf v${LIBZMQ_VERSION}.tar.gz && cd libzmq-${LIBZMQ_VERSION} && mkdir build && cd build && cmake .. && make -j4 install && cd ../..
+  - if [ "${CPPZMQ_VERSION}" = "" ]; then echo "cppzmq sha256 hash sum environment variable is empty. Exiting..." ; exit 1 ; fi
+  - wget https://github.com/zeromq/cppzmq/archive/v${CPPZMQ_VERSION}.tar.gz
+  - if [ "$(sha256sum v${CPPZMQ_VERSION}.tar.gz)" != "${CPPZMQ_SHA256}" ]; then echo "Bad SHA256 hash sum of v${CPPZMQ_VERSION}.tar.gz" ; exit 1 ; fi
+  - tar -xvzf v${CPPZMQ_VERSION}.tar.gz && cd cppzmq-${CPPZMQ_VERSION} && mkdir build && cd build && cmake .. && make -j4 install && cd ../..
   - git clone https://github.com/catchorg/Catch2.git
   - cd Catch2
   - cmake -Bbuild -H. -DBUILD_TESTING=OFF
