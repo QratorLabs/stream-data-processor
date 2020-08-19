@@ -3,6 +3,28 @@ image: gcc
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
+before_script:
+  - apt update
+  - apt install -y -V cmake make wget tar pkg-config ca-certificates lsb-release git
+  - if [ $(lsb_release --codename --short) = "stretch" ]; then tee /etc/apt/sources.list.d/backports.list <<APT_LINE; deb http://deb.debian.org/debian $(lsb_release --codename --short)-backports main; APT_LINE; fi
+  - wget https://apache.bintray.com/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-archive-keyring-latest-$(lsb_release --codename --short).deb
+  - apt install -y -V ./apache-arrow-archive-keyring-latest-$(lsb_release --codename --short).deb
+  - apt update
+  - apt install -y -V libarrow-dev libgandiva-dev
+  - git clone https://github.com/gabime/spdlog.git
+  - cd spdlog && mkdir build && cd build
+  - cmake .. && make -j install && cd ../..
+  - wget https://github.com/zeromq/libzmq/archive/v4.3.2.tar.gz
+  - if [ $(sha256sum v4.3.2.tar.gz) != $LIBZMQ_SHA256 ]; then exit 1; fi
+  - tar -xvzf v4.3.2.tar.gz && cd libzmq-4.3.2 && mkdir build && cd build && cmake .. && make -j4 install && cd ../..
+  - wget https://github.com/zeromq/cppzmq/archive/v4.6.0.tar.gz
+  - if [ $(sha256sum v4.6.0.tar.gz) != $CPPZMQ_SHA256 ]; then exit 1; fi
+  - tar -xvzf v4.6.0.tar.gz && cd cppzmq-4.6.0 && mkdir build && cd build && cmake .. && make -j4 install && cd ../..
+  - git clone https://github.com/catchorg/Catch2.git
+  - cd Catch2
+  - cmake -Bbuild -H. -DBUILD_TESTING=OFF
+  - cmake --build build/ --target install
+
 stages:
   - configure
   - build
