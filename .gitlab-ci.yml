@@ -30,36 +30,11 @@ before_script:
   - cmake -Bbuild -H. -DBUILD_TESTING=OFF
   - cmake --build build/ --target install && cd ..
 
-stages:
-  - configure
-  - build
-  - test
-
-stream_data_processor_configure:
-  stage: configure
+stream_data_processor:
   script:
     - mkdir build
     - cd build
     - cmake ..
-  artifacts:
-    paths:
-      - build
-
-stream_data_processor_build:
-  stage: build
-  script:
-    - cd build
     - make test_main
-  artifacts:
-    paths:
-      - build
-  dependencies:
-    - stream_data_processor_configure
-
-stream_data_processor_test:
-  stage: test
-  script:
-    - cd build/test
-    - ctest . -C Debug
-  dependencies:
-    - stream_data_processor_build
+    - cd test
+    - ctest .
