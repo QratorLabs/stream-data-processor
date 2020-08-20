@@ -108,11 +108,7 @@ arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Bu
   // Creating schema and finishing builders
   column_arrays.emplace_back();
   ARROW_RETURN_NOT_OK(timestamp_builder.Finish(&column_arrays.back()));
-  if (column_arrays.back()->null_count() != column_arrays.back()->length()) {
-    fields.push_back(arrow::field("time", arrow::timestamp(arrow::TimeUnit::SECOND)));
-  } else {
-    column_arrays.pop_back();
-  }
+  fields.push_back(arrow::field("time", arrow::timestamp(arrow::TimeUnit::SECOND)));
 
   fields.push_back(arrow::field("measurement", arrow::utf8()));
   column_arrays.emplace_back();
