@@ -8,6 +8,7 @@ ENV ENV_ARROW_DEB_PCKG_SHA256=$ARROW_DEB_PCKG_SHA256
 ARG CPPZMQ_SHA256
 ENV ENV_CPPZMQ_SHA256=$CPPZMQ_SHA256
 
+# Configure system for further build and run
 RUN apt-get update \
     && apt-get install -y -V cmake make wget tar pkg-config ca-certificates lsb-release git libzmq3-dev \
     && if [ "${ENV_ARROW_DEB_PCKG_SHA256}" = "" ]; then echo "arrow deb package sha256 hash sum environment variable is empty. Exiting..." ; exit 1 ; fi \
