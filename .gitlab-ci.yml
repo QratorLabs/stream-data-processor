@@ -19,7 +19,8 @@ build_docker_image:
     - docker:dind
   script:
     - docker info
-    - docker -D build -t $DOCKER_IMAGE_NAME .
+    - docker login -u regulyar174 -p L4MebxfwqyGUsv7nxgG6 $CI_REGISTRY
+    - docker -D build -t $DOCKER_IMAGE_NAME . -e ARROW_DEB_PCKG_SHA256=${ARROW_DEB_PCKG_SHA256} -e CPPZMQ_SHA256=${CPPZMQ_SHA256}
 
 stream_data_processor_build:
   stage: build
