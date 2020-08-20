@@ -6,7 +6,7 @@ stages:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   DOCKER_DRIVER: overlay2
-  DOCKER_IMAGE_NAME: qevent_intership/stream_data_processor/image
+  DOCKER_IMAGE_NAME: qevent_intership_stream_data_processor_image
 
 build_docker_image:
   stage: build_image
@@ -14,13 +14,14 @@ build_docker_image:
     changes:
       - Dockerfile
       - .gitlab-ci.yml
+  image: docker:stable
   script:
     - docker info
     - docker build --build-arg ARROW_DEB_PCKG_SHA256 --build-arg CPPZMQ_SHA256 -t $DOCKER_IMAGE_NAME .
 
 stream_data_processor_build:
   stage: build
-  image: $DOCKER_IMAGE_NAME:latest
+  image: $DOCKER_IMAGE_NAME
   script:
     - mkdir build
     - cd build
