@@ -14,7 +14,6 @@ build_docker_image:
     changes:
       - Dockerfile
       - .gitlab-ci.yml
-  image: docker:stable
   services:
     - docker:dind
   script:
