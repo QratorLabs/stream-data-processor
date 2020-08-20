@@ -7,6 +7,10 @@
 #include <arrow/api.h>
 
 #include <zmq.hpp>
+#include "uvw.hpp"
+#include "consumers/consumer.h"
+#include "nodes/node.h"
+#include "producers/producer.h"
 
 struct IPv4Endpoint {
   std::string host;
@@ -18,6 +22,13 @@ class TransportUtils {
   static const size_t MESSAGE_SIZE_STRING_LENGTH;
   static const std::string CONNECT_MESSAGE;
   static const std::string END_MESSAGE;
+
+ public:
+  enum ZMQTransportType {
+    INPROC,
+    IPC,
+    TCP
+  };
 
   class Publisher {
    public:

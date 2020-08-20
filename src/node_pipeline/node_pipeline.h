@@ -3,11 +3,15 @@
 #include <memory>
 #include <vector>
 
+#include "uvw.hpp"
+
 #include "consumers/consumer.h"
 #include "nodes/node.h"
 #include "producers/producer.h"
+#include "utils/transport_utils.h"
 
 class NodePipeline {
+
  public:
   NodePipeline() = default;
 
@@ -25,10 +29,17 @@ class NodePipeline {
 
   void start();
 
+  void subscribeTo(NodePipeline &other_pipeline,
+                   const std::shared_ptr<uvw::Loop> &loop,
+                   const std::shared_ptr<zmq::context_t>& zmq_context,
+                   TransportUtils::ZMQTransportType transport_type = TransportUtils::ZMQTransportType::INPROC);
+
  private:
+  static const std::string SYNC_SUFFIX;
+
   std::vector<std::shared_ptr<Consumer>> consumers_;
-  std::shared_ptr<Node> node_;
-  std::shared_ptr<Producer> producer_;
+  std::shared_ptr<Node> node_{nullptr};
+  std::shared_ptr<Producer> producer_{nullptr};
 };
 
 

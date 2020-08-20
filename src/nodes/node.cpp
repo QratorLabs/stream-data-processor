@@ -16,3 +16,11 @@ void Node::passData(const std::shared_ptr<arrow::Buffer> &data) {
 void Node::log(const std::string &message, spdlog::level::level_enum level) {
   spdlog::get(name_)->log(level, message);
 }
+
+void Node::addConsumer(const std::shared_ptr<Consumer> &consumer) {
+  consumers_.push_back(consumer);
+}
+
+const std::string &Node::getName() const {
+  return name_;
+}

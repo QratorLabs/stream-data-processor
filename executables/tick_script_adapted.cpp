@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include <gandiva/tree_expr_builder.h>
 
@@ -36,26 +37,15 @@ int main(int argc, char** argv) {
   int64_t crit_host_level = 85;
 
   auto loop = uvw::Loop::getDefault();
-  zmq::context_t zmq_context(1);
+  auto zmq_context = std::make_shared<zmq::context_t>(1);
 
-  std::vector<NodePipeline> pipelines;
+  std::unordered_map<std::string, NodePipeline> pipelines;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto parse_graphite_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
-  parse_graphite_publisher_socket->bind("inproc://parse_graphite_node");
-  auto parse_graphite_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  parse_graphite_publisher_synchronize_socket->bind("inproc://parse_graphite_node_sync");
-  std::shared_ptr<Consumer> parse_graphite_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
-      parse_graphite_publisher_socket,
-      {parse_graphite_publisher_synchronize_socket}
-  ), loop);
-
-
-  std::vector parse_graphite_consumers{parse_graphite_consumer};
   std::vector<std::string> template_strings{"*.cpu.*.percent.* host.measurement.cpu.type.field"};
   std::shared_ptr<Node> parse_graphite_node = std::make_shared<EvalNode>(
-      "parse_graphite_node", std::move(parse_graphite_consumers),
+      "parse_graphite_node",
       std::make_shared<DataParser>(std::make_shared<GraphiteParser>(template_strings))
   );
 
@@ -66,28 +56,11 @@ int main(int argc, char** argv) {
   );
 
 
-  pipelines.emplace_back(
-      std::vector{parse_graphite_consumer},
-      parse_graphite_node,
-      parse_graphite_producer
-  );
+  pipelines[parse_graphite_node->getName()] = NodePipeline();
+  pipelines[parse_graphite_node->getName()].setNode(parse_graphite_node);
+  pipelines[parse_graphite_node->getName()].setProducer(parse_graphite_producer);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  auto cputime_all_filter_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
-  cputime_all_filter_publisher_socket->bind("inproc://cputime_all_filter_node");
-  auto cputime_all_filter_to_cputime_all_group_by_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  cputime_all_filter_to_cputime_all_group_by_publisher_synchronize_socket->bind("inproc://cputime_all_filter_node_sync_to_cputime_all_group_by");
-  auto cputime_all_filter_to_cputime_all_win_window_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  cputime_all_filter_to_cputime_all_win_window_publisher_synchronize_socket->bind("inproc://cputime_all_filter_node_sync_to_cputime_all_win_window");
-  std::shared_ptr<Consumer> cputime_all_filter_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
-      cputime_all_filter_publisher_socket,
-      {
-          cputime_all_filter_to_cputime_all_group_by_publisher_synchronize_socket,
-          cputime_all_filter_to_cputime_all_win_window_publisher_synchronize_socket
-      }
-  ), loop);
-
 
   std::vector<gandiva::ConditionPtr> cputime_all_filter_node_conditions{
       gandiva::TreeExprBuilder::MakeCondition(gandiva::TreeExprBuilder::MakeFunction(
@@ -97,177 +70,109 @@ int main(int argc, char** argv) {
           }, arrow::boolean()
       ))
   };
-  std::vector cputime_all_filter_consumers{cputime_all_filter_consumer};
   std::shared_ptr<Node> cputime_all_filter_node = std::make_shared<EvalNode>(
-      "cputime_all_filter_node", std::move(cputime_all_filter_consumers),
+      "cputime_all_filter_node",
       std::make_shared<FilterHandler>(std::move(cputime_all_filter_node_conditions))
   );
 
 
-  auto cputime_all_filter_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_all_filter_subscriber_socket->connect("inproc://parse_graphite_node");
-  cputime_all_filter_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_all_filter_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_all_filter_subscriber_synchronize_socket->connect("inproc://parse_graphite_node_sync");
-  std::shared_ptr<Producer> cputime_all_filter_producer = std::make_shared<SubscriberProducer>(
-      cputime_all_filter_node, TransportUtils::Subscriber(
-          cputime_all_filter_subscriber_socket,
-          cputime_all_filter_subscriber_synchronize_socket
-      ), loop
-  );
-
-
-  pipelines.emplace_back(
-      std::vector{cputime_all_filter_consumer},
-      cputime_all_filter_node,
-      cputime_all_filter_producer
-  );
+  pipelines[cputime_all_filter_node->getName()] = NodePipeline();
+  pipelines[cputime_all_filter_node->getName()].setNode(cputime_all_filter_node);
+  pipelines[cputime_all_filter_node->getName()].subscribeTo(
+      pipelines[parse_graphite_node->getName()],
+      loop,
+      zmq_context,
+      TransportUtils::ZMQTransportType::IPC
+      );
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto cputime_all_group_by_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
-  cputime_all_group_by_publisher_socket->bind("inproc://cputime_all_group_by_node");
-  auto cputime_all_group_by_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  cputime_all_group_by_publisher_synchronize_socket->bind("inproc://cputime_all_group_by_node_sync");
-  std::shared_ptr<Consumer> cputime_all_group_by_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
-      cputime_all_group_by_publisher_socket,
-      {cputime_all_group_by_publisher_synchronize_socket}
-  ), loop);
-
-
   std::vector<std::string> cputime_all_grouping_columns{"host", "type"};
-  std::vector cputime_all_group_by_consumers{cputime_all_group_by_consumer};
   std::shared_ptr<Node> cputime_all_group_by_node = std::make_shared<EvalNode>(
-      "cputime_all_group_by_node", std::move(cputime_all_group_by_consumers),
+      "cputime_all_group_by_node",
       std::make_shared<GroupHandler>(std::move(cputime_all_grouping_columns))
   );
 
 
-  auto cputime_all_group_by_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_all_group_by_subscriber_socket->connect("inproc://cputime_all_filter_node");
-  cputime_all_group_by_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_all_group_by_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_all_group_by_subscriber_synchronize_socket->connect("inproc://cputime_all_filter_node_sync_to_cputime_all_group_by");
-  std::shared_ptr<Producer> cputime_all_group_by_producer = std::make_shared<SubscriberProducer>(
-      cputime_all_group_by_node, TransportUtils::Subscriber(
-          cputime_all_group_by_subscriber_socket,
-          cputime_all_group_by_subscriber_synchronize_socket
-      ), loop
-  );
-
-
-  pipelines.emplace_back(
-      std::vector{cputime_all_group_by_consumer},
-      cputime_all_group_by_node,
-      cputime_all_group_by_producer
+  pipelines[cputime_all_group_by_node->getName()] = NodePipeline();
+  pipelines[cputime_all_group_by_node->getName()].setNode(cputime_all_group_by_node);
+  pipelines[cputime_all_group_by_node->getName()].subscribeTo(
+      pipelines[cputime_all_filter_node->getName()],
+      loop,
+      zmq_context,
+      TransportUtils::ZMQTransportType::IPC
   );
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto cputime_host_last_aggregate_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
-  cputime_host_last_aggregate_publisher_socket->bind("inproc://cputime_host_last_aggregate_node");
-  auto cputime_host_last_aggregate_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  cputime_host_last_aggregate_publisher_synchronize_socket->bind("inproc://cputime_host_last_aggregate_node_sync");
-  std::shared_ptr<Consumer> cputime_host_last_aggregate_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
-      cputime_host_last_aggregate_publisher_socket,
-      {cputime_host_last_aggregate_publisher_synchronize_socket}
-  ), loop);
-
-
-  AggregateHandler::AggregateOptions cputime_host_last_options{{
-                                                                   {"idle", {"last", "mean"}},
-                                                                   {"interrupt", {"last", "mean"}},
-                                                                   {"nice", {"last", "mean"}},
-                                                                   {"softirq", {"last", "mean"}},
-                                                                   {"steal", {"last", "mean"}},
-                                                                   {"system", {"last", "mean"}},
-                                                                   {"user", {"last", "mean"}},
-                                                                   {"wait", {"last", "mean"}}
-                                                               }, true};
+  AggregateHandler::AggregateOptions cputime_host_last_options{
+      {
+          {"idle", {"last", "mean"}},
+          {"interrupt", {"last", "mean"}},
+          {"nice", {"last", "mean"}},
+          {"softirq", {"last", "mean"}},
+          {"steal", {"last", "mean"}},
+          {"system", {"last", "mean"}},
+          {"user", {"last", "mean"}},
+          {"wait", {"last", "mean"}}
+      }, true
+  };
   std::vector<std::string> cputime_host_last_grouping_columns{"host", "type"};
-  std::vector cputime_host_last_aggregate_consumers{cputime_host_last_aggregate_consumer};
   std::shared_ptr<Node> cputime_host_last_aggregate_node = std::make_shared<EvalNode>(
-      "cputime_host_last_aggregate_node", std::move(cputime_host_last_aggregate_consumers),
+      "cputime_host_last_aggregate_node",
       std::make_shared<AggregateHandler>(
           cputime_host_last_grouping_columns, cputime_host_last_options, "time"
       )
   );
 
-  auto cputime_host_last_aggregate_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_host_last_aggregate_subscriber_socket->connect("inproc://cputime_all_group_by_node");
-  cputime_host_last_aggregate_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_host_last_aggregate_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_host_last_aggregate_subscriber_synchronize_socket->connect("inproc://cputime_all_group_by_node_sync");
-  std::shared_ptr<Producer> cputime_host_last_aggregate_producer = std::make_shared<SubscriberProducer>(
-      cputime_host_last_aggregate_node, TransportUtils::Subscriber(
-          cputime_host_last_aggregate_subscriber_socket,
-          cputime_host_last_aggregate_subscriber_synchronize_socket
-      ), loop
-  );
 
-
-  pipelines.emplace_back(
-      std::vector{cputime_host_last_aggregate_consumer},
-      cputime_host_last_aggregate_node,
-      cputime_host_last_aggregate_producer
+  pipelines[cputime_host_last_aggregate_node->getName()] = NodePipeline();
+  pipelines[cputime_host_last_aggregate_node->getName()].setNode(cputime_host_last_aggregate_node);
+  pipelines[cputime_host_last_aggregate_node->getName()].subscribeTo(
+      pipelines[cputime_all_group_by_node->getName()],
+      loop,
+      zmq_context,
+      TransportUtils::ZMQTransportType::IPC
   );
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto cputime_host_calc_default_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
-  cputime_host_calc_default_publisher_socket->bind("inproc://cputime_host_calc_default_node");
-  auto cputime_host_calc_default_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  cputime_host_calc_default_publisher_synchronize_socket->bind("inproc://cputime_host_calc_default_node_sync");
-  std::shared_ptr<Consumer> cputime_host_calc_default_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
-      cputime_host_calc_default_publisher_socket,
-      {cputime_host_calc_default_publisher_synchronize_socket}
-  ), loop);
-
-
-  DefaultHandler::DefaultHandlerOptions cputime_host_calc_options{{},
-                                                                  {
-                                                                      {"info_host_level", info_host_level},
-                                                                      {"warn_host_level", warn_host_level},
-                                                                      {"crit_host_level", crit_host_level}
-                                                                  },
-                                                                  {
-                                                                      {"alert-author", "@kv:qrator.net"},
-                                                                      {"incident-owners", "nobody"},
-                                                                      {"incident-comment", ""},
-                                                                      {"alert-on", "cpu-idle-time-mean-host"}
-                                                                  },
-                                                                  {
-                                                                      {"incident-is-expected", false}
-                                                                  }};
-  std::vector cputime_host_calc_default_consumers{cputime_host_calc_default_consumer};
+  DefaultHandler::DefaultHandlerOptions cputime_host_calc_options{
+      {},
+      {
+          {"info_host_level", info_host_level},
+          {"warn_host_level", warn_host_level},
+          {"crit_host_level", crit_host_level}
+      },
+      {
+          {"alert-author", "@kv:qrator.net"},
+          {"incident-owners", "nobody"},
+          {"incident-comment", ""},
+          {"alert-on", "cpu-idle-time-mean-host"}
+      },
+      {
+          {"incident-is-expected", false}
+      }
+  };
   std::shared_ptr<Node> cputime_host_calc_default_node = std::make_shared<EvalNode>(
-      "cputime_host_calc_default_node", std::move(cputime_host_calc_default_consumers),
+      "cputime_host_calc_default_node",
       std::make_shared<DefaultHandler>(std::move(cputime_host_calc_options))
   );
 
 
-  auto cputime_host_calc_default_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_host_calc_default_subscriber_socket->connect("inproc://cputime_host_last_aggregate_node");
-  cputime_host_calc_default_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_host_calc_default_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_host_calc_default_subscriber_synchronize_socket->connect("inproc://cputime_host_last_aggregate_node_sync");
-  std::shared_ptr<Producer> cputime_host_calc_default_producer = std::make_shared<SubscriberProducer>(
-      cputime_host_calc_default_node, TransportUtils::Subscriber(
-          cputime_host_calc_default_subscriber_socket,
-          cputime_host_calc_default_subscriber_synchronize_socket
-      ), loop
-  );
-
-
-  pipelines.emplace_back(
-      std::vector{cputime_host_calc_default_consumer},
-      cputime_host_calc_default_node,
-      cputime_host_calc_default_producer
+  pipelines[cputime_host_calc_default_node->getName()] = NodePipeline();
+  pipelines[cputime_host_calc_default_node->getName()].setNode(cputime_host_calc_default_node);
+  pipelines[cputime_host_calc_default_node->getName()].subscribeTo(
+      pipelines[cputime_host_last_aggregate_node->getName()],
+      loop,
+      zmq_context,
+      TransportUtils::ZMQTransportType::IPC
   );
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<Consumer> cputime_host_calc_map_consumer = std::make_shared<FilePrintConsumer>(std::string(argv[0]) + "_result_42.txt");
+  std::shared_ptr<Consumer> cputime_host_calc_map_consumer =
+      std::make_shared<FilePrintConsumer>(std::string(argv[0]) + "_result_42.txt");
 
 
   gandiva::ExpressionVector cputime_host_calc_expressions{
@@ -297,40 +202,20 @@ int main(int argc, char** argv) {
   );
 
 
-  auto cputime_host_calc_map_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_host_calc_map_subscriber_socket->connect("inproc://cputime_host_calc_default_node");
-  cputime_host_calc_map_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_host_calc_map_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_host_calc_map_subscriber_synchronize_socket->connect("inproc://cputime_host_calc_default_node_sync");
-  std::shared_ptr<Producer> cputime_host_calc_map_producer = std::make_shared<SubscriberProducer>(
-      cputime_host_calc_map_node, TransportUtils::Subscriber(
-          cputime_host_calc_map_subscriber_socket,
-          cputime_host_calc_map_subscriber_synchronize_socket
-      ), loop
-  );
-
-
-  pipelines.emplace_back(
-      std::vector{cputime_host_calc_map_consumer},
-      cputime_host_calc_map_node,
-      cputime_host_calc_map_producer
+  pipelines[cputime_host_calc_map_node->getName()] = NodePipeline();
+  pipelines[cputime_host_calc_map_node->getName()].addConsumer(cputime_host_calc_map_consumer);
+  pipelines[cputime_host_calc_map_node->getName()].setNode(cputime_host_calc_map_node);
+  pipelines[cputime_host_calc_map_node->getName()].subscribeTo(
+      pipelines[cputime_host_calc_default_node->getName()],
+      loop,
+      zmq_context,
+      TransportUtils::ZMQTransportType::IPC
   );
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto cputime_all_win_window_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
-  cputime_all_win_window_publisher_socket->bind("inproc://cputime_all_win_window_node");
-  auto cputime_all_win_window_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  cputime_all_win_window_publisher_synchronize_socket->bind("inproc://cputime_all_win_window_node_sync");
-  std::shared_ptr<Consumer> cputime_all_win_window_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
-      cputime_all_win_window_publisher_socket,
-      {cputime_all_win_window_publisher_synchronize_socket}
-  ), loop);
-
-
-  std::vector cputime_all_win_window_consumers{cputime_all_win_window_consumer};
   std::shared_ptr<Node> cputime_all_win_window_node = std::make_shared<PeriodNode>(
-      "cputime_all_win_window_node", std::move(cputime_all_win_window_consumers),
+      "cputime_all_win_window_node",
       std::chrono::duration_cast<std::chrono::seconds>(win_period).count(),
       std::chrono::duration_cast<std::chrono::seconds>(win_every).count(),
       "time",
@@ -338,123 +223,88 @@ int main(int argc, char** argv) {
   );
 
 
-  auto cputime_all_win_window_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_all_win_window_subscriber_socket->connect("inproc://cputime_all_filter_node");
-  cputime_all_win_window_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_all_win_window_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_all_win_window_subscriber_synchronize_socket->connect("inproc://cputime_all_filter_node_sync_to_cputime_all_win_window");
-  std::shared_ptr<Producer> cputime_all_win_window_producer = std::make_shared<SubscriberProducer>(
-      cputime_all_win_window_node, TransportUtils::Subscriber(
-          cputime_all_win_window_subscriber_socket,
-          cputime_all_win_window_subscriber_synchronize_socket
-      ), loop
-  );
-
-
-  pipelines.emplace_back(
-      std::vector{cputime_all_win_window_consumer},
-      cputime_all_win_window_node,
-      cputime_all_win_window_producer
+  pipelines[cputime_all_win_window_node->getName()] = NodePipeline();
+  pipelines[cputime_all_win_window_node->getName()].setNode(cputime_all_win_window_node);
+  pipelines[cputime_all_win_window_node->getName()].subscribeTo(
+      pipelines[cputime_all_filter_node->getName()],
+      loop,
+      zmq_context,
+      TransportUtils::ZMQTransportType::IPC
   );
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto cputime_win_last_aggregate_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
-  cputime_win_last_aggregate_publisher_socket->bind("inproc://cputime_win_last_aggregate_node");
-  auto cputime_win_last_aggregate_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  cputime_win_last_aggregate_publisher_synchronize_socket->bind("inproc://cputime_win_last_aggregate_node_sync");
-  std::shared_ptr<Consumer> cputime_win_last_aggregate_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
-      cputime_win_last_aggregate_publisher_socket,
-      {cputime_win_last_aggregate_publisher_synchronize_socket}
-  ), loop);
-
+  AggregateHandler::AggregateOptions cputime_win_last_options{
+      {
+          {"idle", {"last", "mean"}},
+          {"interrupt", {"last", "mean"}},
+          {"nice", {"last", "mean"}},
+          {"softirq", {"last", "mean"}},
+          {"steal", {"last", "mean"}},
+          {"system", {"last", "mean"}},
+          {"user", {"last", "mean"}},
+          {"wait", {"last", "mean"}}
+      }, true
+  };
 
   std::vector<std::string> cputime_win_last_grouping_columns{"cpu", "host", "type"};
-  std::vector cputime_win_last_aggregate_consumers{cputime_win_last_aggregate_consumer};
   std::shared_ptr<Node> cputime_win_last_aggregate_node = std::make_shared<EvalNode>(
-      "cputime_win_last_aggregate_node", std::move(cputime_win_last_aggregate_consumers),
+      "cputime_win_last_aggregate_node",
       std::make_shared<AggregateHandler>(
-          cputime_win_last_grouping_columns, cputime_host_last_options, "time"
+          cputime_win_last_grouping_columns, cputime_win_last_options, "time"
       )
   );
 
 
-  auto cputime_win_last_aggregate_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_win_last_aggregate_subscriber_socket->connect("inproc://cputime_all_win_window_node");
-  cputime_win_last_aggregate_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_win_last_aggregate_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_win_last_aggregate_subscriber_synchronize_socket->connect("inproc://cputime_all_win_window_node_sync");
-  std::shared_ptr<Producer> cputime_win_last_aggregate_producer = std::make_shared<SubscriberProducer>(
-      cputime_win_last_aggregate_node, TransportUtils::Subscriber(
-          cputime_win_last_aggregate_subscriber_socket,
-          cputime_win_last_aggregate_subscriber_synchronize_socket
-      ), loop
-  );
-
-
-  pipelines.emplace_back(
-      std::vector{cputime_win_last_aggregate_consumer},
-      cputime_win_last_aggregate_node,
-      cputime_win_last_aggregate_producer
+  pipelines[cputime_win_last_aggregate_node->getName()] = NodePipeline();
+  pipelines[cputime_win_last_aggregate_node->getName()].setNode(cputime_win_last_aggregate_node);
+  pipelines[cputime_win_last_aggregate_node->getName()].subscribeTo(
+      pipelines[cputime_all_win_window_node->getName()],
+      loop,
+      zmq_context,
+      TransportUtils::ZMQTransportType::IPC
   );
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto cputime_win_calc_default_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
-  cputime_win_calc_default_publisher_socket->bind("inproc://cputime_win_calc_default_node");
-  auto cputime_win_calc_default_publisher_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REP);
-  cputime_win_calc_default_publisher_synchronize_socket->bind("inproc://cputime_win_calc_default_node_sync");
-  std::shared_ptr<Consumer> cputime_win_calc_default_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
-      cputime_win_calc_default_publisher_socket,
-      {cputime_win_calc_default_publisher_synchronize_socket}
-  ), loop);
-
-
-  DefaultHandler::DefaultHandlerOptions cputime_win_calc_options{{},
-                                                                 {
-                                                                     {"info_core_level", info_core_level},
-                                                                     {"warn_core_level", warn_core_level},
-                                                                     {"crit_core_level", crit_core_level},
-                                                                     {"win-period", std::chrono::duration_cast<std::chrono::seconds>(win_period).count()},
-                                                                     {"win-every", std::chrono::duration_cast<std::chrono::seconds>(win_every).count()}
-                                                                 },
-                                                                 {
-                                                                     {"alert-author", "@kv:qrator.net"},
-                                                                     {"incident-owners", "nobody"},
-                                                                     {"incident-comment", ""},
-                                                                     {"alert-on", "cpu-idle-time-per-core"}
-                                                                 },
-                                                                 {
-                                                                     {"incident-is-expected", false}
-                                                                 }};  std::vector cputime_win_calc_default_consumers{cputime_win_calc_default_consumer};
+  DefaultHandler::DefaultHandlerOptions cputime_win_calc_options{
+      {},
+      {
+          {"info_core_level", info_core_level},
+          {"warn_core_level", warn_core_level},
+          {"crit_core_level", crit_core_level},
+          {"win-period", std::chrono::duration_cast<std::chrono::seconds>(win_period).count()},
+          {"win-every", std::chrono::duration_cast<std::chrono::seconds>(win_every).count()}
+      },
+      {
+          {"alert-author", "@kv:qrator.net"},
+          {"incident-owners", "nobody"},
+          {"incident-comment", ""},
+          {"alert-on", "cpu-idle-time-per-core"}
+      },
+      {
+          {"incident-is-expected", false}
+      }
+  };
   std::shared_ptr<Node> cputime_win_calc_default_node = std::make_shared<EvalNode>(
-      "cputime_win_calc_default_node", std::move(cputime_win_calc_default_consumers),
+      "cputime_win_calc_default_node",
       std::make_shared<DefaultHandler>(std::move(cputime_win_calc_options))
   );
 
 
-  auto cputime_win_calc_default_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_win_calc_default_subscriber_socket->connect("inproc://cputime_win_last_aggregate_node");
-  cputime_win_calc_default_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_win_calc_default_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_win_calc_default_subscriber_synchronize_socket->connect("inproc://cputime_win_last_aggregate_node_sync");
-  std::shared_ptr<Producer> cputime_win_calc_default_producer = std::make_shared<SubscriberProducer>(
-      cputime_win_calc_default_node, TransportUtils::Subscriber(
-          cputime_win_calc_default_subscriber_socket,
-          cputime_win_calc_default_subscriber_synchronize_socket
-      ), loop
-  );
-
-
-  pipelines.emplace_back(
-      std::vector{cputime_win_calc_default_consumer},
-      cputime_win_calc_default_node,
-      cputime_win_calc_default_producer
+  pipelines[cputime_win_calc_default_node->getName()] = NodePipeline();
+  pipelines[cputime_win_calc_default_node->getName()].setNode(cputime_win_calc_default_node);
+  pipelines[cputime_win_calc_default_node->getName()].subscribeTo(
+      pipelines[cputime_win_last_aggregate_node->getName()],
+      loop,
+      zmq_context,
+      TransportUtils::ZMQTransportType::IPC
   );
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<Consumer> cputime_win_calc_map_consumer = std::make_shared<FilePrintConsumer>(std::string(argv[0]) + "_result_43.txt");
+  std::shared_ptr<Consumer> cputime_win_calc_map_consumer =
+      std::make_shared<FilePrintConsumer>(std::string(argv[0]) + "_result_43.txt");
 
 
   gandiva::ExpressionVector cputime_win_calc_expressions{
@@ -484,29 +334,20 @@ int main(int argc, char** argv) {
   );
 
 
-  auto cputime_win_calc_map_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);
-  cputime_win_calc_map_subscriber_socket->connect("inproc://cputime_win_calc_default_node");
-  cputime_win_calc_map_subscriber_socket->setsockopt(ZMQ_SUBSCRIBE, "", 0);
-  auto cputime_win_calc_map_subscriber_synchronize_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_REQ);
-  cputime_win_calc_map_subscriber_synchronize_socket->connect("inproc://cputime_win_calc_default_node_sync");
-  std::shared_ptr<Producer> cputime_win_calc_map_producer = std::make_shared<SubscriberProducer>(
-      cputime_win_calc_map_node, TransportUtils::Subscriber(
-          cputime_win_calc_map_subscriber_socket,
-          cputime_win_calc_map_subscriber_synchronize_socket
-      ), loop
-  );
-
-
-  pipelines.emplace_back(
-      std::vector{cputime_win_calc_map_consumer},
-      cputime_win_calc_map_node,
-      cputime_win_calc_map_producer
+  pipelines[cputime_win_calc_map_node->getName()] = NodePipeline();
+  pipelines[cputime_win_calc_map_node->getName()].addConsumer(cputime_win_calc_map_consumer);
+  pipelines[cputime_win_calc_map_node->getName()].setNode(cputime_win_calc_map_node);
+  pipelines[cputime_win_calc_map_node->getName()].subscribeTo(
+      pipelines[cputime_win_calc_default_node->getName()],
+      loop,
+      zmq_context,
+      TransportUtils::ZMQTransportType::IPC
   );
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   for (auto& pipeline : pipelines) {
-    pipeline.start();
+    pipeline.second.start();
   }
 
   loop->run();

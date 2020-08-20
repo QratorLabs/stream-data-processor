@@ -4,10 +4,6 @@
 
 #include "eval_node.h"
 
-void EvalNode::configureNode() {
-
-}
-
 void EvalNode::start() {
   spdlog::get(name_)->info("Node started");
 }

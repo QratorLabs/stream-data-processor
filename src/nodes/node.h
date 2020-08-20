@@ -13,8 +13,14 @@
 
 class Node {
  public:
+  explicit Node(std::string name)
+      : name_(std::move(name))
+      , logger_(spdlog::basic_logger_mt(name_, "logs/" + name_ + ".txt", true)) {
+    spdlog::get(name_)->info("Node created");
+  }
+
   template <typename U>
-  explicit Node(std::string name, U&& consumer)
+  Node(std::string name, U&& consumer)
       : name_(std::move(name))
       , logger_(spdlog::basic_logger_mt(name_, "logs/" + name_ + ".txt", true))
       , consumers_(std::forward<U>(consumer)) {
@@ -26,6 +32,10 @@ class Node {
   virtual void start() = 0;
   virtual void handleData(const char* data, size_t length) = 0;
   virtual void stop() = 0;
+
+  const std::string& getName() const;
+
+  void addConsumer(const std::shared_ptr<Consumer>& consumer);
 
  protected:
   void passData(const std::shared_ptr<arrow::Buffer>& data);

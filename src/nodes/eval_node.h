@@ -12,13 +12,18 @@
 
 class EvalNode : public Node {
  public:
+  EvalNode(const std::string& name,
+           std::shared_ptr<DataHandler> data_handler)
+      : Node(name)
+      , data_handler_(std::move(data_handler)) {
+  }
+
   template <typename U>
   EvalNode(const std::string& name,
            U&& consumers,
            std::shared_ptr<DataHandler> data_handler)
       : Node(name, std::forward<U>(consumers))
       , data_handler_(std::move(data_handler)) {
-    configureNode();
   }
 
   void start() override;
@@ -26,8 +31,6 @@ class EvalNode : public Node {
   void stop() override;
 
  private:
-  void configureNode();
-
   arrow::Status processData(const std::shared_ptr<arrow::Buffer> &data_buffer,
                             std::shared_ptr<arrow::Buffer> &processed_data);
 

@@ -14,6 +14,21 @@
 
 class PeriodNode : public Node {
  public:
+  PeriodNode(const std::string& name,
+             uint64_t range, uint64_t period,
+             std::string ts_column_name,
+             std::shared_ptr<PeriodHandler> period_handler)
+      : Node(name)
+      , period_(period)
+      , ts_column_name_(std::move(ts_column_name))
+      , period_handler_(std::move(period_handler))
+      /* Not quite fair window range. Actually it considers to be a multiple of window period */
+      , separation_idx_(std::vector<size_t>(
+          range / period + (range % period > 0 ? 1 : 0) - 1, 0
+      )) {
+
+  }
+
   template <typename U>
   PeriodNode(const std::string& name,
              U&& consumers,
