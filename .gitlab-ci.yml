@@ -6,7 +6,7 @@ stages:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   DOCKER_DRIVER: overlay2
-  DOCKER_IMAGE_NAME: $CI_REGISTRY_IMAGE/stream_data_processor
+  DOCKER_IMAGE_NAME: $CI_REGISTRY/qevent_intership/stream_data_processor/image
 
 build_docker_image:
   stage: build_image
