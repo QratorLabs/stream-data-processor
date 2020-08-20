@@ -190,10 +190,10 @@ TEST_CASE( "parse and add additional tags", "[GraphiteParser]" ) {
 TEST_CASE( "parse timestamp", "[GraphiteParser]" ) {
   std::vector<std::string> templates{"measurement.measurement.field.field.region"};
   std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(templates);
-  auto now = (int64_t) std::time(nullptr);
+  auto now = std::time(nullptr);
   std::stringstream metric_string_builder;
   metric_string_builder << "cpu.usage.idle.percent.eu-east 100 " << now;
-  auto metric_buffer = std::make_shared<arrow::Buffer>(metric_string_builder.str());
+  auto metric_buffer = arrow::Buffer::FromString(metric_string_builder.str());
   arrow::RecordBatchVector record_batch_vector;
   arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector));
 
@@ -220,11 +220,11 @@ TEST_CASE( "parse timestamp", "[GraphiteParser]" ) {
 TEST_CASE( "merge two metrics with the same tag values set into the one record", "[GraphiteParser]" ) {
   std::vector<std::string> templates{"measurement.measurement.field.field.region"};
   std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(templates);
-  auto now = (int64_t) std::time(nullptr);
+  auto now = std::time(nullptr);
   std::stringstream metric_string_builder;
   metric_string_builder << "cpu.usage.idle.percent.eu-east 100 " << now << "\n"
                         << "cpu.usage.cpu.value.eu-east 50 " << now;
-  auto metric_buffer = std::make_shared<arrow::Buffer>(metric_string_builder.str());
+  auto metric_buffer = arrow::Buffer::FromString(metric_string_builder.str());
   arrow::RecordBatchVector record_batch_vector;
   arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector));
 
