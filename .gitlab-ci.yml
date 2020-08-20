@@ -14,8 +14,6 @@ build_docker_image:
     changes:
       - Dockerfile
       - .gitlab-ci.yml
-  services:
-    - docker:dind
   script:
     - docker info
     - docker build --build-arg ARROW_DEB_PCKG_SHA256 --build-arg CPPZMQ_SHA256 -t $DOCKER_IMAGE_NAME .
