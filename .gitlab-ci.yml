@@ -21,7 +21,7 @@ build_docker_image:
 
 stream_data_processor_build:
   stage: build
-  image: $DOCKER_IMAGE_NAME
+  image: $DOCKER_IMAGE_NAME:latest
   script:
     - mkdir build
     - cd build
