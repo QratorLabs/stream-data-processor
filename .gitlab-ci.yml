@@ -19,11 +19,11 @@ build_docker_image:
     - docker:dind
   script:
     - docker info
-    - docker -D build --build-arg ARROW_DEB_PCKG_SHA256 --build-arg CPPZMQ_SHA256 -t $DOCKER_IMAGE_NAME .
+    - docker build --build-arg ARROW_DEB_PCKG_SHA256 --build-arg CPPZMQ_SHA256 -t $DOCKER_IMAGE_NAME .
 
 stream_data_processor_build:
   stage: build
-  image: $DOCKER_IMAGE_NAME
+  image: $DOCKER_IMAGE_NAME:latest
   script:
     - mkdir build
     - cd build
