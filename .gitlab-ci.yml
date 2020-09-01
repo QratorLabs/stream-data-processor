@@ -33,10 +33,9 @@ stream_data_processor_build:
 
 stream_data_processor_test:
   stage: test
+  image: $DOCKER_IMAGE_NAME
   script:
     - cd build
-    - ls
-    - ls test
     - ./test/test_main
   dependencies:
     - stream_data_processor_build
