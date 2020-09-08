@@ -63,6 +63,7 @@ set(STREAM_DATA_PROCESSOR_SOURCES
   src/utils/transport_utils.cpp
   src/utils/serializer.cpp
   src/utils/string_utils.cpp
+  src/utils/uvarint.cpp
   src/node_pipeline/node_pipeline.cpp)
 
 set(STREAM_DATA_PROCESSOR_INCLUDE_DIRS
