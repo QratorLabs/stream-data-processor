@@ -7,9 +7,9 @@
 #include <gandiva/expression.h>
 #include <gandiva/projector.h>
 
-#include "data_handler.h"
+#include "record_batch_handler.h"
 
-class MapHandler : public DataHandler {
+class MapHandler : public RecordBatchHandler {
  public:
   template <typename U>
   explicit MapHandler(U&& expressions)
@@ -17,12 +17,12 @@ class MapHandler : public DataHandler {
 
   }
 
-  arrow::Status handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer>* target) override;
+  arrow::Status handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector& result) override;
 
  private:
-  arrow::Status eval(arrow::RecordBatchVector &record_batches,
+  static arrow::Status eval(arrow::RecordBatchVector &record_batches,
                      const std::shared_ptr<gandiva::Projector> &projector,
-                     const std::shared_ptr<arrow::Schema> &result_schema) const;
+                     const std::shared_ptr<arrow::Schema> &result_schema) ;
 
   arrow::Status prepareProjector(const std::shared_ptr<arrow::Schema>& input_schema,
                                  std::shared_ptr<gandiva::Projector>& projector) const;

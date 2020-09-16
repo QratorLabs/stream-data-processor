@@ -14,6 +14,7 @@
 #include "nodes/nodes.h"
 #include "node_pipeline/node_pipeline.h"
 #include "producers/producers.h"
+#include "record_batch_handlers/record_batch_handlers.h"
 #include "utils/parsers/csv_parser.h"
 
 int main(int argc, char** argv) {
@@ -84,7 +85,7 @@ int main(int argc, char** argv) {
   std::vector eval_consumers{eval_consumer};
   std::shared_ptr<Node> eval_node = std::make_shared<EvalNode>(
       "eval_node", std::move(eval_consumers),
-      std::make_shared<MapHandler>(std::move(expressions))
+      std::make_shared<SerializedRecordBatchHandler>(std::make_shared<MapHandler>(std::move(expressions)))
   );
 
 
@@ -116,9 +117,9 @@ int main(int argc, char** argv) {
   std::vector aggregate_consumers{aggregate_consumer};
   std::shared_ptr<Node> aggregate_node = std::make_shared<EvalNode>(
       "aggregate_node", std::move(aggregate_consumers),
-      std::make_shared<AggregateHandler>(aggregate_columns,
-                                         aggregate_options,
-                                         "ts")
+      std::make_shared<SerializedRecordBatchHandler>(std::make_shared<AggregateHandler>(aggregate_columns,
+                                                                                        aggregate_options,
+                                                                                        "ts"))
   );
 
 

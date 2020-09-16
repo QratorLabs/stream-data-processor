@@ -6,9 +6,9 @@
 
 #include <arrow/api.h>
 
-#include "data_handler.h"
+#include "record_batch_handler.h"
 
-class DefaultHandler : public DataHandler {
+class DefaultHandler : public RecordBatchHandler {
  public:
   struct DefaultHandlerOptions {
     std::unordered_map<std::string, int64_t> int64_columns_default_values;
@@ -23,7 +23,7 @@ class DefaultHandler : public DataHandler {
 
   }
 
-  arrow::Status handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer>* target) override;
+  arrow::Status handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector& result) override;
 
  private:
   template <typename T>

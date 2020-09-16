@@ -4,10 +4,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "data_handlers/aggregate_functions/aggregate_function.h"
-#include "data_handler.h"
+#include "aggregate_functions/aggregate_function.h"
+#include "record_batch_handler.h"
 
-class AggregateHandler : public DataHandler {
+class AggregateHandler : public RecordBatchHandler {
  public:
   struct AggregateOptions {
     std::unordered_map<std::string, std::vector<std::string>> aggregate_columns;
@@ -22,7 +22,7 @@ class AggregateHandler : public DataHandler {
 
   }
 
-  arrow::Status handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer>* target) override;
+  arrow::Status handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector& result) override;
 
  private:
   arrow::Status findTsColumnName(const std::shared_ptr<arrow::RecordBatch>& record_batch);

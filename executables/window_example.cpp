@@ -8,10 +8,11 @@
 
 #include "consumers/consumers.h"
 #include "data_handlers/data_handlers.h"
-#include "period_handlers/period_handlers.h"
 #include "nodes/nodes.h"
 #include "node_pipeline/node_pipeline.h"
+#include "period_handlers/serialized_period_handler.h"
 #include "producers/producers.h"
+#include "record_batch_handlers/record_batch_handlers.h"
 #include "utils/parsers/csv_parser.h"
 
 int main(int argc, char** argv) {
@@ -59,7 +60,7 @@ int main(int argc, char** argv) {
       30,
       10,
       "ts",
-      std::make_shared<WindowHandler>()
+      std::make_shared<SerializedPeriodHandler>(std::make_shared<WindowHandler>())
   );
 
   auto window_subscriber_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_SUB);

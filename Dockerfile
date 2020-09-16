@@ -1,6 +1,7 @@
 FROM gcc:10.2.0
 
 ENV CPPZMQ_VERSION=4.6.0
+ENV PROTOBUF_VERSION=3.12.3
 
 ARG ARROW_DEB_PCKG_SHA256
 ENV ENV_ARROW_DEB_PCKG_SHA256=$ARROW_DEB_PCKG_SHA256
@@ -10,7 +11,7 @@ ENV ENV_CPPZMQ_SHA256=$CPPZMQ_SHA256
 
 # Configure system for further build and run
 RUN apt-get update \
-    && apt-get install -y -V cmake make wget tar pkg-config ca-certificates lsb-release git libzmq3-dev \
+    && apt-get install -y -V autoconf automake libtool curl g++ unzip cmake make wget tar pkg-config ca-certificates lsb-release git libzmq3-dev \
     && if [ "${ENV_ARROW_DEB_PCKG_SHA256}" = "" ]; then echo "arrow deb package sha256 hash sum environment variable is empty. Exiting..." ; exit 1 ; fi \
     && wget https://apache.bintray.com/arrow/debian/apache-arrow-archive-keyring-latest-buster.deb \
     && if [ "$(sha256sum apache-arrow-archive-keyring-latest-buster.deb)" != "${ENV_ARROW_DEB_PCKG_SHA256}" ]; then echo "Bad SHA256 hash sum of apache-arrow-archive-keyring-latest-buster.deb" ; exit 1 ; fi \
@@ -27,4 +28,7 @@ RUN apt-get update \
     && git clone https://github.com/catchorg/Catch2.git \
     && cd Catch2 \
     && cmake -Bbuild -H. -DBUILD_TESTING=OFF \
-    && cmake --build build/ --target install
+    && cmake --build build/ --target install && cd .. \
+    && wget https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protobuf-cpp-${PROTOBUF_VERSION}.tar.gz \
+    && tar -xzvf protobuf-cpp-${PROTOBUF_VERSION}.tar.gz \
+    && cd protobuf-${PROTOBUF_VERSION} && ./configure && make && make check && make install && ldconfig

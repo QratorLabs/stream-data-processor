@@ -15,10 +15,11 @@
 
 #include "consumers/consumers.h"
 #include "data_handlers/data_handlers.h"
-#include "period_handlers/period_handlers.h"
 #include "nodes/nodes.h"
 #include "node_pipeline/node_pipeline.h"
+#include "period_handlers/serialized_period_handler.h"
 #include "producers/producers.h"
+#include "record_batch_handlers/record_batch_handlers.h"
 #include "utils/parsers/graphite_parser.h"
 
 int main(int argc, char** argv) {
@@ -72,7 +73,7 @@ int main(int argc, char** argv) {
   };
   std::shared_ptr<Node> cputime_all_filter_node = std::make_shared<EvalNode>(
       "cputime_all_filter_node",
-      std::make_shared<FilterHandler>(std::move(cputime_all_filter_node_conditions))
+      std::make_shared<SerializedRecordBatchHandler>(std::make_shared<FilterHandler>(std::move(cputime_all_filter_node_conditions)))
   );
 
 
@@ -90,7 +91,7 @@ int main(int argc, char** argv) {
   std::vector<std::string> cputime_all_grouping_columns{"host", "type"};
   std::shared_ptr<Node> cputime_all_group_by_node = std::make_shared<EvalNode>(
       "cputime_all_group_by_node",
-      std::make_shared<GroupHandler>(std::move(cputime_all_grouping_columns))
+      std::make_shared<SerializedRecordBatchHandler>(std::make_shared<GroupHandler>(std::move(cputime_all_grouping_columns)))
   );
 
 
@@ -120,9 +121,9 @@ int main(int argc, char** argv) {
   std::vector<std::string> cputime_host_last_grouping_columns{"host", "type"};
   std::shared_ptr<Node> cputime_host_last_aggregate_node = std::make_shared<EvalNode>(
       "cputime_host_last_aggregate_node",
-      std::make_shared<AggregateHandler>(
+      std::make_shared<SerializedRecordBatchHandler>(std::make_shared<AggregateHandler>(
           cputime_host_last_grouping_columns, cputime_host_last_options, "time"
-      )
+      ))
   );
 
 
@@ -156,7 +157,7 @@ int main(int argc, char** argv) {
   };
   std::shared_ptr<Node> cputime_host_calc_default_node = std::make_shared<EvalNode>(
       "cputime_host_calc_default_node",
-      std::make_shared<DefaultHandler>(std::move(cputime_host_calc_options))
+      std::make_shared<SerializedRecordBatchHandler>(std::make_shared<DefaultHandler>(std::move(cputime_host_calc_options)))
   );
 
 
@@ -198,7 +199,7 @@ int main(int argc, char** argv) {
   std::vector cputime_host_calc_map_consumers{cputime_host_calc_map_consumer};
   std::shared_ptr<Node> cputime_host_calc_map_node = std::make_shared<EvalNode>(
       "cputime_host_calc_map_node", std::move(cputime_host_calc_map_consumers),
-      std::make_shared<MapHandler>(std::move(cputime_host_calc_expressions))
+      std::make_shared<SerializedRecordBatchHandler>(std::make_shared<MapHandler>(std::move(cputime_host_calc_expressions)))
   );
 
 
@@ -219,7 +220,7 @@ int main(int argc, char** argv) {
       std::chrono::duration_cast<std::chrono::seconds>(win_period).count(),
       std::chrono::duration_cast<std::chrono::seconds>(win_every).count(),
       "time",
-      std::make_shared<WindowHandler>()
+      std::make_shared<SerializedPeriodHandler>(std::make_shared<WindowHandler>())
   );
 
 
@@ -250,9 +251,9 @@ int main(int argc, char** argv) {
   std::vector<std::string> cputime_win_last_grouping_columns{"cpu", "host", "type"};
   std::shared_ptr<Node> cputime_win_last_aggregate_node = std::make_shared<EvalNode>(
       "cputime_win_last_aggregate_node",
-      std::make_shared<AggregateHandler>(
+      std::make_shared<SerializedRecordBatchHandler>(std::make_shared<AggregateHandler>(
           cputime_win_last_grouping_columns, cputime_win_last_options, "time"
-      )
+      ))
   );
 
 
@@ -288,7 +289,7 @@ int main(int argc, char** argv) {
   };
   std::shared_ptr<Node> cputime_win_calc_default_node = std::make_shared<EvalNode>(
       "cputime_win_calc_default_node",
-      std::make_shared<DefaultHandler>(std::move(cputime_win_calc_options))
+      std::make_shared<SerializedRecordBatchHandler>(std::make_shared<DefaultHandler>(std::move(cputime_win_calc_options)))
   );
 
 
@@ -330,7 +331,7 @@ int main(int argc, char** argv) {
   std::vector cputime_win_calc_map_consumers{cputime_win_calc_map_consumer};
   std::shared_ptr<Node> cputime_win_calc_map_node = std::make_shared<EvalNode>(
       "cputime_win_calc_map_node", std::move(cputime_win_calc_map_consumers),
-      std::make_shared<MapHandler>(std::move(cputime_win_calc_expressions))
+      std::make_shared<SerializedRecordBatchHandler>(std::make_shared<MapHandler>(std::move(cputime_win_calc_expressions)))
   );
 
 

@@ -185,8 +185,7 @@ void GraphiteParser::parseMetricStrings(const std::vector<std::string> &metric_s
 }
 
 GraphiteParser::Metric::Metric(std::string &&measurement_name, GraphiteParser::SortedKVContainer<std::string> &&tags)
-    : measurement_name(std::forward<std::string>(measurement_name))
-    , tags(std::forward<GraphiteParser::SortedKVContainer<std::string>>(tags)) {
+    : measurement_name(measurement_name), tags(tags) {
 
 }
 

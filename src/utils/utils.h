@@ -5,3 +5,4 @@
 #include "data_converter.h"
 #include "transport_utils.h"
 #include "serializer.h"
+#include "uvarint.h"

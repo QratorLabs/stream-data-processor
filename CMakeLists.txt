@@ -28,30 +28,41 @@ message(STATUS "Gandiva lib dir: ${Gandiva_DIR}")
 
 find_package(spdlog REQUIRED)
 
+find_package(Protobuf REQUIRED)
+include_directories(${Protobuf_INCLUDE_DIRS})
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
 set(USE_BOOST_KARMA OFF CACHE BOOL "" FORCE)
 add_subdirectory(third_party/bprinter)
 
+protobuf_generate_cpp(UDFProtoSources UDFProtoHeaders "${CMAKE_CURRENT_SOURCE_DIR}/src/kapacitor_udf/udf.proto")
+
 set(STREAM_DATA_PROCESSOR_SOURCES
+  ${UDFProtoSources}
   src/consumers/print_consumer.cpp
   src/consumers/publisher_consumer.cpp
   src/consumers/tcp_consumer.cpp
   src/nodes/node.cpp
   src/nodes/eval_node.cpp
   src/nodes/period_node.cpp
-  src/data_handlers/aggregate_handler.cpp
   src/data_handlers/data_parser.cpp
-  src/data_handlers/default_handler.cpp
-  src/data_handlers/filter_handler.cpp
-  src/data_handlers/group_handler.cpp
-  src/data_handlers/map_handler.cpp
-  src/data_handlers/sort_handler.cpp
-  src/data_handlers/aggregate_functions/min_aggregate_function.cpp
-  src/data_handlers/aggregate_functions/max_aggregate_function.cpp
-  src/data_handlers/aggregate_functions/first_aggregate_function.cpp
-  src/data_handlers/aggregate_functions/last_aggregate_function.cpp
-  src/data_handlers/aggregate_functions/mean_aggregate_function.cpp
-  src/period_handlers/window_handler.cpp
-  src/period_handlers/join_handler.cpp
+  src/record_batch_handlers/aggregate_handler.cpp
+  src/data_handlers/serialized_record_batch_handler.cpp
+  src/record_batch_handlers/default_handler.cpp
+  src/record_batch_handlers/filter_handler.cpp
+  src/record_batch_handlers/group_handler.cpp
+  src/record_batch_handlers/map_handler.cpp
+  src/record_batch_handlers/sort_handler.cpp
+  src/record_batch_handlers/aggregate_functions/min_aggregate_function.cpp
+  src/record_batch_handlers/aggregate_functions/max_aggregate_function.cpp
+  src/record_batch_handlers/aggregate_functions/first_aggregate_function.cpp
+  src/record_batch_handlers/aggregate_functions/last_aggregate_function.cpp
+  src/record_batch_handlers/aggregate_functions/mean_aggregate_function.cpp
+  src/kapacitor_udf/agent.cpp
+  src/kapacitor_udf/request_handlers/batch_to_stream_request_handler.cpp
+  src/record_batch_handlers/window_handler.cpp
+  src/record_batch_handlers/join_handler.cpp
+  src/period_handlers/serialized_period_handler.cpp
   src/producers/producer.cpp
   src/producers/tcp_producer.cpp
   src/producers/subscriber_producer.cpp
@@ -69,7 +80,7 @@ set(STREAM_DATA_PROCESSOR_SOURCES
 set(STREAM_DATA_PROCESSOR_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
-set(PROJECT_INCLUDE_DIRS
+set(LIBRARY_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src"
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bprinter/include"
   ${STREAM_DATA_PROCESSOR_INCLUDE_DIRS}
@@ -81,12 +92,13 @@ set(PROJECT_DEPENDENCIES
   gandiva_shared
   spdlog::spdlog
   bprinter
-  ${ZeroMQ_LIBRARY})
+  ${ZeroMQ_LIBRARY}
+  ${Protobuf_LIBRARIES})
 
 set(LIBRARY_NAME "stream_data_processor")
 
 add_library(${LIBRARY_NAME} STATIC "${STREAM_DATA_PROCESSOR_SOURCES}")
-target_include_directories(${LIBRARY_NAME} PUBLIC "${PROJECT_INCLUDE_DIRS}")
+target_include_directories(${LIBRARY_NAME} PUBLIC "${LIBRARY_INCLUDE_DIRS}")
 target_link_libraries(${LIBRARY_NAME} "${PROJECT_DEPENDENCIES}")
 
 function(add_exec_target file_path)

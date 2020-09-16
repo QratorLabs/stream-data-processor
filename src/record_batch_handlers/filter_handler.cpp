@@ -5,15 +5,8 @@
 #include "filter_handler.h"
 #include "utils/serializer.h"
 
-arrow::Status FilterHandler::handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer> *target) {
-  std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
-  ARROW_RETURN_NOT_OK(Serializer::deserializeRecordBatches(source, &record_batches));
-  if (record_batches.empty()) {
-    return arrow::Status::CapacityError("No data to filter");
-  }
-
+arrow::Status FilterHandler::handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector& result) {
   auto pool = arrow::default_memory_pool();
-  arrow::RecordBatchVector result_record_batches;
   std::shared_ptr<gandiva::Filter> filter;
   ARROW_RETURN_NOT_OK(prepareFilter(record_batches.back()->schema(), filter));
   for (auto& record_batch : record_batches) {
@@ -25,11 +18,9 @@ arrow::Status FilterHandler::handle(const std::shared_ptr<arrow::Buffer> &source
       return take_result.status();
     }
 
-    result_record_batches.push_back(take_result.ValueOrDie().record_batch());
+    result.push_back(take_result.ValueOrDie().record_batch());
   }
 
-  ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(result_record_batches.back()->schema(),
-                                                         result_record_batches, target));
   return arrow::Status::OK();
 }
 

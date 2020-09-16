@@ -5,21 +5,7 @@
 #include "join_handler.h"
 #include "utils/utils.h"
 
-arrow::Status JoinHandler::handle(const std::deque<std::shared_ptr<arrow::Buffer>> &period,
-                                  std::shared_ptr<arrow::Buffer>& result) {
-  arrow::RecordBatchVector record_batches;
-  for (auto& buffer : period) {
-    arrow::RecordBatchVector record_batch_vector;
-    ARROW_RETURN_NOT_OK(Serializer::deserializeRecordBatches(buffer, &record_batch_vector));
-    for (auto& record_batch : record_batch_vector) {
-      record_batches.push_back(record_batch);
-    }
-  }
-
-  if (record_batches.empty()) {
-    return arrow::Status::CapacityError("No data to join");
-  }
-
+arrow::Status JoinHandler::handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector& result) {
   auto pool = arrow::default_memory_pool();
   std::unordered_map<std::string, std::shared_ptr<arrow::DataType>> column_types;
   std::unordered_map<std::string, std::shared_ptr<arrow::ArrayBuilder>> column_builders;
@@ -117,7 +103,7 @@ arrow::Status JoinHandler::handle(const std::deque<std::shared_ptr<arrow::Buffer
     ARROW_RETURN_NOT_OK(ComputeUtils::sortByColumn(ts_column_name_, result_record_batch, &result_record_batch));
   }
 
-  ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(result_record_batch->schema(), {result_record_batch}, &result));
+  result.push_back(result_record_batch);
   return arrow::Status::OK();
 }
 

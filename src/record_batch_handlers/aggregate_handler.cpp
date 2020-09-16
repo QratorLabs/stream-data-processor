@@ -2,7 +2,7 @@
 
 #include "aggregate_handler.h"
 
-#include "data_handlers/aggregate_functions/aggregate_functions.h"
+#include "aggregate_functions/aggregate_functions.h"
 
 #include "utils/utils.h"
 
@@ -14,14 +14,7 @@ const std::unordered_map<std::string, std::shared_ptr<AggregateFunction>> Aggreg
     {"mean", std::make_shared<MeanAggregateFunction>()}
 };
 
-arrow::Status AggregateHandler::handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer> *target) {
-  // Converting arrow::Buffer to arrow::RecordBatchVector
-  std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
-  ARROW_RETURN_NOT_OK(Serializer::deserializeRecordBatches(source, &record_batches));
-  if (record_batches.empty()) {
-    return arrow::Status::CapacityError("No data to aggregate");
-  }
-
+arrow::Status AggregateHandler::handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector& result) {
   // Concatenating record batches to the one batch
   std::shared_ptr<arrow::RecordBatch> record_batch;
   ARROW_RETURN_NOT_OK(DataConverter::concatenateRecordBatches(record_batches, &record_batch));
@@ -60,9 +53,7 @@ arrow::Status AggregateHandler::handle(const std::shared_ptr<arrow::Buffer> &sou
     }
   }
 
-  auto result_record_batch = arrow::RecordBatch::Make(result_schema_, groups.size(), result_arrays);
-
-  ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(result_schema_, { result_record_batch }, target));
+  result.push_back(arrow::RecordBatch::Make(result_schema_, groups.size(), result_arrays));
   return arrow::Status::OK();
 }
 
@@ -155,9 +146,9 @@ arrow::Status AggregateHandler::aggregate(const arrow::RecordBatchVector &groups
 }
 
 arrow::Status AggregateHandler::aggregateTsColumn(const arrow::RecordBatchVector &groups,
-                                            const std::string &aggregate_function,
-                                            arrow::ArrayVector &result_arrays,
-                                            arrow::MemoryPool *pool) const {
+                                                  const std::string &aggregate_function,
+                                                  arrow::ArrayVector &result_arrays,
+                                                  arrow::MemoryPool *pool) const {
   auto ts_column_type = groups.front()->GetColumnByName(ts_column_name_)->type();
   if (!ts_column_type->Equals(arrow::timestamp(arrow::TimeUnit::SECOND))) {
     return arrow::Status::NotImplemented("Aggregation currently supports arrow::timestamp(SECOND) type for timestamp "

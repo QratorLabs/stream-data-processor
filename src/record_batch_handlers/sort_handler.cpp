@@ -4,13 +4,7 @@
 
 #include "utils/utils.h"
 
-arrow::Status SortHandler::handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer> *target) {
-  std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
-  ARROW_RETURN_NOT_OK(Serializer::deserializeRecordBatches(source, &record_batches));
-  if (record_batches.empty()) {
-    return arrow::Status::CapacityError("No data to sort");
-  }
-
+arrow::Status SortHandler::handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector& result) {
   std::shared_ptr<arrow::RecordBatch> record_batch;
   ARROW_RETURN_NOT_OK(DataConverter::concatenateRecordBatches(record_batches, &record_batch));
 
@@ -19,6 +13,6 @@ arrow::Status SortHandler::handle(const std::shared_ptr<arrow::Buffer> &source, 
 
   ARROW_RETURN_NOT_OK(DataConverter::concatenateRecordBatches(sorted_record_batches, &record_batch));
 
-  ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(record_batch->schema(), { record_batch }, target));
+  result.push_back(record_batch);
   return arrow::Status::OK();
 }

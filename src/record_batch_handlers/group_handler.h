@@ -3,9 +3,9 @@
 #include <string>
 #include <vector>
 
-#include "data_handler.h"
+#include "record_batch_handler.h"
 
-class GroupHandler : public DataHandler {
+class GroupHandler : public RecordBatchHandler {
  public:
   template <typename U>
   explicit GroupHandler(U&& grouping_columns)
@@ -13,7 +13,7 @@ class GroupHandler : public DataHandler {
 
   }
 
-  arrow::Status handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer>* target) override;
+  arrow::Status handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector& result) override;
 
  private:
   std::vector<std::string> grouping_columns_;

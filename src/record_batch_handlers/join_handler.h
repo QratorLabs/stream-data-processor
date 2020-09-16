@@ -5,20 +5,19 @@
 
 #include <arrow/api.h>
 
-#include "period_handler.h"
+#include "record_batch_handler.h"
 
-class JoinHandler : public PeriodHandler {
+class JoinHandler : public RecordBatchHandler {
  public:
   template <typename U>
-  JoinHandler(U&& join_on_columns, std::string ts_column_name = "", int64_t tolerance = 0)
+  explicit JoinHandler(U&& join_on_columns, std::string ts_column_name = "", int64_t tolerance = 0)
       : join_on_columns_(std::forward<U>(join_on_columns))
       , ts_column_name_(std::move(ts_column_name))
       , tolerance_(tolerance) {
 
   }
 
-  arrow::Status handle(const std::deque<std::shared_ptr<arrow::Buffer>> &period,
-                       std::shared_ptr<arrow::Buffer>& result) override;
+  arrow::Status handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector& result) override;
 
  private:
   struct JoinKey {
