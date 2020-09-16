@@ -36,4 +36,4 @@ RUN apt-get update \
     && wget https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protobuf-cpp-${PROTOBUF_VERSION}.tar.gz \
     && if [ "$(sha256sum protobuf-cpp-3.12.3.tar.gz)" != "${ENV_PROTOBUF_SHA256}" ]; then echo "Bad SHA256 hash sum of protobuf-cpp-3.12.3.tar.gz" ; exit 1 ; fi \
     && tar --no-same-owner -xzvf protobuf-cpp-${PROTOBUF_VERSION}.tar.gz \
-    && cd protobuf-${PROTOBUF_VERSION} && ./configure && make && make check && make install && ldconfig
+    && cd protobuf-${PROTOBUF_VERSION} && ./configure && make install && ldconfig
