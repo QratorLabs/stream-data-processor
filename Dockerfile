@@ -35,5 +35,5 @@ RUN apt-get update \
     && if [ "${ENV_PROTOBUF_SHA256}" = "" ]; then echo "protobuf sha256 hash sum environment variable is empty. Exiting..." ; exit 1 ; fi \
     && wget https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protobuf-cpp-${PROTOBUF_VERSION}.tar.gz \
     && if [ "$(sha256sum protobuf-cpp-3.12.3.tar.gz)" != "${ENV_PROTOBUF_SHA256}" ]; then echo "Bad SHA256 hash sum of protobuf-cpp-3.12.3.tar.gz" ; exit 1 ; fi \
-    && tar -xzvf --no-same-owner protobuf-cpp-${PROTOBUF_VERSION}.tar.gz \
+    && tar --no-same-owner -xzvf protobuf-cpp-${PROTOBUF_VERSION}.tar.gz \
     && cd protobuf-${PROTOBUF_VERSION} && ./configure && make && make check && make install && ldconfig
