@@ -1,6 +1,6 @@
 # Stream data processor library
 
-This library provides instruments to create distributed asynchronous acyclic computation graph to process continuous
+This library provides instruments for creating distributed asynchronous acyclic computation graph to process continuous
 stream of arriving data. All data passing through this graph is represented as `arrow::RecordBatch` - a columnar format 
 of Apache Arrow library. It has typed fields (columns) and records (rows), can be serialized and deserialized from
 `arrow::Buffer` - an object containing a pointer to a piece of contiguous memory with a particular size.
@@ -11,7 +11,7 @@ TCP endpoint, another pipeline, etc. After that, `Node` is responsible for handl
 type. And finally, `Node` passes the handled data to `Consumers`, which send it to the next pipeline or write it to the
 file or something else.
 
-Such design were used to separate parts which are responsible for data handling and data transfer. This allows user
+Such design were used to separate parts that are responsible for data handling and data transfer. It allows user
 to create very flexible and configurable computation graph.
 
 ## `Node`
@@ -23,23 +23,29 @@ Currently there are only two types of nodes:
 ### `EvalNode`
 
 This node type is used to mutate data as soon as it arrives. It doesn't have any internal state so it is easy to
-understand how it works. The `EvalNode` uses provided in constructor `DataHandler` to handle arriving data. There is a
-full list of data handlers that are currently implemented:
- - `AggregateHandler` - aggregates data using provided aggregate functions (*first*, *last*, *mean*, *min*, *max*).
- - `DataParser` - parses data arrived in the certain format. For example, CSV or Graphite output data format.
- - `DefaultHandler` - sets default values for columns. Analog of the Kapacitor node of the same name.
- - `FilterHandler` - filters rows with provided conditions. Use `arrow::gandiva` library to create conditions tree.
- - `GroupHandler` - splits record batches into groups with the same values in columns.
- - `MapHandler` - evaluates expressions with present columns as arguments. Use `arrow::gandiva`
-   library to create expressions.
- - `SortHandler` - sorts rows by the certain column.
+understand how it works. The `EvalNode` uses provided in constructor `DataHandler` to handle arriving data. There are
+two types of data handlers that are currently implemented:
+ - `DataParser` - parses data arriving in the certain format. For example, CSV or Graphite output data format.
+ - `SerializedRecordBatchHandler` - deserialize arriving data from `arrow::Buffer` to the vector of `arrow::RecordBatch`
+    that can be handled by provided `RecordBatchHandler`.
  
 ### `PeriodNode`
 
 This node type (just like `EvalNode`) takes `PeriodHandler` as strategy to handle record batches belonging to the
 certain period of time. It also takes three additional arguments: `range`, `period` and `ts_column_name`. `range` and
 `period` arguments defines how long time period will be and how often it will be handled respectively. `ts_column_name`
-argument is used to determine which column of record batch contains timestamps. Available `PariodHandlers` are:
+argument is used to determine which column of record batch contains timestamps. There is only one `PariodHandler` -- 
+`SerializedPeriodHandler`, which acts like `SerializedRecordBatchHandler`: deserialize data and pass it to the handler.
+ 
+### `RecordBatchHandler`
+There is a full list of currently available handlers:
+ - `AggregateHandler` - aggregates data using provided aggregate functions (*first*, *last*, *mean*, *min*, *max*).
+ - `DefaultHandler` - sets default values for columns. Analog of the Kapacitor node of the same name.
+ - `FilterHandler` - filters rows with provided conditions. Use `arrow::gandiva` library to create conditions tree.
+ - `GroupHandler` - splits record batches into groups with the same values in columns.
+ - `MapHandler` - evaluates expressions with present columns as arguments. Use `arrow::gandiva`
+   library to create expressions.
+ - `SortHandler` - sorts rows by the certain column.
  - `JoinHandler` - joins received record batches on the set of columns;
  - `WindowHandler` - concatenates received record batches.
  
