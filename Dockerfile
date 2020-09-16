@@ -9,6 +9,9 @@ ENV ENV_ARROW_DEB_PCKG_SHA256=$ARROW_DEB_PCKG_SHA256
 ARG CPPZMQ_SHA256
 ENV ENV_CPPZMQ_SHA256=$CPPZMQ_SHA256
 
+ARG PROTOBUF_SHA256
+ENV ENV_PROTOBUF_SHA256=$PROTOBUF_SHA256
+
 # Configure system for further build and run
 RUN apt-get update \
     && apt-get install -y -V autoconf automake libtool curl g++ unzip cmake make wget tar pkg-config ca-certificates lsb-release git libzmq3-dev \
@@ -29,6 +32,8 @@ RUN apt-get update \
     && cd Catch2 \
     && cmake -Bbuild -H. -DBUILD_TESTING=OFF \
     && cmake --build build/ --target install && cd .. \
+    && if [ "${ENV_PROTOBUF_SHA256}" = "" ]; then echo "protobuf sha256 hash sum environment variable is empty. Exiting..." ; exit 1 ; fi \
     && wget https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protobuf-cpp-${PROTOBUF_VERSION}.tar.gz \
+    && if [ "$(sha256sum protobuf-cpp-3.12.3.tar.gz)" != "${ENV_PROTOBUF_SHA256}" ]; then echo "Bad SHA256 hash sum of protobuf-cpp-3.12.3.tar.gz" ; exit 1 ; fi \
     && tar -xzvf protobuf-cpp-${PROTOBUF_VERSION}.tar.gz \
     && cd protobuf-${PROTOBUF_VERSION} && ./configure && make && make check && make install && ldconfig
