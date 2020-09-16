@@ -7,7 +7,6 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   DOCKER_DRIVER: overlay2
   DOCKER_IMAGE_NAME: qevent_intership_stream_data_processor_image
-  TAR_OPTIONS: --no-same-owner
 
 build_docker_image:
   stage: build_image
