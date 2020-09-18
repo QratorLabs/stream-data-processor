@@ -208,7 +208,7 @@ message Request {
     SnapshotRequest  snapshot  = 4;
     RestoreRequest   restore   = 5;
 
-    // Data flow responses
+    // Data flow requests
     BeginBatch begin = 16;
     Point      point = 17;
     EndBatch   end   = 18;

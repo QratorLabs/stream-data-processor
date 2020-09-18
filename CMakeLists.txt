@@ -4,6 +4,7 @@ project(stream-data-processor)
 set(CMAKE_CXX_STANDARD 17)
 
 set(BUILD_UVW_LIBS ON)
+set(BUILD_TESTING OFF CACHE BOOL "disable uvw build gtest" FORCE)
 add_subdirectory(third_party/uvw)
 
 find_package(PkgConfig)

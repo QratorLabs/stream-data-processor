@@ -9,15 +9,24 @@
 
 #include "udf.pb.h"
 
-class Agent {
+class IAgent {
+ public:
+  virtual void start() = 0;
+  virtual void wait() = 0;
+  virtual void writeResponse(const agent::Response& response) = 0;
+
+  virtual ~IAgent() = default;
+};
+
+class Agent : public IAgent {
  public:
   Agent(std::istream& in, std::ostream& out);
 
   void setHandler(const std::shared_ptr<RequestHandler>& request_handler);
 
-  void start();
-  void wait();
-  void writeResponse(const agent::Response& response);
+  void start() override;
+  void wait() override;
+  void writeResponse(const agent::Response& response) override;
 
  private:
   void readLoop();
