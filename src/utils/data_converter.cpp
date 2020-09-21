@@ -34,7 +34,7 @@ arrow::Status DataConverter::concatenateRecordBatches(const std::vector<std::sha
 }
 
 
-arrow::Status DataConverter::convertToRecordBatches(const std::vector<agent::Point> &batch_points,
+arrow::Status DataConverter::convertToRecordBatches(const agent::PointBatch &points,
                                                     arrow::RecordBatchVector &record_batches,
                                                     const PointsToRecordBatchesConversionOptions& options) {
   auto pool = arrow::default_memory_pool();
@@ -45,7 +45,7 @@ arrow::Status DataConverter::convertToRecordBatches(const std::vector<agent::Poi
   std::map<std::string, arrow::Int64Builder> int_fields_builders;
   std::map<std::string, arrow::StringBuilder> string_fields_builders;
   std::map<std::string, arrow::BooleanBuilder> bool_fields_builders;
-  for (auto& point : batch_points) {
+  for (auto& point : points.points()) {
     addBuilders(point.tags(), tags_builders, pool);
     addBuilders(point.fieldsint(), int_fields_builders, pool);
     addBuilders(point.fieldsdouble(), double_fields_builders, pool);
@@ -53,7 +53,7 @@ arrow::Status DataConverter::convertToRecordBatches(const std::vector<agent::Poi
     addBuilders(point.fieldsbool(), bool_fields_builders, pool);
   }
 
-  for (auto& point : batch_points) {
+  for (auto& point : points.points()) {
     ARROW_RETURN_NOT_OK(timestamp_builder.Append(point.time()));
     ARROW_RETURN_NOT_OK(measurement_builder.Append(point.name()));
     ARROW_RETURN_NOT_OK(appendValues(point.tags(), tags_builders));
@@ -80,16 +80,18 @@ arrow::Status DataConverter::convertToRecordBatches(const std::vector<agent::Poi
   ARROW_RETURN_NOT_OK(buildColumnArrays(column_arrays, schema_fields, string_fields_builders, arrow::utf8()));
   ARROW_RETURN_NOT_OK(buildColumnArrays(column_arrays, schema_fields, bool_fields_builders, arrow::boolean()));
 
-  record_batches.push_back(arrow::RecordBatch::Make(arrow::schema(schema_fields), batch_points.size(), column_arrays));
+  record_batches.push_back(arrow::RecordBatch::Make(arrow::schema(schema_fields),
+                                                    points.points_size(),
+                                                    column_arrays));
   return arrow::Status::OK();
 }
 
 arrow::Status DataConverter::convertToPoints(const arrow::RecordBatchVector &record_batches,
-                                             std::vector<agent::Point> &points,
+                                             agent::PointBatch &points,
                                              const RecordBatchesToPointsConversionOptions& options) {
   size_t points_count = 0;
   for (auto& record_batch : record_batches) {
-    points.resize(points_count + record_batch->num_rows());
+    points.mutable_points()->Reserve(points_count + record_batch->num_rows());
     for (int i = 0; i < record_batch->num_columns(); ++i) {
       auto& column_name = record_batch->column_name(i);
       auto column = record_batch->column(i);
@@ -99,7 +101,11 @@ arrow::Status DataConverter::convertToPoints(const arrow::RecordBatchVector &rec
           return get_scalar_result.status();
         }
 
-        auto& point = points[points_count + j];
+        if (i == 0) {
+          points.mutable_points()->Add(agent::Point());
+        }
+
+        auto& point = points.mutable_points()->at(points_count + j);
         auto scalar_value = get_scalar_result.ValueOrDie();
         if (column_name == options.measurement_column_name) {
           point.set_name(scalar_value->ToString());

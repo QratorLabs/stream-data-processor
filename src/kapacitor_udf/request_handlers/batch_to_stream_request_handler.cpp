@@ -16,32 +16,13 @@ agent::Response BatchToStreamRequestHandler::init(const agent::InitRequest &init
   return response;
 }
 
-agent::Response BatchToStreamRequestHandler::snapshot() {         // TODO: make snapshot using protobufs only
+agent::Response BatchToStreamRequestHandler::snapshot() {
   agent::Response response;
-  arrow::RecordBatchVector record_batches;
-  auto convert_result = DataConverter::convertToRecordBatches(batch_points_, record_batches, to_record_batches_options_);
-  if (!convert_result.ok()) {
-    response.mutable_error()->set_error(convert_result.message());
-    return response;
-  }
-
-  if (record_batches.empty()) {
-    response.mutable_snapshot()->set_snapshot(in_batch_ ? "1" : "0");
-    return response;
-  }
-
-  std::shared_ptr<arrow::Buffer> buffer;
-  auto serialize_result = Serializer::serializeRecordBatches(record_batches.back()->schema(), record_batches, &buffer);
-  if (!serialize_result.ok()) {
-    response.mutable_error()->set_error(serialize_result.message());
-    return response;
-  }
-
-  response.mutable_snapshot()->set_snapshot((in_batch_ ? "1" : "0") + buffer->ToString());
+  response.mutable_snapshot()->set_snapshot((in_batch_ ? "1" : "0") + batch_points_.SerializeAsString());
   return response;
 }
 
-agent::Response BatchToStreamRequestHandler::restore(const agent::RestoreRequest &restore_request) {    // TODO: make snapshot using protobufs only
+agent::Response BatchToStreamRequestHandler::restore(const agent::RestoreRequest &restore_request) {
   agent::Response response;
   if (restore_request.snapshot().empty()) {
     response.mutable_restore()->set_success(false);
@@ -56,30 +37,8 @@ agent::Response BatchToStreamRequestHandler::restore(const agent::RestoreRequest
   }
 
   in_batch_ = restore_request.snapshot()[0] == '1';
-
-  if (restore_request.snapshot().size() == 1) {
-    batch_points_.clear();
-    response.mutable_restore()->set_success(true);
-    return response;
-  }
-
-  auto buffer = arrow::Buffer::FromString(restore_request.snapshot().substr(1));
-  arrow::RecordBatchVector record_batches;
-  auto deserialize_result = Serializer::deserializeRecordBatches(buffer, &record_batches);
-  if (!deserialize_result.ok()) {
-    response.mutable_restore()->set_success(false);
-    response.mutable_restore()->set_error(deserialize_result.message());
-    return response;
-  }
-
-  batch_points_.clear();
-  auto convert_result = DataConverter::convertToPoints(record_batches, batch_points_, to_points_options_);
-  if (!convert_result.ok()) {
-    response.mutable_restore()->set_success(false);
-    response.mutable_restore()->set_error(convert_result.message());
-    return response;
-  }
-
+  batch_points_.mutable_points()->Clear();
+  batch_points_.ParseFromString(restore_request.snapshot().substr(1));
   response.mutable_restore()->set_success(true);
   return response;
 }
@@ -90,7 +49,9 @@ void BatchToStreamRequestHandler::beginBatch(const agent::BeginBatch &batch) {
 
 void BatchToStreamRequestHandler::point(const agent::Point &point) {
   if (in_batch_) {
-    batch_points_.push_back(point);
+    agent::Point copy_point;
+    copy_point.CopyFrom(point);
+    batch_points_.mutable_points()->Add(std::move(copy_point));
   } else {
     agent::Response response;
     response.mutable_error()->set_error("Can't add point: not in batch");
@@ -102,7 +63,7 @@ void BatchToStreamRequestHandler::endBatch(const agent::EndBatch &batch) {
   agent::Response response;
   arrow::RecordBatchVector record_batches;
   auto convert_result = DataConverter::convertToRecordBatches(batch_points_, record_batches, to_record_batches_options_);
-  batch_points_.clear();
+  batch_points_.mutable_points()->Clear();
   in_batch_ = false;
   if (!convert_result.ok()) {
     response.mutable_error()->set_error(convert_result.message());
@@ -122,7 +83,7 @@ void BatchToStreamRequestHandler::endBatch(const agent::EndBatch &batch) {
     record_batches = std::move(result);
   }
 
-  std::vector<agent::Point> response_points;
+  agent::PointBatch response_points;
   convert_result = DataConverter::convertToPoints(record_batches, response_points, to_points_options_);
   if (!convert_result.ok()) {
     response.mutable_error()->set_error(convert_result.message());
@@ -130,7 +91,7 @@ void BatchToStreamRequestHandler::endBatch(const agent::EndBatch &batch) {
     return;
   }
 
-  for (auto& point : response_points) {
+  for (auto& point : response_points.points()) {
     response.mutable_point()->CopyFrom(point);
     agent_.lock()->writeResponse(response);
   }

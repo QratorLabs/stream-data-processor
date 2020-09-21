@@ -40,7 +40,7 @@ class BatchToStreamRequestHandler : public RequestHandler {
   DataConverter::PointsToRecordBatchesConversionOptions to_record_batches_options_;
   DataConverter::RecordBatchesToPointsConversionOptions to_points_options_;
   bool in_batch_{false};
-  std::vector<agent::Point> batch_points_;
+  agent::PointBatch batch_points_;
 };
 
 

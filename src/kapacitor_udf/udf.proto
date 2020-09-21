@@ -232,3 +232,7 @@ message Response {
     EndBatch   end   = 18;
   }
 }
+
+message PointBatch {
+  repeated Point points = 1;
+}

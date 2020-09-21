@@ -30,11 +30,11 @@ class DataConverter {
   static arrow::Status concatenateRecordBatches(const std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches,
                                                 std::shared_ptr<arrow::RecordBatch>* target);
 
-  static arrow::Status convertToRecordBatches(const std::vector<agent::Point>& batch_points,
+  static arrow::Status convertToRecordBatches(const agent::PointBatch &points,
                                               arrow::RecordBatchVector& record_batches,
                                               const PointsToRecordBatchesConversionOptions& options);
   static arrow::Status convertToPoints(const arrow::RecordBatchVector &record_batches,
-                                       std::vector<agent::Point> &points,
+                                       agent::PointBatch &points,
                                        const RecordBatchesToPointsConversionOptions& options);
 
  private:
