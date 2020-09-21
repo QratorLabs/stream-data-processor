@@ -6,15 +6,11 @@
 
 void GmockCatchInterceptor::OnTestPartResult(
     const ::testing::TestPartResult & gmock_assertion_result) {
-  try {
-    INFO( "*** Failure in "
-              << gmock_assertion_result.file_name() << ':'
-              << gmock_assertion_result.line_number() << "\n  "
-              << gmock_assertion_result.summary() << '\n');
-    REQUIRE_FALSE(gmock_assertion_result.failed()); // inverse logic
-  } catch (Catch::TestFailureException) {
-
-  }
+  INFO( "*** Failure in "
+            << gmock_assertion_result.file_name() << ':'
+            << gmock_assertion_result.line_number() << "\n  "
+            << gmock_assertion_result.summary() << '\n');
+  CHECK_FALSE(gmock_assertion_result.failed()); // inverse logic
 }
 
 void GmockCatchInterceptor::OnTestProgramStart(const ::testing::UnitTest& unit_test) {
