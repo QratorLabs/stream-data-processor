@@ -1,5 +1,3 @@
-#include <sstream>
-
 #include <catch2/catch.hpp>
 
 #include "gmock_catch_interceptor.h"

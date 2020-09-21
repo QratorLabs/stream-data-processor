@@ -94,7 +94,7 @@ void BatchToStreamRequestHandler::point(const agent::Point &point) {
   } else {
     agent::Response response;
     response.mutable_error()->set_error("Can't add point: not in batch");
-    agent_.writeResponse(response);
+    agent_.lock()->writeResponse(response);
   }
 }
 
@@ -106,7 +106,7 @@ void BatchToStreamRequestHandler::endBatch(const agent::EndBatch &batch) {
   in_batch_ = false;
   if (!convert_result.ok()) {
     response.mutable_error()->set_error(convert_result.message());
-    agent_.writeResponse(response);
+    agent_.lock()->writeResponse(response);
     return;
   }
 
@@ -115,7 +115,7 @@ void BatchToStreamRequestHandler::endBatch(const agent::EndBatch &batch) {
     auto handle_result = handler->handle(record_batches, result);
     if (!handle_result.ok()) {
       response.mutable_error()->set_error(handle_result.message());
-      agent_.writeResponse(response);
+      agent_.lock()->writeResponse(response);
       return;
     }
 
@@ -126,12 +126,12 @@ void BatchToStreamRequestHandler::endBatch(const agent::EndBatch &batch) {
   convert_result = DataConverter::convertToPoints(record_batches, response_points, to_points_options_);
   if (!convert_result.ok()) {
     response.mutable_error()->set_error(convert_result.message());
-    agent_.writeResponse(response);
+    agent_.lock()->writeResponse(response);
     return;
   }
 
   for (auto& point : response_points) {
     response.mutable_point()->CopyFrom(point);
-    agent_.writeResponse(response);
+    agent_.lock()->writeResponse(response);
   }
 }
