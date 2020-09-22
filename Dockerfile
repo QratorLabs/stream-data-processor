@@ -33,5 +33,5 @@ RUN apt-get update \
     && if [ "${ENV_CATCH2_SHA256}" = "" ]; then echo "Catch2 sha256 hash sum environment variable is empty. Exiting..." ; exit 1 ; fi \
     && wget -O "${CATCH2_DIR_NAME}.tar.gz" "https://github.com/catchorg/Catch2/archive/v${CATCH2_VERSION}.tar.gz" \
     && if [ "$(sha256sum ${CATCH2_DIR_NAME}.tar.gz)" != "${ENV_CATCH2_SHA256}" ]; then echo "Bad SHA256 hash sum of ${CATCH2_DIR_NAME}.tar.gz" ; exit 1 ; fi \
-    && tar -xvzf "${CATCH2_DIR_NAME}" \
+    && tar -xvzf "${CATCH2_DIR_NAME}.tar.gz" \
     && cd "${CATCH2_DIR_NAME}" && cmake -Bbuild -H. -DBUILD_TESTING=OFF && cmake --build build/ --target install && cd ..
