@@ -1,4 +1,4 @@
-#include <spdlog/spdlog.h>
+#include "spdlog/spdlog.h"
 
 #include "agent.h"
 #include "utils/uvarint.h"
@@ -74,9 +74,9 @@ void Agent::readLoop() {
       }
     } catch (const EOFException&) {
       break;
-    } catch (const std::exception& e) {
+    } catch (const std::exception& exc) {
       std::string error_message("error processing request with enum number " + std::to_string(request.message_case()) +
-                                ": " + e.what());
+                                ": " + exc.what());
       spdlog::error(error_message);
       agent::Response response;
       response.mutable_error()->set_error(error_message);

@@ -1,6 +1,6 @@
 #include "node.h"
 
-#include <spdlog/spdlog.h>
+#include "spdlog/spdlog.h"
 
 void Node::passData(const std::shared_ptr<arrow::Buffer> &data) {
   spdlog::get(name_)->info("Passing data of size {}", data->size());

@@ -1,6 +1,6 @@
 #include <utility>
 
-#include <spdlog/spdlog.h>
+#include "spdlog/spdlog.h"
 
 #include "period_node.h"
 #include "utils/utils.h"

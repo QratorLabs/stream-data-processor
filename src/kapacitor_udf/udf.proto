@@ -1,3 +1,7 @@
+// This file was taken from influxdata/kapacitor repository:
+// https://github.com/influxdata/kapacitor/blob/master/udf/agent/udf.proto
+// to use its communication protocol in UDFs
+
 syntax = "proto3";
 
 package agent;

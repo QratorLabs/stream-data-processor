@@ -27,11 +27,22 @@ set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${Arrow_DIR})
 find_package(Gandiva REQUIRED)
 message(STATUS "Gandiva lib dir: ${Gandiva_DIR}")
 
-find_package(spdlog REQUIRED)
+include(ExternalProject)
+FetchContent_Declare(spdlog
+  URL https://github.com/gabime/spdlog/archive/v1.8.0.tar.gz
+  URL_HASH SHA256=1e68e9b40cf63bb022a4b18cdc1c9d88eb5d97e4fd64fa981950a9cacf57a4bf
+  SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/spdlog-src"
+  )
+FetchContent_GetProperties(spdlog)
+if(NOT spdlog_POPULATED)
+  FetchContent_Populate(spdlog)
+endif()
+set(SPDLOG_INCLUDE_DIRS "${spdlog_SOURCE_DIR}/include")
+message(STATUS "spdlog include dirs: ${SPDLOG_INCLUDE_DIRS}")
 
 find_package(Protobuf REQUIRED)
-include_directories(${Protobuf_INCLUDE_DIRS})
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories("${Protobuf_INCLUDE_DIRS}")
+include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
 set(USE_BOOST_KARMA OFF CACHE BOOL "" FORCE)
 add_subdirectory(third_party/bprinter)
@@ -84,14 +95,14 @@ set(STREAM_DATA_PROCESSOR_INCLUDE_DIRS
 set(LIBRARY_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src"
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bprinter/include"
-  ${STREAM_DATA_PROCESSOR_INCLUDE_DIRS}
-  ${ZeroMQ_INCLUDE_DIR})
+  "${STREAM_DATA_PROCESSOR_INCLUDE_DIRS}"
+  "${ZeroMQ_INCLUDE_DIR}"
+  "${SPDLOG_INCLUDE_DIRS}")
 
 set(PROJECT_DEPENDENCIES
   uvw::uvw-static
   arrow_shared
   gandiva_shared
-  spdlog::spdlog
   bprinter
   ${ZeroMQ_LIBRARY}
   ${Protobuf_LIBRARIES})
