@@ -20,7 +20,7 @@ RUN apt-get update \
     && if [ "${ENV_ARROW_DEB_PCKG_SHA256}" = "" ]; then echo "arrow deb package sha256 hash sum environment variable is empty. Exiting..." ; exit 1 ; fi \
     && wget -O "${ARROW_DEB_PCKG_NAME}" "https://apache.bintray.com/arrow/debian/apache-arrow-archive-keyring-latest-$(lsb_release --codename --short).deb" \
     && if [ "$(sha256sum ${ARROW_DEB_PCKG_NAME})" != "${ENV_ARROW_DEB_PCKG_SHA256}" ]; then echo "Bad SHA256 hash sum of ${ARROW_DEB_PCKG_NAME}" ; exit 1 ; fi \
-    && apt-get install -y -V ./apache-arrow-archive-keyring-latest-$(lsb_release --codename --short).deb \
+    && apt-get install -y -V ./${ARROW_DEB_PCKG_NAME} \
     && apt-get update \
     && apt-get install -y -V libarrow-dev libgandiva-dev \
     \
