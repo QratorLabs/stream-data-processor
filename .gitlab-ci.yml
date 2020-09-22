@@ -18,6 +18,7 @@ build_docker_image:
   script:
     - docker info
     - docker build --build-arg GCC_IMAGE_VERSION=10.2.0 -t $DOCKER_IMAGE_NAME .
+  interruptible: true
 
 stream_data_processor_build:
   stage: build
@@ -30,6 +31,7 @@ stream_data_processor_build:
   artifacts:
     paths:
       - build
+  interruptible: true
 
 stream_data_processor_test:
   stage: test
@@ -39,4 +41,5 @@ stream_data_processor_test:
     - ./test/test_main
   dependencies:
     - stream_data_processor_build
+  interruptible: true
 
