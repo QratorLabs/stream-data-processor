@@ -17,7 +17,7 @@ build_docker_image:
   image: docker:stable
   script:
     - docker info
-    - docker build --build-arg ARROW_DEB_PCKG_SHA256=${ARROW_DEB_PCKG_SHA256} --build-arg CPPZMQ_SHA256=${CPPZMQ_SHA256} --build-arg PROTOBUF_SHA256=${PROTOBUF_SHA256} --build-arg GCC_IMAGE_VERSION=10.2.0 -t $DOCKER_IMAGE_NAME .
+    - docker build --build-arg GCC_IMAGE_VERSION=10.2.0 -t $DOCKER_IMAGE_NAME .
 
 stream_data_processor_build:
   stage: build
