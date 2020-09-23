@@ -20,6 +20,8 @@ class IUDFAgent {
   virtual ~IUDFAgent() = default;
 };
 
+class RequestHandler;
+
 template <typename T, typename U>
 class UDFAgent : public IUDFAgent {
  public:

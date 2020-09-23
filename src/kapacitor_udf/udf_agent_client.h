@@ -4,7 +4,7 @@
 
 #include "uvw.hpp"
 
-#include "agent.h"
+#include "udf_agent.h"
 #include "server/unix_socket_client.h"
 
 class AgentClient : public UnixSocketClient {

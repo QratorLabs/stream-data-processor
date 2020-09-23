@@ -70,9 +70,12 @@ set(STREAM_DATA_PROCESSOR_SOURCES
   src/record_batch_handlers/aggregate_functions/first_aggregate_function.cpp
   src/record_batch_handlers/aggregate_functions/last_aggregate_function.cpp
   src/record_batch_handlers/aggregate_functions/mean_aggregate_function.cpp
-  src/kapacitor_udf/agent.cpp
-  src/kapacitor_udf/agent_client.cpp
+  src/kapacitor_udf/udf_agent.cpp
+  src/kapacitor_udf/udf_agent_client.cpp
+  src/kapacitor_udf/request_handlers/request_handler.cpp
+  src/kapacitor_udf/request_handlers/pipeline_request_handler.cpp
   src/kapacitor_udf/request_handlers/batch_to_stream_request_handler.cpp
+  src/kapacitor_udf/request_handlers/stream_to_stream_request_handler.cpp
   src/server/unix_socket_server.cpp
   src/record_batch_handlers/window_handler.cpp
   src/record_batch_handlers/join_handler.cpp
