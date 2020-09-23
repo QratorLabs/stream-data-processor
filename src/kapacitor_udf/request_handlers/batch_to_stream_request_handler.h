@@ -16,7 +16,7 @@
 class BatchToStreamRequestHandler : public RequestHandler {
  public:
   template <typename U>
-  BatchToStreamRequestHandler(const std::shared_ptr<IAgent>& agent, U&& handlers_pipeline,
+  BatchToStreamRequestHandler(const std::shared_ptr<IUDFAgent>& agent, U&& handlers_pipeline,
                               DataConverter::PointsToRecordBatchesConversionOptions to_record_batches_options,
                               DataConverter::RecordBatchesToPointsConversionOptions to_points_options)
       : agent_(agent)
@@ -35,7 +35,7 @@ class BatchToStreamRequestHandler : public RequestHandler {
   void endBatch(const agent::EndBatch& batch) override;
 
  private:
-  std::weak_ptr<IAgent> agent_;
+  std::weak_ptr<IUDFAgent> agent_;
   std::vector<std::shared_ptr<RecordBatchHandler>> handlers_pipeline_;
   DataConverter::PointsToRecordBatchesConversionOptions to_record_batches_options_;
   DataConverter::RecordBatchesToPointsConversionOptions to_points_options_;

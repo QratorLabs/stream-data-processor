@@ -6,8 +6,15 @@
 #include "agent.h"
 #include "utils/uvarint.h"
 
+template<>
+UDFAgent<uvw::TTYHandle, uv_tty_t>::UDFAgent(const std::shared_ptr<uvw::Loop> &loop)
+    : in_(loop->resource<uvw::TTYHandle>(uvw::StdIN, true))
+    , out_(loop->resource<uvw::TTYHandle>(uvw::StdOUT, false)) {
+
+}
+
 template<typename T, typename U>
-Agent<T, U>::Agent(std::shared_ptr<uvw::StreamHandle<T, U>> in, std::shared_ptr<uvw::StreamHandle<T, U>> out)
+UDFAgent<T, U>::UDFAgent(std::shared_ptr<uvw::StreamHandle<T, U>> in, std::shared_ptr<uvw::StreamHandle<T, U>> out)
     : in_(std::move(in))
     , out_(std::move(out)) {
   in_->template on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::StreamHandle<T, U>) {
@@ -24,23 +31,23 @@ Agent<T, U>::Agent(std::shared_ptr<uvw::StreamHandle<T, U>> in, std::shared_ptr<
 }
 
 template<typename T, typename U>
-void Agent<T, U>::setHandler(const std::shared_ptr<RequestHandler> &request_handler) {
+void UDFAgent<T, U>::setHandler(const std::shared_ptr<RequestHandler> &request_handler) {
   request_handler_ = request_handler;
 }
 
 template<typename T, typename U>
-void Agent<T, U>::start() {
+void UDFAgent<T, U>::start() {
   in_->read();
 }
 
 template<typename T, typename U>
-void Agent<T, U>::stop() {
+void UDFAgent<T, U>::stop() {
   in_->stop();
   out_->stop();
 }
 
 template<typename T, typename U>
-void Agent<T, U>::writeResponse(const agent::Response &response) {
+void UDFAgent<T, U>::writeResponse(const agent::Response &response) {
   auto response_data = response.SerializeAsString();
   std::stringstream out_stream;
   UVarIntCoder::encode(out_stream, response_data.length());
@@ -49,7 +56,7 @@ void Agent<T, U>::writeResponse(const agent::Response &response) {
 }
 
 template<typename T, typename U>
-bool Agent<T, U>::readLoop(std::istream& input_stream) {
+bool UDFAgent<T, U>::readLoop(std::istream& input_stream) {
   agent::Request request;
   while (true) {
     try {
@@ -123,7 +130,7 @@ bool Agent<T, U>::readLoop(std::istream& input_stream) {
 }
 
 template<typename T, typename U>
-void Agent<T, U>::reportError(const std::string& error_message) {
+void UDFAgent<T, U>::reportError(const std::string& error_message) {
   spdlog::error(error_message);
   agent::Response response;
   response.mutable_error()->set_error(error_message);

@@ -12,16 +12,16 @@
 
 #include "udf.pb.h"
 
-class MockAgent : public IAgent {
+class MockUDFAgent : public IUDFAgent {
  public:
   MOCK_METHOD(void, start, (), (override));
   MOCK_METHOD(void, stop, (), (override));
   MOCK_METHOD(void, writeResponse, (const agent::Response& response), (override));
 };
 
-SCENARIO( "Agent with RequestHandler interaction", "[BatchToStreamRequestHandler]" ) {
-  GIVEN( "Agent and mirror Handler" ) {
-    std::shared_ptr<MockAgent> mock_agent = std::make_shared<MockAgent>();
+SCENARIO( "UDFAgent with RequestHandler interaction", "[BatchToStreamRequestHandler]" ) {
+  GIVEN( "UDFAgent and mirror Handler" ) {
+    std::shared_ptr<MockUDFAgent> mock_agent = std::make_shared<MockUDFAgent>();
     std::vector<std::shared_ptr<RecordBatchHandler>> empty_handler_pipeline;
     DataConverter::PointsToRecordBatchesConversionOptions to_record_batches_options{
       "time",
@@ -44,7 +44,7 @@ SCENARIO( "Agent with RequestHandler interaction", "[BatchToStreamRequestHandler
       point.set_time(now);
       point.set_name("name");
 
-      THEN( "Agent's writeResponse method is called with same points" ) {
+      THEN( "UDFAgent's writeResponse method is called with same points" ) {
         auto serialized_point = point.SerializeAsString();
         EXPECT_CALL(*mock_agent,
                     writeResponse(::testing::Truly([serialized_point](const agent::Response& response) {

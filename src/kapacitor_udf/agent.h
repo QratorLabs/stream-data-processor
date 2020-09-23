@@ -11,19 +11,20 @@
 
 #include "udf.pb.h"
 
-class IAgent {
+class IUDFAgent {
  public:
   virtual void start() = 0;
   virtual void stop() = 0;
   virtual void writeResponse(const agent::Response& response) = 0;
 
-  virtual ~IAgent() = default;
+  virtual ~IUDFAgent() = default;
 };
 
 template <typename T, typename U>
-class Agent : public IAgent {
+class UDFAgent : public IUDFAgent {
  public:
-  Agent(std::shared_ptr<uvw::StreamHandle<T, U>> in, std::shared_ptr<uvw::StreamHandle<T, U>> out);
+  explicit UDFAgent(const std::shared_ptr<uvw::Loop>& loop) = delete;
+  UDFAgent(std::shared_ptr<uvw::StreamHandle<T, U>> in, std::shared_ptr<uvw::StreamHandle<T, U>> out);
 
   void setHandler(const std::shared_ptr<RequestHandler>& request_handler);
 
@@ -43,4 +44,5 @@ class Agent : public IAgent {
   size_t residual_request_size_{0};
 };
 
-
+using ChildProcessBaseedUDFAgent = UDFAgent<uvw::TTYHandle, uv_tty_t>;
+using SocketBasedUDFAgent = UDFAgent<uvw::PipeHandle, uv_pipe_t>;
