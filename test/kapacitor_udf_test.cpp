@@ -15,7 +15,7 @@
 class MockAgent : public IAgent {
  public:
   MOCK_METHOD(void, start, (), (override));
-  MOCK_METHOD(void, wait, (), (override));
+  MOCK_METHOD(void, stop, (), (override));
   MOCK_METHOD(void, writeResponse, (const agent::Response& response), (override));
 };
 

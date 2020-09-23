@@ -1,42 +1,81 @@
+#include <sstream>
+#include <string>
+
 #include "spdlog/spdlog.h"
 
 #include "agent.h"
 #include "utils/uvarint.h"
 
-Agent::Agent(std::istream &in, std::ostream &out) : in_(in), out_(out) {
+template<typename T, typename U>
+Agent<T, U>::Agent(std::shared_ptr<uvw::StreamHandle<T, U>> in, std::shared_ptr<uvw::StreamHandle<T, U>> out)
+    : in_(std::move(in))
+    , out_(std::move(out)) {
+  in_->template on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::StreamHandle<T, U>) {
+    std::stringstream data_stream(std::string(event.data.get(), event.length));
+    if (!readLoop(data_stream)) {
+      stop();
+    }
+  });
 
+  in_->template on<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::StreamHandle<T, U>) {
+    reportError(std::string(event.what()));
+    stop();
+  });
 }
 
-void Agent::setHandler(const std::shared_ptr<RequestHandler> &request_handler) {
+template<typename T, typename U>
+void Agent<T, U>::setHandler(const std::shared_ptr<RequestHandler> &request_handler) {
   request_handler_ = request_handler;
 }
 
-void Agent::start() {
-  read_loop_thread_ = std::move(std::thread([this]() {
-    readLoop();
-  }));
+template<typename T, typename U>
+void Agent<T, U>::start() {
+  in_->read();
 }
 
-void Agent::wait() {
-  read_loop_thread_.join();
+template<typename T, typename U>
+void Agent<T, U>::stop() {
+  in_->stop();
+  out_->stop();
 }
 
-void Agent::writeResponse(const agent::Response &response) {
-  std::lock_guard write_lock(write_mutex_);
+template<typename T, typename U>
+void Agent<T, U>::writeResponse(const agent::Response &response) {
   auto response_data = response.SerializeAsString();
-  UVarIntCoder::encode(out_, response_data.length());
-  out_ << response_data;
-  out_.flush();
+  std::stringstream out_stream;
+  UVarIntCoder::encode(out_stream, response_data.length());
+  out_stream << response_data;
+  out_->write(out_stream.str().data(), out_stream.str().length());
 }
 
-void Agent::readLoop() {
+template<typename T, typename U>
+bool Agent<T, U>::readLoop(std::istream& input_stream) {
   agent::Request request;
   while (true) {
     try {
-      auto request_size = UVarIntCoder::decode(in_);
+      uint32_t request_size;
+      if (residual_request_size_ == 0) {
+        request_size = UVarIntCoder::decode(input_stream);
+      } else {
+        request_size = residual_request_size_;
+        residual_request_size_ = 0;
+      }
+
       std::string request_data;
       request_data.resize(request_size);
-      in_.read(request_data.data(), request_size);
+      input_stream.read(request_data.data(), request_size);
+      if (!residual_request_data_.empty()) {
+        residual_request_data_.append(request_data);
+        request_data = std::move(residual_request_data_);
+        request_data.clear();
+      }
+
+      if (input_stream.gcount() < request_size) {
+        residual_request_size_ = request_size - input_stream.gcount();
+        residual_request_data_ = std::move(request_data.substr(0, input_stream.gcount()));
+        return true;
+      }
+
       request.ParseFromString(request_data);
       agent::Response response;
       switch (request.message_case()) {
@@ -73,15 +112,20 @@ void Agent::readLoop() {
           spdlog::error("received unhandled request with enum number {}", request.message_case());
       }
     } catch (const EOFException&) {
-      break;
+      return true;
     } catch (const std::exception& exc) {
       std::string error_message("error processing request with enum number " + std::to_string(request.message_case()) +
                                 ": " + exc.what());
-      spdlog::error(error_message);
-      agent::Response response;
-      response.mutable_error()->set_error(error_message);
-      writeResponse(response);
-      break;
+      reportError(error_message);
+      return false;
     }
   }
+}
+
+template<typename T, typename U>
+void Agent<T, U>::reportError(const std::string& error_message) {
+  spdlog::error(error_message);
+  agent::Response response;
+  response.mutable_error()->set_error(error_message);
+  writeResponse(response);
 }
