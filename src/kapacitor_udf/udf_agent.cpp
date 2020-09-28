@@ -25,6 +25,10 @@ UDFAgent<UVWHandleType, LibuvHandleType>::UDFAgent(std::shared_ptr<uvw::StreamHa
     }
   });
 
+  in_->template on<uvw::EndEvent>([this](const uvw::EndEvent& event, uvw::StreamHandle<UVWHandleType, LibuvHandleType>) {
+    stop();
+  });
+
   in_->template on<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::StreamHandle<UVWHandleType, LibuvHandleType>) {
     reportError(std::string(event.what()));
     stop();

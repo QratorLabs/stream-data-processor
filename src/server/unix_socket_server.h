@@ -17,6 +17,8 @@ class UnixSocketServer {
   void start();
   void stop();
 
+  ~UnixSocketServer();
+
  private:
   std::shared_ptr<UnixSocketClientFactory> client_factory_;
   int sockfd_;

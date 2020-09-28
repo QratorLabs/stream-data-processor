@@ -1,4 +1,5 @@
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include "unix_socket_server.h"
 
@@ -23,7 +24,12 @@ void UnixSocketServer::start() {
 }
 
 void UnixSocketServer::stop() {
+  socket_handle_->close();
   for (auto& client : clients_) {
     client->stop();
   }
+}
+
+UnixSocketServer::~UnixSocketServer() {
+  close(sockfd_);
 }

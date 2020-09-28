@@ -111,8 +111,6 @@ arrow::Status DataConverter::convertToPoints(const arrow::RecordBatchVector &rec
           point.set_name(scalar_value->ToString());
         } else if (column_name == options.timestamp_column_name) {
           point.set_time(std::static_pointer_cast<arrow::Int64Scalar>(scalar_value)->value);
-        } else if (options.tag_columns_names.find(column_name) != options.tag_columns_names.end()) {
-          point.mutable_tags()->operator[](column_name) = scalar_value->ToString();
         } else {
           switch (column->type_id()) {
             case arrow::Type::INT64:
@@ -122,7 +120,12 @@ arrow::Status DataConverter::convertToPoints(const arrow::RecordBatchVector &rec
               point.mutable_fieldsdouble()->operator[](column_name) = std::static_pointer_cast<arrow::DoubleScalar>(scalar_value)->value;
               break;
             case arrow::Type::STRING:
-              point.mutable_fieldsstring()->operator[](column_name) = scalar_value->ToString();
+              if (options.tag_columns_names.find(column_name) != options.tag_columns_names.end()) {
+                point.mutable_tags()->operator[](column_name) = scalar_value->ToString();
+              } else {
+                point.mutable_fieldsstring()->operator[](column_name) = scalar_value->ToString();
+              }
+
               break;
             case arrow::Type::BOOL:
               point.mutable_fieldsbool()->operator[](column_name) = std::static_pointer_cast<arrow::BooleanScalar>(scalar_value)->value;
