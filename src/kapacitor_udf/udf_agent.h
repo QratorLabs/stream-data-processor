@@ -13,6 +13,8 @@
 
 class IUDFAgent {
  public:
+  IUDFAgent() = default;
+
   IUDFAgent(const IUDFAgent&) = delete;
   IUDFAgent& operator=(const IUDFAgent&) = delete;
 
