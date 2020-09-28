@@ -7,7 +7,7 @@
 #include <arrow/api.h>
 
 #include <zmq.hpp>
-#include "uvw.hpp"
+#include <uvw.hpp>
 #include "consumers/consumer.h"
 #include "nodes/node.h"
 #include "producers/producer.h"

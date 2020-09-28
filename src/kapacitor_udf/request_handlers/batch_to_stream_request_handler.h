@@ -24,9 +24,9 @@ class BatchToStreamRequestHandler : public PipelineRequestHandler {
   }
 
   [[nodiscard]] agent::Response info() const override;
-  agent::Response init(const agent::InitRequest& init_request) override;
-  agent::Response snapshot() override;
-  agent::Response restore(const agent::RestoreRequest& restore_request) override;
+  [[nodiscard]] agent::Response init(const agent::InitRequest& init_request) override;
+  [[nodiscard]] agent::Response snapshot() override;
+  [[nodiscard]] agent::Response restore(const agent::RestoreRequest& restore_request) override;
   void beginBatch(const agent::BeginBatch& batch) override;
   void point(const agent::Point& point) override;
   void endBatch(const agent::EndBatch& batch) override;

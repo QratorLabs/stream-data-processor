@@ -2,7 +2,7 @@
 
 #include <gandiva/tree_expr_builder.h>
 
-#include "spdlog/spdlog.h"
+#include <spdlog/spdlog.h>
 
 #include <uvw.hpp>
 

@@ -7,7 +7,7 @@
 
 #include <arrow/api.h>
 
-#include "uvw.hpp"
+#include <uvw.hpp>
 
 #include "node.h"
 #include "period_handlers/period_handler.h"

@@ -1,7 +1,7 @@
 #include <sstream>
 #include <string>
 
-#include "spdlog/spdlog.h"
+#include <spdlog/spdlog.h>
 
 #include "udf_agent.h"
 #include "utils/uvarint.h"
@@ -13,41 +13,42 @@ UDFAgent<uvw::TTYHandle, uv_tty_t>::UDFAgent(const std::shared_ptr<uvw::Loop> &l
 
 }
 
-template<typename T, typename U>
-UDFAgent<T, U>::UDFAgent(std::shared_ptr<uvw::StreamHandle<T, U>> in, std::shared_ptr<uvw::StreamHandle<T, U>> out)
+template<typename UVWHandleType, typename LibuvHandleType>
+UDFAgent<UVWHandleType, LibuvHandleType>::UDFAgent(std::shared_ptr<uvw::StreamHandle<UVWHandleType, LibuvHandleType>> in,
+                                                   std::shared_ptr<uvw::StreamHandle<UVWHandleType, LibuvHandleType>> out)
     : in_(std::move(in))
     , out_(std::move(out)) {
-  in_->template on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::StreamHandle<T, U>) {
+  in_->template on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::StreamHandle<UVWHandleType, LibuvHandleType>) {
     std::stringstream data_stream(std::string(event.data.get(), event.length));
     if (!readLoop(data_stream)) {
       stop();
     }
   });
 
-  in_->template on<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::StreamHandle<T, U>) {
+  in_->template on<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event, uvw::StreamHandle<UVWHandleType, LibuvHandleType>) {
     reportError(std::string(event.what()));
     stop();
   });
 }
 
-template<typename T, typename U>
-void UDFAgent<T, U>::setHandler(const std::shared_ptr<RequestHandler> &request_handler) {
+template<typename UVWHandleType, typename LibuvHandleType>
+void UDFAgent<UVWHandleType, LibuvHandleType>::setHandler(const std::shared_ptr<RequestHandler> &request_handler) {
   request_handler_ = request_handler;
 }
 
-template<typename T, typename U>
-void UDFAgent<T, U>::start() {
+template<typename UVWHandleType, typename LibuvHandleType>
+void UDFAgent<UVWHandleType, LibuvHandleType>::start() {
   in_->read();
 }
 
-template<typename T, typename U>
-void UDFAgent<T, U>::stop() {
+template<typename UVWHandleType, typename LibuvHandleType>
+void UDFAgent<UVWHandleType, LibuvHandleType>::stop() {
   in_->stop();
   out_->stop();
 }
 
-template<typename T, typename U>
-void UDFAgent<T, U>::writeResponse(const agent::Response &response) {
+template<typename UVWHandleType, typename LibuvHandleType>
+void UDFAgent<UVWHandleType, LibuvHandleType>::writeResponse(const agent::Response &response) {
   auto response_data = response.SerializeAsString();
   std::stringstream out_stream;
   UVarIntCoder::encode(out_stream, response_data.length());
@@ -55,8 +56,8 @@ void UDFAgent<T, U>::writeResponse(const agent::Response &response) {
   out_->write(out_stream.str().data(), out_stream.str().length());
 }
 
-template<typename T, typename U>
-bool UDFAgent<T, U>::readLoop(std::istream& input_stream) {
+template<typename UVWHandleType, typename LibuvHandleType>
+bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(std::istream& input_stream) {
   agent::Request request;
   while (true) {
     try {
@@ -121,16 +122,17 @@ bool UDFAgent<T, U>::readLoop(std::istream& input_stream) {
     } catch (const EOFException&) {
       return true;
     } catch (const std::exception& exc) {
-      std::string error_message("error processing request with enum number " + std::to_string(request.message_case()) +
-                                ": " + exc.what());
+      std::string error_message = fmt::format("error processing request with enum number {}: {}",
+                                              std::to_string(request.message_case()),
+                                              exc.what());
       reportError(error_message);
       return false;
     }
   }
 }
 
-template<typename T, typename U>
-void UDFAgent<T, U>::reportError(const std::string& error_message) {
+template<typename UVWHandleType, typename LibuvHandleType>
+void UDFAgent<UVWHandleType, LibuvHandleType>::reportError(const std::string& error_message) {
   spdlog::error(error_message);
   agent::Response response;
   response.mutable_error()->set_error(error_message);

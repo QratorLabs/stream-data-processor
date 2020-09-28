@@ -4,7 +4,7 @@
 
 #include <arrow/api.h>
 
-#include "uvw.hpp"
+#include <uvw.hpp>
 
 #include <zmq.hpp>
 

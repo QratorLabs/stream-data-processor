@@ -3,7 +3,7 @@
 #include <vector>
 
 #include <catch2/catch.hpp>
-#include "gmock/gmock.h"
+#include <gmock/gmock.h>
 
 #include "kapacitor_udf/udf_agent.h"
 #include "kapacitor_udf/request_handlers/batch_to_stream_request_handler.h"

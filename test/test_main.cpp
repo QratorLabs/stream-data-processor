@@ -1,7 +1,7 @@
 #define CATCH_CONFIG_RUNNER
 
 #include <catch2/catch.hpp>
-#include "gmock/gmock.h"
+#include <gmock/gmock.h>
 
 #include "gmock_catch_interceptor.h"
 

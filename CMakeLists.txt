@@ -3,10 +3,6 @@ project(stream-data-processor)
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(BUILD_UVW_LIBS ON)
-set(BUILD_TESTING OFF CACHE BOOL "disable uvw build gtest" FORCE)
-add_subdirectory(third_party/uvw)
-
 find_package(PkgConfig)
 pkg_check_modules(PC_ZeroMQ QUIET zmq)
 find_path(ZeroMQ_INCLUDE_DIR
@@ -17,6 +13,8 @@ find_library(ZeroMQ_LIBRARY
   NAMES zmq
   PATHS ${PC_ZeroMQ_LIBRARY_DIRS}
   )
+add_library(zmq UNKNOWN IMPORTED)
+set_property(TARGET zmq PROPERTY IMPORTED_LOCATION "${ZeroMQ_LIBRARY}")
 message(STATUS "ZeroMQ include dir: ${ZeroMQ_INCLUDE_DIR}")
 message(STATUS "ZeroMQ lib dir: ${ZeroMQ_LIBRARY}")
 
@@ -27,22 +25,15 @@ set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${Arrow_DIR})
 find_package(Gandiva REQUIRED)
 message(STATUS "Gandiva lib dir: ${Gandiva_DIR}")
 
-include(ExternalProject)
-FetchContent_Declare(spdlog
-  URL https://github.com/gabime/spdlog/archive/v1.8.0.tar.gz
-  URL_HASH SHA256=1e68e9b40cf63bb022a4b18cdc1c9d88eb5d97e4fd64fa981950a9cacf57a4bf
-  SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/spdlog-src"
-  )
-FetchContent_GetProperties(spdlog)
-if(NOT spdlog_POPULATED)
-  FetchContent_Populate(spdlog)
-endif()
-set(SPDLOG_INCLUDE_DIRS "${spdlog_SOURCE_DIR}/include")
-message(STATUS "spdlog include dirs: ${SPDLOG_INCLUDE_DIRS}")
+find_package(spdlog REQUIRED)
 
 find_package(Protobuf REQUIRED)
 include_directories("${Protobuf_INCLUDE_DIRS}")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
+
+set(BUILD_UVW_LIBS ON)
+set(BUILD_TESTING OFF CACHE BOOL "disable uvw build gtest" FORCE)
+add_subdirectory(third_party/uvw)
 
 set(USE_BOOST_KARMA OFF CACHE BOOL "" FORCE)
 add_subdirectory(third_party/bprinter)
@@ -50,7 +41,7 @@ add_subdirectory(third_party/bprinter)
 protobuf_generate_cpp(UDFProtoSources UDFProtoHeaders "${CMAKE_CURRENT_SOURCE_DIR}/src/kapacitor_udf/udf.proto")
 
 set(STREAM_DATA_PROCESSOR_SOURCES
-  ${UDFProtoSources}
+  "${UDFProtoSources}"
   src/consumers/print_consumer.cpp
   src/consumers/publisher_consumer.cpp
   src/consumers/tcp_consumer.cpp
@@ -101,20 +92,21 @@ set(LIBRARY_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src"
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bprinter/include"
   "${STREAM_DATA_PROCESSOR_INCLUDE_DIRS}"
-  "${ZeroMQ_INCLUDE_DIR}"
-  "${SPDLOG_INCLUDE_DIRS}")
+  "${ZeroMQ_INCLUDE_DIR}")
 
 set(PROJECT_DEPENDENCIES
   uvw::uvw-static
   arrow_shared
   gandiva_shared
+  spdlog::spdlog
   bprinter
-  ${ZeroMQ_LIBRARY}
+  zmq
   ${Protobuf_LIBRARIES})
 
 set(LIBRARY_NAME "stream_data_processor")
 
-add_library(${LIBRARY_NAME} STATIC "${STREAM_DATA_PROCESSOR_SOURCES}")
+set(BUILD_SHARED_LIBS OFF)
+add_library(${LIBRARY_NAME} "${STREAM_DATA_PROCESSOR_SOURCES}")
 target_include_directories(${LIBRARY_NAME} PUBLIC "${LIBRARY_INCLUDE_DIRS}")
 target_link_libraries(${LIBRARY_NAME} "${PROJECT_DEPENDENCIES}")
 
@@ -131,4 +123,5 @@ foreach(file ${exec_files})
 endforeach()
 
 enable_testing()
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/third_party/googletest" EXCLUDE_FROM_ALL)
 add_subdirectory(test)

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "gmock/gmock.h"
+#include <gmock/gmock.h>
 
 class GmockCatchInterceptor : public ::testing::EmptyTestEventListener {
  public:

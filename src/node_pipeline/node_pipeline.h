@@ -3,7 +3,7 @@
 #include <memory>
 #include <vector>
 
-#include "uvw.hpp"
+#include <uvw.hpp>
 
 #include "consumers/consumer.h"
 #include "nodes/node.h"
