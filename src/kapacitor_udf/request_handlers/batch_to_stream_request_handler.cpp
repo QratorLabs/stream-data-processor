@@ -1,3 +1,5 @@
+#include <spdlog/spdlog.h>
+
 #include "batch_to_stream_request_handler.h"
 
 #include "utils/data_converter.h"

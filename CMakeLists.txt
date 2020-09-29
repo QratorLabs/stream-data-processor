@@ -117,10 +117,7 @@ function(add_exec_target file_path)
   target_link_libraries("${file_name}" ${LIBRARY_NAME})
 endfunction()
 
-file(GLOB exec_files "executables/*.cpp")
-foreach(file ${exec_files})
-  add_exec_target(${file})
-endforeach()
+add_subdirectory(examples)
 
 enable_testing()
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/third_party/googletest" EXCLUDE_FROM_ALL)

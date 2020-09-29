@@ -35,7 +35,7 @@ class CpuAggregateUDFAgentClientFactory : public UnixSocketClientFactory {
             {"wait", {"last", "mean"}}
         }, true
     };
-    std::vector<std::string> cputime_host_last_grouping_columns{"host", "type"};
+    std::vector<std::string> cputime_host_last_grouping_columns{ };
     std::vector<std::shared_ptr<RecordBatchHandler>> handlers_pipeline{
         std::make_shared<AggregateHandler>(
             cputime_host_last_grouping_columns, cputime_host_last_options, "time"
@@ -49,7 +49,7 @@ class CpuAggregateUDFAgentClientFactory : public UnixSocketClientFactory {
     DataConverter::RecordBatchesToPointsConversionOptions to_points_options{
         "to_time",
         "measurement",
-        {"host", "type"}
+        {"cpu", "host", "type"}
     };
 
     std::shared_ptr<RequestHandler> handler = std::make_shared<BatchToStreamRequestHandler>(

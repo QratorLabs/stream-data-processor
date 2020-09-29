@@ -21,8 +21,9 @@ uint32_t UVarIntCoder::decode(std::istream &reader) {
   uint32_t result = 0;
   uint8_t shift = 0;
   while (true) {
-    uint8_t byte = 0;
-    if (!(reader >> byte)) {
+    char byte = 0;
+    reader.read(&byte, 1);
+    if (reader.eof()) {
       throw EOFException();
     }
 
