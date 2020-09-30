@@ -12,7 +12,7 @@ arrow::Status LastAggregateFunction::aggregate(const std::shared_ptr<arrow::Reco
 
   auto ts_column = data->GetColumnByName(ts_column_name);
   std::pair<size_t, size_t> arg_min_max;
-  ARROW_RETURN_NOT_OK(ComputeUtils::argMinMax(ts_column, arg_min_max));
+  ARROW_RETURN_NOT_OK(ComputeUtils::argMinMax(ts_column, &arg_min_max));
 
   auto get_scalar_result = data->GetColumnByName(column_name)->GetScalar(arg_min_max.second);
   if (!get_scalar_result.ok()) {

@@ -102,5 +102,3 @@ class GraphiteParser : public Parser {
   std::vector<MetricTemplate> templates_;
   std::set<std::shared_ptr<Metric>, MetricComparator> parsed_metrics_;
 };
-
-

@@ -2,9 +2,8 @@
 
 const std::chrono::duration<uint64_t, std::milli> TCPConsumer::RETRY_DELAY(100);
 
-TCPConsumer::TCPConsumer(const std::vector<IPv4Endpoint> &target_endpoints,
-                         const std::shared_ptr<uvw::Loop> &loop,
-                         bool is_external) : is_external_(is_external) {
+TCPConsumer::TCPConsumer(const std::vector<IPv4Endpoint> &target_endpoints, uvw::Loop* loop, bool is_external)
+    : is_external_(is_external) {
   for (size_t i = 0; i < target_endpoints.size(); ++i) {
     targets_.push_back(loop->resource<uvw::TCPHandle>());
     connect_timers_.push_back(loop->resource<uvw::TimerHandle>());
@@ -81,4 +80,3 @@ void TCPConsumer::flushBuffers() {
     data_buffers_.pop();
   }
 }
-

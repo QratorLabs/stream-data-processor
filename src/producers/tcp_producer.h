@@ -8,10 +8,7 @@
 
 class TCPProducer : public Producer {
  public:
-  TCPProducer(std::shared_ptr<Node> node,
-              const IPv4Endpoint &listen_endpoint,
-              const std::shared_ptr<uvw::Loop> &loop,
-              bool is_external = false);
+  TCPProducer(const std::shared_ptr<Node>& node, const IPv4Endpoint &listen_endpoint, uvw::Loop* loop, bool is_external);
 
   void start() override;
   void stop() override;
@@ -24,5 +21,3 @@ class TCPProducer : public Producer {
   std::shared_ptr<uvw::TCPHandle> listener_;
   bool is_external_;
 };
-
-

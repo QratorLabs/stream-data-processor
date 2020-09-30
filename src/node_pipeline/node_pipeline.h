@@ -15,9 +15,9 @@ class NodePipeline {
  public:
   NodePipeline() = default;
 
-  template <typename U>
-  NodePipeline(U&& consumers, std::shared_ptr<Node> node, std::shared_ptr<Producer> producer)
-      : consumers_(std::forward<U>(consumers))
+  template <typename ConsumerVectorType>
+  NodePipeline(ConsumerVectorType&& consumers, std::shared_ptr<Node> node, std::shared_ptr<Producer> producer)
+      : consumers_(std::forward<ConsumerVectorType>(consumers))
       , node_(std::move(node))
       , producer_(std::move(producer)) {
 
@@ -29,8 +29,8 @@ class NodePipeline {
 
   void start();
 
-  void subscribeTo(NodePipeline &other_pipeline,
-                   const std::shared_ptr<uvw::Loop> &loop,
+  void subscribeTo(NodePipeline* other_pipeline,
+                   uvw::Loop* loop,
                    const std::shared_ptr<zmq::context_t>& zmq_context,
                    TransportUtils::ZMQTransportType transport_type = TransportUtils::ZMQTransportType::INPROC);
 
@@ -41,5 +41,3 @@ class NodePipeline {
   std::shared_ptr<Node> node_{nullptr};
   std::shared_ptr<Producer> producer_{nullptr};
 };
-
-

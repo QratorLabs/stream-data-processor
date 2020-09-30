@@ -29,13 +29,13 @@ class PeriodNode : public Node {
 
   }
 
-  template <typename U>
+  template <typename ConsumerVectorType>
   PeriodNode(const std::string& name,
-             U&& consumers,
+             ConsumerVectorType&& consumers,
              uint64_t range, uint64_t period,
              std::string ts_column_name,
              std::shared_ptr<PeriodHandler> period_handler)
-      : Node(name, std::forward<U>(consumers))
+      : Node(name, std::forward<ConsumerVectorType>(consumers))
       , period_(period)
       , ts_column_name_(std::move(ts_column_name))
       , period_handler_(std::move(period_handler))
@@ -66,5 +66,3 @@ class PeriodNode : public Node {
   std::deque<std::shared_ptr<arrow::Buffer>> data_buffers_;
   std::time_t first_ts_in_current_batch_{0};
 };
-
-

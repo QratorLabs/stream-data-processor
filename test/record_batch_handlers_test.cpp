@@ -30,7 +30,7 @@ TEST_CASE( "filter one of two integers based on equal function", "[FilterHandler
   std::shared_ptr<RecordBatchHandler> filter_handler = std::make_shared<FilterHandler>(std::move(conditions));
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(filter_handler->handle({record_batch}, result));
+  arrowAssertNotOk(filter_handler->handle({record_batch}, &result));
 
   REQUIRE( result.size() == 1 );
   checkSize(result[0], 1, 1);
@@ -58,7 +58,7 @@ TEST_CASE ( "filter one of two strings based on equal function", "[FilterHandler
   std::shared_ptr<RecordBatchHandler> filter_handler = std::make_shared<FilterHandler>(std::move(conditions));
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(filter_handler->handle({record_batch}, result));
+  arrowAssertNotOk(filter_handler->handle({record_batch}, &result));
 
   REQUIRE( result.size() == 1 );
   checkSize(result[0], 1, 1);
@@ -85,7 +85,7 @@ TEST_CASE ( "split one record batch to separate ones by grouping on column with 
   arrowAssertNotOk(Serializer::serializeRecordBatches(schema, {record_batch}, &source));
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(filter_handler->handle({record_batch}, result));
+  arrowAssertNotOk(filter_handler->handle({record_batch}, &result));
 
   REQUIRE( result.size() == 2 );
   checkSize(result[0], 1, 1);
@@ -119,7 +119,7 @@ TEST_CASE( "add new columns to empty record batch with different schema", "[Defa
   auto record_batch = arrow::RecordBatch::Make(schema, 0, {array});
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(default_handler->handle({record_batch}, result));
+  arrowAssertNotOk(default_handler->handle({record_batch}, &result));
 
   REQUIRE( result.size() == 1 );
   checkSize(result[0], 0, 4);
@@ -148,7 +148,7 @@ TEST_CASE( "add new columns with default values to record batch with different s
   auto record_batch = arrow::RecordBatch::Make(schema, 1, {array});
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(default_handler->handle({record_batch}, result));
+  arrowAssertNotOk(default_handler->handle({record_batch}, &result));
 
   REQUIRE( result.size() == 1 );
   checkSize(result[0], 1, 4);
@@ -214,7 +214,7 @@ TEST_CASE( "join on timestamp and tag column", "[JoinHandler]" ) {
   std::shared_ptr<RecordBatchHandler> handler = std::make_shared<JoinHandler>(std::move(join_on_columns), "time");
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(handler->handle(record_batches, result));
+  arrowAssertNotOk(handler->handle(record_batches, &result));
 
   REQUIRE( result.size() == 1 );
   checkSize(result[0], 1, 4);
@@ -281,7 +281,7 @@ TEST_CASE( "assign missed values to null", "[JoinHandler]" ) {
   std::shared_ptr<RecordBatchHandler> handler = std::make_shared<JoinHandler>(std::move(join_on_columns), "time");
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(handler->handle(record_batches, result));
+  arrowAssertNotOk(handler->handle(record_batches, &result));
 
   REQUIRE( result.size() == 1 );
   checkSize(result[0], 3, 4);
@@ -352,7 +352,7 @@ TEST_CASE( "join depending on tolerance", "[JoinHandler]" ) {
   std::shared_ptr<RecordBatchHandler> handler = std::make_shared<JoinHandler>(std::move(join_on_columns), "time", 5);
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(handler->handle(record_batches, result));
+  arrowAssertNotOk(handler->handle(record_batches, &result));
 
   checkSize(result[0], 1, 4);
   checkColumnsArePresent(result[0], {

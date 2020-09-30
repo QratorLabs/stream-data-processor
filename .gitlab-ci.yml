@@ -41,4 +41,3 @@ stream_data_processor_test:
   dependencies:
     - stream_data_processor_build
   interruptible: true
-

@@ -4,7 +4,7 @@
 
 arrow::Status ComputeUtils::groupSortingByColumns(const std::vector<std::string>& column_names,
                                                   const std::shared_ptr<arrow::RecordBatch>& record_batch,
-                                                  std::vector<std::shared_ptr<arrow::RecordBatch>>& grouped) {
+                                                  std::vector<std::shared_ptr<arrow::RecordBatch>>* grouped) {
   return sort(column_names, 0, record_batch, grouped);
 }
 
@@ -35,7 +35,7 @@ arrow::Status ComputeUtils::sortByColumn(const std::string& column_name,
   return arrow::Status::OK();
 }
 
-arrow::Status ComputeUtils::argMinMax(std::shared_ptr<arrow::Array> array, std::pair<size_t, size_t>& arg_min_max) {
+arrow::Status ComputeUtils::argMinMax(std::shared_ptr<arrow::Array> array, std::pair<size_t, size_t>* arg_min_max) {
   if (array->type_id() == arrow::Type::TIMESTAMP) {
     auto converted_sorting_column_result = array->View(arrow::int64());
     if (!converted_sorting_column_result.ok()) {
@@ -70,16 +70,16 @@ arrow::Status ComputeUtils::argMinMax(std::shared_ptr<arrow::Array> array, std::
     ++i;
   }
 
-  arg_min_max = {arg_min, arg_max};
+  *arg_min_max = {arg_min, arg_max};
   return arrow::Status::OK();
 }
 
 arrow::Status ComputeUtils::sort(const std::vector<std::string>& column_names,
                                  size_t i,
                                  const std::shared_ptr<arrow::RecordBatch>& source,
-                                 std::vector<std::shared_ptr<arrow::RecordBatch>> &targets) {
+                                 std::vector<std::shared_ptr<arrow::RecordBatch>>* targets) {
   if (i == column_names.size()) {
-    targets.push_back(source);
+    targets->push_back(source);
     return arrow::Status::OK();
   }
 

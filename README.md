@@ -127,4 +127,4 @@ int main(int argc, char** argv) {
 }
 ```
 
-For more complicated examples see `executables\` folder.
+For more complicated examples see `examples\` folder.

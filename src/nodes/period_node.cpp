@@ -105,7 +105,7 @@ arrow::Status PeriodNode::tsLowerBound(const std::shared_ptr<arrow::RecordBatch>
 
 void PeriodNode::pass() {
   std::shared_ptr<arrow::Buffer> period_data;
-  auto handle_status = period_handler_->handle(data_buffers_, period_data);
+  auto handle_status = period_handler_->handle(data_buffers_, &period_data);
   if (!handle_status.ok()) {
     spdlog::get(name_)->debug(handle_status.ToString());
     return;

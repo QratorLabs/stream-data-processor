@@ -12,5 +12,3 @@ class CSVParser : public Parser {
  private:
   std::shared_ptr<arrow::Schema> record_batches_schema_;
 };
-
-

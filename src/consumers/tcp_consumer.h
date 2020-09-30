@@ -14,9 +14,7 @@
 
 class TCPConsumer : public Consumer {
  public:
-  TCPConsumer(const std::vector<IPv4Endpoint> &target_endpoints,
-              const std::shared_ptr<uvw::Loop>& loop,
-              bool is_external = false);
+  TCPConsumer(const std::vector<IPv4Endpoint> &target_endpoints, uvw::Loop* loop, bool is_external = false);
 
   void start() override;
   void consume(const char* data, size_t length) override;
@@ -37,5 +35,3 @@ class TCPConsumer : public Consumer {
   size_t connected_targets_{0};
   std::queue<std::shared_ptr<arrow::Buffer>> data_buffers_;
 };
-
-

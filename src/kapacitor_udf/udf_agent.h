@@ -8,6 +8,7 @@
 #include <uvw.hpp>
 
 #include "request_handlers/request_handler.h"
+#include "server/unix_socket_client.h"
 
 #include "udf.pb.h"
 
@@ -30,7 +31,7 @@ class RequestHandler;
 template <typename UVWHandleType, typename LibuvHandleType>
 class UDFAgent : public IUDFAgent {
  public:
-  explicit UDFAgent(const std::shared_ptr<uvw::Loop>& loop) = delete;
+  explicit UDFAgent(uvw::Loop* loop);
   UDFAgent(std::shared_ptr<uvw::StreamHandle<UVWHandleType, LibuvHandleType>> in,
            std::shared_ptr<uvw::StreamHandle<UVWHandleType, LibuvHandleType>> out);
 
@@ -52,5 +53,16 @@ class UDFAgent : public IUDFAgent {
   size_t residual_request_size_{0};
 };
 
-using ChildProcessBaseedUDFAgent = UDFAgent<uvw::TTYHandle, uv_tty_t>;
+using ChildProcessBasedUDFAgent = UDFAgent<uvw::TTYHandle, uv_tty_t>;
 using SocketBasedUDFAgent = UDFAgent<uvw::PipeHandle, uv_pipe_t>;
+
+class AgentClient : public UnixSocketClient {
+ public:
+  explicit AgentClient(std::shared_ptr<IUDFAgent> agent);
+
+  void start() override;
+  void stop() override;
+
+ private:
+  std::shared_ptr<IUDFAgent> agent_;
+};

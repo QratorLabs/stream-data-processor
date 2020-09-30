@@ -12,12 +12,12 @@
 
 class PipelineRequestHandler : public RequestHandler {
  public:
-  template <typename U>
-  PipelineRequestHandler(const std::shared_ptr<IUDFAgent>& agent, U&& handlers_pipeline,
+  template <typename HandlerVectorType>
+  PipelineRequestHandler(const std::shared_ptr<IUDFAgent>& agent, HandlerVectorType&& handlers_pipeline,
                          DataConverter::PointsToRecordBatchesConversionOptions to_record_batches_options,
                          DataConverter::RecordBatchesToPointsConversionOptions to_points_options)
       : RequestHandler(agent)
-      , handlers_pipeline_(std::forward<U>(handlers_pipeline))
+      , handlers_pipeline_(std::forward<HandlerVectorType>(handlers_pipeline))
       , to_record_batches_options_(std::move(to_record_batches_options))
       , to_points_options_(std::move(to_points_options)) {
 
@@ -32,5 +32,3 @@ class PipelineRequestHandler : public RequestHandler {
   DataConverter::RecordBatchesToPointsConversionOptions to_points_options_;
   agent::PointBatch batch_points_;
 };
-
-

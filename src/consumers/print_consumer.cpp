@@ -22,13 +22,13 @@ void PrintConsumer::consume(const char *data, size_t length) {
   }
 
   for (auto& record_batch : record_batches) {
-    printRecordBatch(record_batch);
+    printRecordBatch(*record_batch);
   }
 }
 
-void PrintConsumer::printRecordBatch(const std::shared_ptr<arrow::RecordBatch> &record_batch) {
+void PrintConsumer::printRecordBatch(const arrow::RecordBatch &record_batch) {
   bprinter::TablePrinter table_printer(&ostrm_);
-  for (auto& field : record_batch->schema()->fields()) {
+  for (auto& field : record_batch.schema()->fields()) {
     switch (field->type()->id()) {
       case arrow::Type::INT64:
         table_printer.AddColumn(field->name(), 15);
@@ -45,8 +45,8 @@ void PrintConsumer::printRecordBatch(const std::shared_ptr<arrow::RecordBatch> &
   }
 
   table_printer.PrintHeader();
-  for (size_t i = 0; i < record_batch->num_rows(); ++i) {
-    for (auto& column : record_batch->columns()) {
+  for (size_t i = 0; i < record_batch.num_rows(); ++i) {
+    for (auto& column : record_batch.columns()) {
       auto value_result = column->GetScalar(i);
       if (!value_result.ok()) {
         throw std::runtime_error(value_result.status().message());

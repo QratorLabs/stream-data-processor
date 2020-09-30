@@ -22,5 +22,3 @@ class GmockCatchInterceptor : public ::testing::EmptyTestEventListener {
   void OnTestIterationEnd(const ::testing::UnitTest& /*unit_test*/, int /*iteration*/) override;
   void OnTestProgramEnd(const ::testing::UnitTest& /*unit_test*/) override;
 };
-
-

@@ -20,24 +20,11 @@
 #include "producers/producers.h"
 #include "utils/parsers/graphite_parser.h"
 #include "utils/utils.h"
-
-template <typename T>
-class A {
- public:
-  template <typename U>
-  void on() {
-    std::cout << "On is called\n";
-  }
-};
-
-template <typename T>
-class B : public A<T> {
-
-};
+#include "kapacitor_udf/kapacitor_udf.h"
 
 int main(int argc, char** argv) {
-  auto b = std::make_shared<B<int>>();
-  b->template on<double>();
+  auto loop = uvw::Loop::getDefault();
+  ChildProcessBasedUDFAgent agent(loop.get());
 
   return 0;
 }

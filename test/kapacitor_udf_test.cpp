@@ -86,7 +86,9 @@ SCENARIO( "UDFAgent with RequestHandler interaction", "[BatchToStreamRequestHand
 
       auto restore_request = agent::RestoreRequest();
       restore_request.set_snapshot(snapshot_response.snapshot().snapshot());
-      handler->restore(restore_request);
+      auto restore_response = handler->restore(restore_request);
+      REQUIRE ( restore_response.has_restore() );
+      REQUIRE( restore_response.restore().success() );
       handler->endBatch(agent::EndBatch());
     }
   }

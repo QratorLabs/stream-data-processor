@@ -26,7 +26,6 @@ int main(int argc, char** argv) {
 
   std::vector<NodePipeline> pipelines;
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   auto input_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
   input_publisher_socket->bind("inproc://input_node");
@@ -35,7 +34,7 @@ int main(int argc, char** argv) {
   std::shared_ptr<Consumer> input_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
       input_publisher_socket,
       {input_publisher_synchronize_socket}
-  ), loop);
+  ), loop.get());
 
 
   std::vector input_consumers{input_consumer};
@@ -47,7 +46,7 @@ int main(int argc, char** argv) {
 
   IPv4Endpoint input_producer_endpoint{"127.0.0.1", 4200};
   std::shared_ptr<Producer> input_producer = std::make_shared<TCPProducer>(
-      input_node, input_producer_endpoint, loop, true
+      input_node, input_producer_endpoint, loop.get(), true
   );
 
 
@@ -56,7 +55,6 @@ int main(int argc, char** argv) {
   pipelines.back().setProducer(input_producer);
   pipelines.back().setNode(input_node);
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   auto eval_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
   eval_publisher_socket->bind("inproc://eval_node");
@@ -65,7 +63,7 @@ int main(int argc, char** argv) {
   std::shared_ptr<Consumer> eval_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
       eval_publisher_socket,
       {eval_publisher_synchronize_socket}
-  ), loop);
+  ), loop.get());
 
 
   auto field_ts = arrow::field("ts", arrow::timestamp(arrow::TimeUnit::SECOND));
@@ -98,7 +96,7 @@ int main(int argc, char** argv) {
       eval_node, TransportUtils::Subscriber(
           eval_subscriber_socket,
           eval_subscriber_synchronize_socket
-      ), loop
+      ), loop.get()
   );
 
   pipelines.emplace_back();
@@ -106,7 +104,6 @@ int main(int argc, char** argv) {
   pipelines.back().setProducer(eval_producer);
   pipelines.back().setNode(eval_node);
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<Consumer> aggregate_consumer = std::make_shared<FilePrintConsumer>(std::string(argv[0]) + "_result.txt");
 
@@ -132,7 +129,7 @@ int main(int argc, char** argv) {
       aggregate_node, TransportUtils::Subscriber(
           aggregate_subscriber_socket,
           aggregate_subscriber_synchronize_socket
-      ), loop
+      ), loop.get()
   );
 
   
@@ -141,7 +138,6 @@ int main(int argc, char** argv) {
   pipelines.back().setProducer(aggregate_producer);
   pipelines.back().setNode(aggregate_node);
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   for (auto& pipeline : pipelines) {
     pipeline.start();

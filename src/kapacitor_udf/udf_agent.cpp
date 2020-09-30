@@ -9,9 +9,9 @@
 #include "utils/uvarint.h"
 
 template<>
-UDFAgent<uvw::TTYHandle, uv_tty_t>::UDFAgent(const std::shared_ptr<uvw::Loop> &loop)
-    : in_(loop->resource<uvw::TTYHandle>(uvw::StdIN, true))
-    , out_(loop->resource<uvw::TTYHandle>(uvw::StdOUT, false)) {
+UDFAgent<uvw::TTYHandle, uv_tty_t>::UDFAgent(uvw::Loop* loop)
+    : UDFAgent(loop->resource<uvw::TTYHandle>(uvw::StdIN, true),
+          loop->resource<uvw::TTYHandle>(uvw::StdOUT, false)) {
 
 }
 
@@ -109,11 +109,11 @@ bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(std::istream& input_stre
       agent::Response response;
       switch (request.message_case()) {
         case agent::Request::kInfo:
-          response = std::move(request_handler_->info());
+          response = request_handler_->info();
           writeResponse(response);
           break;
         case agent::Request::kInit:
-          response = std::move(request_handler_->init(request.init()));
+          response = request_handler_->init(request.init());
           writeResponse(response);
           break;
         case agent::Request::kKeepalive:
@@ -121,11 +121,11 @@ bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(std::istream& input_stre
           writeResponse(response);
           break;
         case agent::Request::kSnapshot:
-          response = std::move(request_handler_->snapshot());
+          response = request_handler_->snapshot();
           writeResponse(response);
           break;
         case agent::Request::kRestore:
-          response = std::move(request_handler_->restore(request.restore()));
+          response = request_handler_->restore(request.restore());
           writeResponse(response);
           break;
         case agent::Request::kBegin:
@@ -144,9 +144,7 @@ bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(std::istream& input_stre
       spdlog::debug("EOF reached");
       return true;
     } catch (const std::exception& exc) {
-      std::string error_message = fmt::format("error processing request with enum number {}: {}",
-                                              std::to_string(request.message_case()),
-                                              exc.what());
+      std::string error_message = fmt::format("error processing request: {}", exc.what());
       reportError(error_message);
       return false;
     }
@@ -163,3 +161,15 @@ void UDFAgent<UVWHandleType, LibuvHandleType>::reportError(const std::string& er
 
 template class UDFAgent<uvw::TTYHandle, uv_tty_t>;
 template class UDFAgent<uvw::PipeHandle, uv_pipe_t>;
+
+void AgentClient::start() {
+  agent_->start();
+}
+
+void AgentClient::stop() {
+  agent_->stop();
+}
+
+AgentClient::AgentClient(std::shared_ptr<IUDFAgent> agent) : agent_(std::move(agent)) {
+
+}

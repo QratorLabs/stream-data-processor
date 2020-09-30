@@ -1,7 +1,3 @@
-#include <fstream>
-
-#include <gandiva/tree_expr_builder.h>
-
 #include <spdlog/spdlog.h>
 
 #include <uvw.hpp>
@@ -23,7 +19,6 @@ int main(int argc, char** argv) {
   auto loop = uvw::Loop::getDefault();
   std::vector<NodePipeline> pipelines;
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   auto input_publisher_socket = std::make_shared<zmq::socket_t>(zmq_context, ZMQ_PUB);
   input_publisher_socket->bind("inproc://input_node");
@@ -32,7 +27,7 @@ int main(int argc, char** argv) {
   std::shared_ptr<Consumer> input_consumer = std::make_shared<PublisherConsumer>(TransportUtils::Publisher(
       input_publisher_socket,
       {input_publisher_synchronize_socket}
-  ), loop);
+  ), loop.get());
 
   std::vector input_consumers{input_consumer};
   std::shared_ptr<Node> input_node = std::make_shared<EvalNode>(
@@ -42,7 +37,7 @@ int main(int argc, char** argv) {
 
   IPv4Endpoint input_producer_endpoint{"127.0.0.1", 4200};
   std::shared_ptr<Producer> input_producer = std::make_shared<TCPProducer>(
-      input_node, input_producer_endpoint, loop, true
+      input_node, input_producer_endpoint, loop.get(), true
   );
 
   pipelines.emplace_back();
@@ -50,7 +45,6 @@ int main(int argc, char** argv) {
   pipelines.back().setProducer(input_producer);
   pipelines.back().setNode(input_node);
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<Consumer> window_consumer = std::make_shared<FilePrintConsumer>(std::string(argv[0]) + "_result.txt");
 
@@ -72,7 +66,7 @@ int main(int argc, char** argv) {
       window_node, TransportUtils::Subscriber(
           window_subscriber_socket,
           window_subscriber_synchronize_socket
-      ), loop
+      ), loop.get()
   );
 
   pipelines.emplace_back(
@@ -81,7 +75,6 @@ int main(int argc, char** argv) {
       window_producer
   );
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   for (auto& pipeline : pipelines) {
     pipeline.start();

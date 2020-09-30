@@ -14,6 +14,6 @@ class Serializer {
                                               const std::vector<std::shared_ptr<arrow::RecordBatch>> &record_batches,
                                               std::shared_ptr<arrow::Buffer> *target);
 
-  static arrow::Status deserializeRecordBatches(std::shared_ptr<arrow::Buffer> buffer,
+  static arrow::Status deserializeRecordBatches(const std::shared_ptr<arrow::Buffer>& buffer,
                                                 std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches);
 };

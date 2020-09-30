@@ -13,8 +13,9 @@ find_library(ZeroMQ_LIBRARY
   NAMES zmq
   PATHS ${PC_ZeroMQ_LIBRARY_DIRS}
   )
-add_library(zmq UNKNOWN IMPORTED)
-set_property(TARGET zmq PROPERTY IMPORTED_LOCATION "${ZeroMQ_LIBRARY}")
+add_library(dependency_zmq UNKNOWN IMPORTED GLOBAL)
+set_property(TARGET dependency_zmq PROPERTY IMPORTED_LOCATION ${ZeroMQ_LIBRARY})
+#add_library(dependencies::zmq ALIAS dependency_zmq)      # Introduced in cmake 3.15
 message(STATUS "ZeroMQ include dir: ${ZeroMQ_INCLUDE_DIR}")
 message(STATUS "ZeroMQ lib dir: ${ZeroMQ_LIBRARY}")
 
@@ -28,6 +29,10 @@ message(STATUS "Gandiva lib dir: ${Gandiva_DIR}")
 find_package(spdlog REQUIRED)
 
 find_package(Protobuf REQUIRED)
+add_library(dependency_protobuf UNKNOWN IMPORTED GLOBAL)
+set_property(TARGET dependency_protobuf PROPERTY IMPORTED_LOCATION ${Protobuf_LIBRARY})
+#add_library(dependencies::protobuf ALIAS dependency_protobuf)      # Introduced in cmake 3.15
+
 include_directories("${Protobuf_INCLUDE_DIRS}")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
@@ -62,8 +67,6 @@ set(STREAM_DATA_PROCESSOR_SOURCES
   src/record_batch_handlers/aggregate_functions/last_aggregate_function.cpp
   src/record_batch_handlers/aggregate_functions/mean_aggregate_function.cpp
   src/kapacitor_udf/udf_agent.cpp
-  src/kapacitor_udf/udf_agent_client.cpp
-  src/kapacitor_udf/request_handlers/request_handler.cpp
   src/kapacitor_udf/request_handlers/pipeline_request_handler.cpp
   src/kapacitor_udf/request_handlers/batch_to_stream_request_handler.cpp
   src/kapacitor_udf/request_handlers/stream_to_stream_request_handler.cpp
@@ -71,7 +74,6 @@ set(STREAM_DATA_PROCESSOR_SOURCES
   src/record_batch_handlers/window_handler.cpp
   src/record_batch_handlers/join_handler.cpp
   src/period_handlers/serialized_period_handler.cpp
-  src/producers/producer.cpp
   src/producers/tcp_producer.cpp
   src/producers/subscriber_producer.cpp
   src/utils/arrow_utils.cpp
@@ -92,7 +94,7 @@ set(LIBRARY_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src"
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bprinter/include"
   "${STREAM_DATA_PROCESSOR_INCLUDE_DIRS}"
-  "${ZeroMQ_INCLUDE_DIR}")
+  )
 
 set(PROJECT_DEPENDENCIES
   uvw::uvw-static
@@ -100,24 +102,28 @@ set(PROJECT_DEPENDENCIES
   gandiva_shared
   spdlog::spdlog
   bprinter
-  zmq
-  ${Protobuf_LIBRARIES})
+  dependency_zmq
+  dependency_protobuf
+  )
 
 set(LIBRARY_NAME "stream_data_processor")
 
 set(BUILD_SHARED_LIBS OFF)
-add_library(${LIBRARY_NAME} "${STREAM_DATA_PROCESSOR_SOURCES}")
-target_include_directories(${LIBRARY_NAME} PUBLIC "${LIBRARY_INCLUDE_DIRS}")
-target_link_libraries(${LIBRARY_NAME} "${PROJECT_DEPENDENCIES}")
+add_library("${LIBRARY_NAME}" ${STREAM_DATA_PROCESSOR_SOURCES})
+target_include_directories("${LIBRARY_NAME}" PUBLIC ${LIBRARY_INCLUDE_DIRS})
+target_link_libraries("${LIBRARY_NAME}" ${PROJECT_DEPENDENCIES})
 
 function(add_exec_target file_path)
   message(STATUS "Adding target for source file: ${file_path}")
   get_filename_component(file_name "${file_path}" NAME_WE)
   add_executable("${file_name}" "${file_path}")
-  target_link_libraries("${file_name}" ${LIBRARY_NAME})
+  target_link_libraries("${file_name}" "${LIBRARY_NAME}")
 endfunction()
 
-add_subdirectory(examples)
+option(ENABLE_TESTS "enables tests building" ON)
+if(ENABLE_TESTS)
+  add_subdirectory(examples)
+endif()
 
 enable_testing()
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/third_party/googletest" EXCLUDE_FROM_ALL)

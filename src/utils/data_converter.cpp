@@ -35,7 +35,7 @@ arrow::Status DataConverter::concatenateRecordBatches(const std::vector<std::sha
 
 
 arrow::Status DataConverter::convertToRecordBatches(const agent::PointBatch &points,
-                                                    arrow::RecordBatchVector &record_batches,
+                                                    arrow::RecordBatchVector* record_batches,
                                                     const PointsToRecordBatchesConversionOptions& options) {
   auto pool = arrow::default_memory_pool();
   auto timestamp_builder = arrow::TimestampBuilder(arrow::timestamp(arrow::TimeUnit::SECOND), pool);
@@ -46,21 +46,21 @@ arrow::Status DataConverter::convertToRecordBatches(const agent::PointBatch &poi
   std::map<std::string, arrow::StringBuilder> string_fields_builders;
   std::map<std::string, arrow::BooleanBuilder> bool_fields_builders;
   for (auto& point : points.points()) {
-    addBuilders(point.tags(), tags_builders, pool);
-    addBuilders(point.fieldsint(), int_fields_builders, pool);
-    addBuilders(point.fieldsdouble(), double_fields_builders, pool);
-    addBuilders(point.fieldsstring(), string_fields_builders, pool);
-    addBuilders(point.fieldsbool(), bool_fields_builders, pool);
+    addBuilders(point.tags(), &tags_builders, pool);
+    addBuilders(point.fieldsint(), &int_fields_builders, pool);
+    addBuilders(point.fieldsdouble(), &double_fields_builders, pool);
+    addBuilders(point.fieldsstring(), &string_fields_builders, pool);
+    addBuilders(point.fieldsbool(), &bool_fields_builders, pool);
   }
 
   for (auto& point : points.points()) {
     ARROW_RETURN_NOT_OK(timestamp_builder.Append(point.time()));
     ARROW_RETURN_NOT_OK(measurement_builder.Append(point.name()));
-    ARROW_RETURN_NOT_OK(appendValues(point.tags(), tags_builders));
-    ARROW_RETURN_NOT_OK(appendValues(point.fieldsint(), int_fields_builders));
-    ARROW_RETURN_NOT_OK(appendValues(point.fieldsdouble(), double_fields_builders));
-    ARROW_RETURN_NOT_OK(appendValues(point.fieldsstring(), string_fields_builders));
-    ARROW_RETURN_NOT_OK(appendValues(point.fieldsbool(), bool_fields_builders));
+    ARROW_RETURN_NOT_OK(appendValues(point.tags(), &tags_builders));
+    ARROW_RETURN_NOT_OK(appendValues(point.fieldsint(), &int_fields_builders));
+    ARROW_RETURN_NOT_OK(appendValues(point.fieldsdouble(), &double_fields_builders));
+    ARROW_RETURN_NOT_OK(appendValues(point.fieldsstring(), &string_fields_builders));
+    ARROW_RETURN_NOT_OK(appendValues(point.fieldsbool(), &bool_fields_builders));
   }
 
   arrow::FieldVector schema_fields;
@@ -74,24 +74,24 @@ arrow::Status DataConverter::convertToRecordBatches(const agent::PointBatch &poi
   column_arrays.emplace_back();
   ARROW_RETURN_NOT_OK(measurement_builder.Finish(&column_arrays.back()));
 
-  ARROW_RETURN_NOT_OK(buildColumnArrays(column_arrays, schema_fields, tags_builders, arrow::utf8()));
-  ARROW_RETURN_NOT_OK(buildColumnArrays(column_arrays, schema_fields, int_fields_builders, arrow::int64()));
-  ARROW_RETURN_NOT_OK(buildColumnArrays(column_arrays, schema_fields, double_fields_builders, arrow::float64()));
-  ARROW_RETURN_NOT_OK(buildColumnArrays(column_arrays, schema_fields, string_fields_builders, arrow::utf8()));
-  ARROW_RETURN_NOT_OK(buildColumnArrays(column_arrays, schema_fields, bool_fields_builders, arrow::boolean()));
+  ARROW_RETURN_NOT_OK(buildColumnArrays(&column_arrays, &schema_fields, &tags_builders, arrow::utf8()));
+  ARROW_RETURN_NOT_OK(buildColumnArrays(&column_arrays, &schema_fields, &int_fields_builders, arrow::int64()));
+  ARROW_RETURN_NOT_OK(buildColumnArrays(&column_arrays, &schema_fields, &double_fields_builders, arrow::float64()));
+  ARROW_RETURN_NOT_OK(buildColumnArrays(&column_arrays, &schema_fields, &string_fields_builders, arrow::utf8()));
+  ARROW_RETURN_NOT_OK(buildColumnArrays(&column_arrays, &schema_fields, &bool_fields_builders, arrow::boolean()));
 
-  record_batches.push_back(arrow::RecordBatch::Make(arrow::schema(schema_fields),
+  record_batches->push_back(arrow::RecordBatch::Make(arrow::schema(schema_fields),
                                                     points.points_size(),
                                                     column_arrays));
   return arrow::Status::OK();
 }
 
 arrow::Status DataConverter::convertToPoints(const arrow::RecordBatchVector &record_batches,
-                                             agent::PointBatch &points,
+                                             agent::PointBatch* points,
                                              const RecordBatchesToPointsConversionOptions& options) {
   size_t points_count = 0;
   for (auto& record_batch : record_batches) {
-    points.mutable_points()->Reserve(points_count + record_batch->num_rows());
+    points->mutable_points()->Reserve(points_count + record_batch->num_rows());
     for (int i = 0; i < record_batch->num_columns(); ++i) {
       auto& column_name = record_batch->column_name(i);
       auto column = record_batch->column(i);
@@ -102,10 +102,10 @@ arrow::Status DataConverter::convertToPoints(const arrow::RecordBatchVector &rec
         }
 
         if (i == 0) {
-          points.mutable_points()->Add(agent::Point());
+          points->mutable_points()->Add();
         }
 
-        auto& point = points.mutable_points()->at(points_count + j);
+        auto& point = points->mutable_points()->operator[](points_count + j);
         auto scalar_value = get_scalar_result.ValueOrDie();
         if (column_name == options.measurement_column_name) {
           point.set_name(scalar_value->ToString());
@@ -146,23 +146,23 @@ arrow::Status DataConverter::convertToPoints(const arrow::RecordBatchVector &rec
 
 template<typename T, typename BuilderType>
 void DataConverter::addBuilders(const google::protobuf::Map<std::string, T> &data_map,
-                                std::map<std::string, BuilderType> &builders,
+                                std::map<std::string, BuilderType>* builders,
                                 arrow::MemoryPool* pool) {
   for (auto& value : data_map) {
-    if (builders.find(value.first) == builders.end()) {
-      builders.emplace(value.first, pool);
+    if (builders->find(value.first) == builders->end()) {
+      builders->emplace(value.first, pool);
     }
   }
 }
 
 template<typename T, typename BuilderType>
 arrow::Status DataConverter::appendValues(const google::protobuf::Map<std::string, T> &data_map,
-                                          std::map<std::string, BuilderType> &builders) {
-  for (auto& builder : builders) {
-    if (data_map.contains(builder.first)) {
-      ARROW_RETURN_NOT_OK(builder.second.Append(data_map.at(builder.first)));
+                                          std::map<std::string, BuilderType>* builders) {
+  for (auto& [field_name, builder] : *builders) {
+    if (data_map.find(field_name) != data_map.end()) {
+      ARROW_RETURN_NOT_OK(builder.Append(data_map.at(field_name)));
     } else {
-      ARROW_RETURN_NOT_OK(builder.second.AppendNull());
+      ARROW_RETURN_NOT_OK(builder.AppendNull());
     }
   }
 
@@ -170,14 +170,14 @@ arrow::Status DataConverter::appendValues(const google::protobuf::Map<std::strin
 }
 
 template<typename BuilderType>
-arrow::Status DataConverter::buildColumnArrays(arrow::ArrayVector &column_arrays,
-                                               arrow::FieldVector &schema_fields,
-                                               std::map<std::string, BuilderType> &builders,
+arrow::Status DataConverter::buildColumnArrays(arrow::ArrayVector* column_arrays,
+                                               arrow::FieldVector* schema_fields,
+                                               std::map<std::string, BuilderType>* builders,
                                                const std::shared_ptr<arrow::DataType> &data_type) {
-  for (auto& builder : builders) {
-    schema_fields.push_back(arrow::field(builder.first, data_type));
-    column_arrays.emplace_back();
-    ARROW_RETURN_NOT_OK(builder.second.Finish(&column_arrays.back()));
+  for (auto& [field_name, builder] : *builders) {
+    schema_fields->push_back(arrow::field(field_name, data_type));
+    column_arrays->emplace_back();
+    ARROW_RETURN_NOT_OK(builder.Finish(&column_arrays->back()));
   }
 
   return arrow::Status::OK();

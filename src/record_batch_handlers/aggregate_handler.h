@@ -14,27 +14,27 @@ class AggregateHandler : public RecordBatchHandler {
     bool add_time_window_columns_{false};
   };
 
-  template <typename U>
-  AggregateHandler(std::vector<std::string> grouping_columns, U&& options, std::string ts_column_name = "")
-      : grouping_columns_(std::move(grouping_columns))
-      , options_(std::forward<U>(options))
+  template <typename StringVector, typename AggregateOptionsType>
+  AggregateHandler(StringVector&& grouping_columns, AggregateOptionsType&& options, std::string ts_column_name = "")
+      : grouping_columns_(std::forward<StringVector>(grouping_columns))
+      , options_(std::forward<AggregateOptionsType>(options))
       , ts_column_name_(std::move(ts_column_name)) {
 
   }
 
-  arrow::Status handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector& result) override;
+  arrow::Status handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector* result) override;
 
  private:
   arrow::Status findTsColumnName(const std::shared_ptr<arrow::RecordBatch>& record_batch);
   arrow::Status fillResultSchema(const std::shared_ptr<arrow::RecordBatch>& record_batch);
-  arrow::Status fillGroupingColumns(const arrow::RecordBatchVector& groups, arrow::ArrayVector &result_arrays) const;
+  arrow::Status fillGroupingColumns(const arrow::RecordBatchVector& groups, arrow::ArrayVector *result_arrays) const;
 
   arrow::Status aggregate(const arrow::RecordBatchVector& groups, const std::string& aggregate_column_name,
-      const std::string& aggregate_function, arrow::ArrayVector &result_arrays,
+      const std::string& aggregate_function, arrow::ArrayVector *result_arrays,
       arrow::MemoryPool *pool = arrow::default_memory_pool()) const;
 
   arrow::Status aggregateTsColumn(const arrow::RecordBatchVector& groups, const std::string& aggregate_function,
-      arrow::ArrayVector &result_arrays, arrow::MemoryPool *pool = arrow::default_memory_pool()) const;
+      arrow::ArrayVector *result_arrays, arrow::MemoryPool *pool = arrow::default_memory_pool()) const;
 
  private:
   std::vector<std::string> grouping_columns_;
@@ -44,5 +44,3 @@ class AggregateHandler : public RecordBatchHandler {
 
   static const std::unordered_map<std::string, std::shared_ptr<AggregateFunction>> NAMES_TO_FUNCTIONS;
 };
-
-

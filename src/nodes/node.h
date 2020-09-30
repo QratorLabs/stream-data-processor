@@ -19,11 +19,11 @@ class Node {
     spdlog::get(name_)->info("Node created");
   }
 
-  template <typename U>
-  Node(std::string name, U&& consumer)
+  template <typename ConsumerVectorType>
+  Node(std::string name, ConsumerVectorType&& consumers)
       : name_(std::move(name))
       , logger_(spdlog::basic_logger_mt(name_, "logs/" + name_ + ".txt", true))
-      , consumers_(std::forward<U>(consumer)) {
+      , consumers_(std::forward<ConsumerVectorType>(consumers)) {
     spdlog::get(name_)->info("Node created");
   }
 
@@ -45,5 +45,3 @@ class Node {
   std::shared_ptr<spdlog::logger> logger_;
   std::vector<std::shared_ptr<Consumer>> consumers_;
 };
-
-

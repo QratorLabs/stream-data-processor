@@ -4,20 +4,20 @@
 
 template <>
 arrow::Status DefaultHandler::addMissingColumn<int64_t>(const std::unordered_map<std::string, int64_t> &missing_columns,
-                                                        arrow::RecordBatchVector &record_batches) const {
-  for (auto& missing_column : missing_columns) {
-    if (record_batches.back()->schema()->GetFieldByName(missing_column.first) != nullptr) {
+                                                        arrow::RecordBatchVector *record_batches) const {
+  for (auto& [column_name, default_value] : missing_columns) {
+    if (record_batches->back()->schema()->GetFieldByName(column_name) != nullptr) {
       continue;
     }
 
-    for (auto& record_batch : record_batches) {
-      std::vector column_values(record_batch->num_rows(), missing_column.second);
+    for (auto& record_batch : *record_batches) {
+      std::vector column_values(record_batch->num_rows(), default_value);
       arrow::Int64Builder builder;
       ARROW_RETURN_NOT_OK(builder.AppendValues(column_values));
       std::shared_ptr<arrow::Array> array;
       ARROW_RETURN_NOT_OK(builder.Finish(&array));
       auto add_column_result = record_batch->AddColumn(record_batch->num_columns(),
-                                                  arrow::field(missing_column.first, arrow::int64()),
+                                                  arrow::field(column_name, arrow::int64()),
                                                   array);
       if (!add_column_result.ok()) {
         return add_column_result.status();
@@ -32,20 +32,20 @@ arrow::Status DefaultHandler::addMissingColumn<int64_t>(const std::unordered_map
 
 template <>
 arrow::Status DefaultHandler::addMissingColumn<double>(const std::unordered_map<std::string, double> &missing_columns,
-                                                       arrow::RecordBatchVector &record_batches) const {
-  for (auto& missing_column : missing_columns) {
-    if (record_batches.back()->schema()->GetFieldByName(missing_column.first) != nullptr) {
+                                                       arrow::RecordBatchVector *record_batches) const {
+  for (auto& [column_name, default_value] : missing_columns) {
+    if (record_batches->back()->schema()->GetFieldByName(column_name) != nullptr) {
       continue;
     }
 
-    for (auto& record_batch : record_batches) {
-      std::vector column_values(record_batch->num_rows(), missing_column.second);
+    for (auto& record_batch : *record_batches) {
+      std::vector column_values(record_batch->num_rows(), default_value);
       arrow::DoubleBuilder builder;
       ARROW_RETURN_NOT_OK(builder.AppendValues(column_values));
       std::shared_ptr<arrow::Array> array;
       ARROW_RETURN_NOT_OK(builder.Finish(&array));
       auto add_column_result = record_batch->AddColumn(record_batch->num_columns(),
-                                                       arrow::field(missing_column.first, arrow::float64()),
+                                                       arrow::field(column_name, arrow::float64()),
                                                        array);
       if (!add_column_result.ok()) {
         return add_column_result.status();
@@ -60,20 +60,20 @@ arrow::Status DefaultHandler::addMissingColumn<double>(const std::unordered_map<
 
 template <>
 arrow::Status DefaultHandler::addMissingColumn<std::string>(const std::unordered_map<std::string, std::string> &missing_columns,
-                                                            arrow::RecordBatchVector &record_batches) const {
-  for (auto& missing_column : missing_columns) {
-    if (record_batches.back()->schema()->GetFieldByName(missing_column.first) != nullptr) {
+                                                            arrow::RecordBatchVector *record_batches) const {
+  for (auto& [column_name, default_value] : missing_columns) {
+    if (record_batches->back()->schema()->GetFieldByName(column_name) != nullptr) {
       continue;
     }
 
-    for (auto& record_batch : record_batches) {
-      std::vector column_values(record_batch->num_rows(), missing_column.second);
+    for (auto& record_batch : *record_batches) {
+      std::vector column_values(record_batch->num_rows(), default_value);
       arrow::StringBuilder builder;
       ARROW_RETURN_NOT_OK(builder.AppendValues(column_values));
       std::shared_ptr<arrow::Array> array;
       ARROW_RETURN_NOT_OK(builder.Finish(&array));
       auto add_column_result = record_batch->AddColumn(record_batch->num_columns(),
-                                                       arrow::field(missing_column.first, arrow::utf8()),
+                                                       arrow::field(column_name, arrow::utf8()),
                                                        array);
       if (!add_column_result.ok()) {
         return add_column_result.status();
@@ -88,20 +88,20 @@ arrow::Status DefaultHandler::addMissingColumn<std::string>(const std::unordered
 
 template <>
 arrow::Status DefaultHandler::addMissingColumn<bool>(const std::unordered_map<std::string, bool> &missing_columns,
-                                                     arrow::RecordBatchVector &record_batches) const {
-  for (auto& missing_column : missing_columns) {
-    if (record_batches.back()->schema()->GetFieldByName(missing_column.first) != nullptr) {
+                                                     arrow::RecordBatchVector *record_batches) const {
+  for (auto& [column_name, default_value] : missing_columns) {
+    if (record_batches->back()->schema()->GetFieldByName(column_name) != nullptr) {
       continue;
     }
 
-    for (auto& record_batch : record_batches) {
-      std::vector column_values(record_batch->num_rows(), missing_column.second);
+    for (auto& record_batch : *record_batches) {
+      std::vector column_values(record_batch->num_rows(), default_value);
       arrow::BooleanBuilder builder;
       ARROW_RETURN_NOT_OK(builder.AppendValues(column_values));
       std::shared_ptr<arrow::Array> array;
       ARROW_RETURN_NOT_OK(builder.Finish(&array));
       auto add_column_result = record_batch->AddColumn(record_batch->num_columns(),
-                                                       arrow::field(missing_column.first, arrow::boolean()),
+                                                       arrow::field(column_name, arrow::boolean()),
                                                        array);
       if (!add_column_result.ok()) {
         return add_column_result.status();
@@ -114,11 +114,15 @@ arrow::Status DefaultHandler::addMissingColumn<bool>(const std::unordered_map<st
   return arrow::Status::OK();
 }
 
-arrow::Status DefaultHandler::handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector& result) {
-  result = record_batches;
+arrow::Status DefaultHandler::handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector* result) {
+  for (auto& record_batch : record_batches) {
+    result->push_back(arrow::RecordBatch::Make(record_batch->schema(), record_batch->num_rows(), record_batch->columns()));
+  }
+
   ARROW_RETURN_NOT_OK(addMissingColumn(options_.int64_columns_default_values, result));
   ARROW_RETURN_NOT_OK(addMissingColumn(options_.double_columns_default_values, result));
   ARROW_RETURN_NOT_OK(addMissingColumn(options_.string_columns_default_values, result));
   ARROW_RETURN_NOT_OK(addMissingColumn(options_.bool_columns_default_values, result));
+
   return arrow::Status::OK();
 }

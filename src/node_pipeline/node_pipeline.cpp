@@ -27,8 +27,8 @@ void NodePipeline::start() {
   }
 }
 
-void NodePipeline::subscribeTo(NodePipeline &other_pipeline,
-                               const std::shared_ptr<uvw::Loop> &loop,
+void NodePipeline::subscribeTo(NodePipeline* other_pipeline,
+                               uvw::Loop* loop,
                                const std::shared_ptr<zmq::context_t>& zmq_context,
                                TransportUtils::ZMQTransportType transport_type) {
   std::string transport_prefix;
@@ -45,7 +45,7 @@ void NodePipeline::subscribeTo(NodePipeline &other_pipeline,
       throw std::runtime_error("Unexpected ZMQ transport type");
   }
 
-  std::string connect_prefix = transport_prefix + other_pipeline.node_->getName() + "_to_" + node_->getName();
+  std::string connect_prefix = transport_prefix + other_pipeline->node_->getName() + "_to_" + node_->getName();
 
   auto publisher_socket = std::make_shared<zmq::socket_t>(*zmq_context, ZMQ_PUB);
   publisher_socket->bind(connect_prefix);
@@ -56,8 +56,8 @@ void NodePipeline::subscribeTo(NodePipeline &other_pipeline,
       {publisher_synchronize_socket}
   ), loop);
 
-  other_pipeline.node_->addConsumer(consumer);
-  other_pipeline.addConsumer(consumer);
+  other_pipeline->node_->addConsumer(consumer);
+  other_pipeline->addConsumer(consumer);
 
   auto subscriber_socket = std::make_shared<zmq::socket_t>(*zmq_context, ZMQ_SUB);
   subscriber_socket->connect(connect_prefix);

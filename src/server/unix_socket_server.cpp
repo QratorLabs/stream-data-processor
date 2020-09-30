@@ -7,7 +7,7 @@
 
 UnixSocketServer::UnixSocketServer(std::shared_ptr<UnixSocketClientFactory> client_factory,
                                    const std::string& socket_path,
-                                   const std::shared_ptr<uvw::Loop>& loop)
+                                   uvw::Loop* loop)
     : client_factory_(std::move(client_factory))
     , sockfd_(socket(PF_LOCAL, SOCK_STREAM, 0))
     , socket_handle_(loop->resource<uvw::PipeHandle>()) {

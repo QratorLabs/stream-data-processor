@@ -1,5 +1,4 @@
 #include <chrono>
-#include <fstream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -42,7 +41,6 @@ int main(int argc, char** argv) {
 
   std::unordered_map<std::string, NodePipeline> pipelines;
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   std::vector<std::string> template_strings{"*.cpu.*.percent.* host.measurement.cpu.type.field"};
   std::shared_ptr<Node> parse_graphite_node = std::make_shared<EvalNode>(
@@ -53,7 +51,7 @@ int main(int argc, char** argv) {
 
   IPv4Endpoint parse_graphite_producer_endpoint{"127.0.0.1", 4200};
   std::shared_ptr<Producer> parse_graphite_producer = std::make_shared<TCPProducer>(
-      parse_graphite_node, parse_graphite_producer_endpoint, loop, true
+      parse_graphite_node, parse_graphite_producer_endpoint, loop.get(), true
   );
 
 
@@ -61,7 +59,6 @@ int main(int argc, char** argv) {
   pipelines[parse_graphite_node->getName()].setNode(parse_graphite_node);
   pipelines[parse_graphite_node->getName()].setProducer(parse_graphite_producer);
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   std::vector<gandiva::ConditionPtr> cputime_all_filter_node_conditions{
       gandiva::TreeExprBuilder::MakeCondition(gandiva::TreeExprBuilder::MakeFunction(
@@ -80,13 +77,12 @@ int main(int argc, char** argv) {
   pipelines[cputime_all_filter_node->getName()] = NodePipeline();
   pipelines[cputime_all_filter_node->getName()].setNode(cputime_all_filter_node);
   pipelines[cputime_all_filter_node->getName()].subscribeTo(
-      pipelines[parse_graphite_node->getName()],
-      loop,
+      &pipelines[parse_graphite_node->getName()],
+      loop.get(),
       zmq_context,
       TransportUtils::ZMQTransportType::IPC
       );
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   std::vector<std::string> cputime_all_grouping_columns{"host", "type"};
   std::shared_ptr<Node> cputime_all_group_by_node = std::make_shared<EvalNode>(
@@ -98,13 +94,12 @@ int main(int argc, char** argv) {
   pipelines[cputime_all_group_by_node->getName()] = NodePipeline();
   pipelines[cputime_all_group_by_node->getName()].setNode(cputime_all_group_by_node);
   pipelines[cputime_all_group_by_node->getName()].subscribeTo(
-      pipelines[cputime_all_filter_node->getName()],
-      loop,
+      &pipelines[cputime_all_filter_node->getName()],
+      loop.get(),
       zmq_context,
       TransportUtils::ZMQTransportType::IPC
   );
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   AggregateHandler::AggregateOptions cputime_host_last_options{
       {
@@ -130,13 +125,12 @@ int main(int argc, char** argv) {
   pipelines[cputime_host_last_aggregate_node->getName()] = NodePipeline();
   pipelines[cputime_host_last_aggregate_node->getName()].setNode(cputime_host_last_aggregate_node);
   pipelines[cputime_host_last_aggregate_node->getName()].subscribeTo(
-      pipelines[cputime_all_group_by_node->getName()],
-      loop,
+      &pipelines[cputime_all_group_by_node->getName()],
+      loop.get(),
       zmq_context,
       TransportUtils::ZMQTransportType::IPC
   );
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   DefaultHandler::DefaultHandlerOptions cputime_host_calc_options{
       {},
@@ -164,13 +158,12 @@ int main(int argc, char** argv) {
   pipelines[cputime_host_calc_default_node->getName()] = NodePipeline();
   pipelines[cputime_host_calc_default_node->getName()].setNode(cputime_host_calc_default_node);
   pipelines[cputime_host_calc_default_node->getName()].subscribeTo(
-      pipelines[cputime_host_last_aggregate_node->getName()],
-      loop,
+      &pipelines[cputime_host_last_aggregate_node->getName()],
+      loop.get(),
       zmq_context,
       TransportUtils::ZMQTransportType::IPC
   );
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<Consumer> cputime_host_calc_map_consumer =
       std::make_shared<FilePrintConsumer>(std::string(argv[0]) + "_result_42.txt");
@@ -207,13 +200,12 @@ int main(int argc, char** argv) {
   pipelines[cputime_host_calc_map_node->getName()].addConsumer(cputime_host_calc_map_consumer);
   pipelines[cputime_host_calc_map_node->getName()].setNode(cputime_host_calc_map_node);
   pipelines[cputime_host_calc_map_node->getName()].subscribeTo(
-      pipelines[cputime_host_calc_default_node->getName()],
-      loop,
+      &pipelines[cputime_host_calc_default_node->getName()],
+      loop.get(),
       zmq_context,
       TransportUtils::ZMQTransportType::IPC
   );
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<Node> cputime_all_win_window_node = std::make_shared<PeriodNode>(
       "cputime_all_win_window_node",
@@ -227,13 +219,12 @@ int main(int argc, char** argv) {
   pipelines[cputime_all_win_window_node->getName()] = NodePipeline();
   pipelines[cputime_all_win_window_node->getName()].setNode(cputime_all_win_window_node);
   pipelines[cputime_all_win_window_node->getName()].subscribeTo(
-      pipelines[cputime_all_filter_node->getName()],
-      loop,
+      &pipelines[cputime_all_filter_node->getName()],
+      loop.get(),
       zmq_context,
       TransportUtils::ZMQTransportType::IPC
   );
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   AggregateHandler::AggregateOptions cputime_win_last_options{
       {
@@ -260,13 +251,12 @@ int main(int argc, char** argv) {
   pipelines[cputime_win_last_aggregate_node->getName()] = NodePipeline();
   pipelines[cputime_win_last_aggregate_node->getName()].setNode(cputime_win_last_aggregate_node);
   pipelines[cputime_win_last_aggregate_node->getName()].subscribeTo(
-      pipelines[cputime_all_win_window_node->getName()],
-      loop,
+      &pipelines[cputime_all_win_window_node->getName()],
+      loop.get(),
       zmq_context,
       TransportUtils::ZMQTransportType::IPC
   );
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   DefaultHandler::DefaultHandlerOptions cputime_win_calc_options{
       {},
@@ -296,13 +286,12 @@ int main(int argc, char** argv) {
   pipelines[cputime_win_calc_default_node->getName()] = NodePipeline();
   pipelines[cputime_win_calc_default_node->getName()].setNode(cputime_win_calc_default_node);
   pipelines[cputime_win_calc_default_node->getName()].subscribeTo(
-      pipelines[cputime_win_last_aggregate_node->getName()],
-      loop,
+      &pipelines[cputime_win_last_aggregate_node->getName()],
+      loop.get(),
       zmq_context,
       TransportUtils::ZMQTransportType::IPC
   );
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<Consumer> cputime_win_calc_map_consumer =
       std::make_shared<FilePrintConsumer>(std::string(argv[0]) + "_result_43.txt");
@@ -339,16 +328,16 @@ int main(int argc, char** argv) {
   pipelines[cputime_win_calc_map_node->getName()].addConsumer(cputime_win_calc_map_consumer);
   pipelines[cputime_win_calc_map_node->getName()].setNode(cputime_win_calc_map_node);
   pipelines[cputime_win_calc_map_node->getName()].subscribeTo(
-      pipelines[cputime_win_calc_default_node->getName()],
-      loop,
+      &pipelines[cputime_win_calc_default_node->getName()],
+      loop.get(),
       zmq_context,
       TransportUtils::ZMQTransportType::IPC
   );
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  for (auto& pipeline : pipelines) {
-    pipeline.second.start();
+  for (auto& [pipeline_name, pipeline] : pipelines) {
+    pipeline.start();
+    spdlog::info("{} pipeline was started");
   }
 
   loop->run();

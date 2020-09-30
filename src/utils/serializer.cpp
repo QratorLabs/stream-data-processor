@@ -27,7 +27,7 @@ arrow::Status Serializer::serializeRecordBatches(const std::shared_ptr<arrow::Sc
   return arrow::Status::OK();
 }
 
-arrow::Status Serializer::deserializeRecordBatches(std::shared_ptr<arrow::Buffer> buffer,
+arrow::Status Serializer::deserializeRecordBatches(const std::shared_ptr<arrow::Buffer>& buffer,
                                                    std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches) {
   auto buffer_input = std::make_shared<arrow::io::BufferReader>(buffer);
   auto batch_reader_result = arrow::ipc::RecordBatchStreamReader::Open(buffer_input);

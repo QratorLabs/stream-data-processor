@@ -14,5 +14,3 @@ class SerializedRecordBatchHandler : public DataHandler {
  private:
   std::shared_ptr<RecordBatchHandler> handler_strategy_;
 };
-
-

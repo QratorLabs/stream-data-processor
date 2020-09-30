@@ -5,10 +5,10 @@
 #include "filter_handler.h"
 #include "utils/serializer.h"
 
-arrow::Status FilterHandler::handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector& result) {
+arrow::Status FilterHandler::handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector* result) {
   auto pool = arrow::default_memory_pool();
   std::shared_ptr<gandiva::Filter> filter;
-  ARROW_RETURN_NOT_OK(prepareFilter(record_batches.back()->schema(), filter));
+  ARROW_RETURN_NOT_OK(prepareFilter(record_batches.back()->schema(), &filter));
   for (auto& record_batch : record_batches) {
     std::shared_ptr<gandiva::SelectionVector> selection;
     ARROW_RETURN_NOT_OK(gandiva::SelectionVector::MakeInt64(record_batch->num_rows(), pool, &selection));
@@ -18,14 +18,14 @@ arrow::Status FilterHandler::handle(const arrow::RecordBatchVector& record_batch
       return take_result.status();
     }
 
-    result.push_back(take_result.ValueOrDie().record_batch());
+    result->push_back(take_result.ValueOrDie().record_batch());
   }
 
   return arrow::Status::OK();
 }
 
 arrow::Status FilterHandler::prepareFilter(const std::shared_ptr<arrow::Schema> &schema,
-                                           std::shared_ptr<gandiva::Filter>& filter) const {
+                                           std::shared_ptr<gandiva::Filter>* filter) const {
   if (conditions_.empty()) {
     return arrow::Status::Invalid("Expected at least one condition for filter");
   }
@@ -37,9 +37,9 @@ arrow::Status FilterHandler::prepareFilter(const std::shared_ptr<arrow::Schema> 
     }
 
     auto and_condition = gandiva::TreeExprBuilder::MakeCondition(gandiva::TreeExprBuilder::MakeAnd(conditions_nodes));
-    ARROW_RETURN_NOT_OK(gandiva::Filter::Make(schema, and_condition, &filter));
+    ARROW_RETURN_NOT_OK(gandiva::Filter::Make(schema, and_condition, filter));
   } else {
-    ARROW_RETURN_NOT_OK(gandiva::Filter::Make(schema, conditions_.back(), &filter));
+    ARROW_RETURN_NOT_OK(gandiva::Filter::Make(schema, conditions_.back(), filter));
   }
 
   return arrow::Status::OK();

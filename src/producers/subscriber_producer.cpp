@@ -2,16 +2,6 @@
 
 #include "subscriber_producer.h"
 
-SubscriberProducer::SubscriberProducer(std::shared_ptr<Node> node,
-                                       TransportUtils::Subscriber &&subscriber,
-                                       const std::shared_ptr<uvw::Loop>& loop)
-    : Producer(std::move(node))
-    , subscriber_(std::move(subscriber))
-    , poller_(loop->resource<uvw::PollHandle>(subscriber_.subscriber_socket().getsockopt<int>(ZMQ_FD)))
-    , synchronize_poller_(loop->resource<uvw::PollHandle>(subscriber_.synchronize_socket().getsockopt<int>(ZMQ_FD))) {
-  configurePollers();
-}
-
 void SubscriberProducer::start() {
   fetchSocketEvents();
   poller_->start(uvw::Flags<uvw::PollHandle::Event>::from<

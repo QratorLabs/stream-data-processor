@@ -35,7 +35,7 @@ class TransportUtils {
     Publisher(std::shared_ptr<zmq::socket_t> publisher_socket,
               std::vector<std::shared_ptr<zmq::socket_t>> synchronize_sockets);
 
-    bool isReady() const;
+    [[nodiscard]] bool isReady() const;
 
     std::shared_ptr<zmq::socket_t> publisher_socket();
     std::vector<std::shared_ptr<zmq::socket_t>>& synchronize_sockets();
@@ -80,5 +80,3 @@ class TransportUtils {
   static std::string getSizeString(size_t size);
   static size_t parseMessageSize(const std::string& size_string);
 };
-
-

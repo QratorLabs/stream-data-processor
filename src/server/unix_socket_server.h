@@ -12,7 +12,7 @@ class UnixSocketServer {
  public:
   UnixSocketServer(std::shared_ptr<UnixSocketClientFactory> client_factory,
                    const std::string& socket_path,
-                   const std::shared_ptr<uvw::Loop>& loop);
+                   uvw::Loop* loop);
 
   void start();
   void stop();
@@ -25,5 +25,3 @@ class UnixSocketServer {
   std::shared_ptr<uvw::PipeHandle> socket_handle_;
   std::vector<std::shared_ptr<UnixSocketClient>> clients_;
 };
-
-

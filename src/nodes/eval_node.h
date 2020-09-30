@@ -18,11 +18,11 @@ class EvalNode : public Node {
       , data_handler_(std::move(data_handler)) {
   }
 
-  template <typename U>
+  template <typename ConsumerVectorType>
   EvalNode(const std::string& name,
-           U&& consumers,
+           ConsumerVectorType&& consumers,
            std::shared_ptr<DataHandler> data_handler)
-      : Node(name, std::forward<U>(consumers))
+      : Node(name, std::forward<ConsumerVectorType>(consumers))
       , data_handler_(std::move(data_handler)) {
   }
 
@@ -37,5 +37,3 @@ class EvalNode : public Node {
  private:
   std::shared_ptr<DataHandler> data_handler_;
 };
-
-

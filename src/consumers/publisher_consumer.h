@@ -13,9 +13,9 @@
 
 class PublisherConsumer : public Consumer {
  public:
-  template <typename U>
-  PublisherConsumer(U&& publisher, const std::shared_ptr<uvw::Loop>& loop)
-      : publisher_(std::forward<U>(publisher))
+  template <typename PublisherType>
+  PublisherConsumer(PublisherType&& publisher, uvw::Loop* loop)
+      : publisher_(std::forward<PublisherType>(publisher))
       , publisher_poller_(loop->resource<uvw::PollHandle>(publisher_.publisher_socket()->getsockopt<int>(ZMQ_FD)))
       , connect_timer_(loop->resource<uvw::TimerHandle>()) {
     for (auto& synchronize_socket : publisher_.synchronize_sockets()) {
@@ -47,5 +47,3 @@ class PublisherConsumer : public Consumer {
   std::queue<std::shared_ptr<arrow::Buffer>> data_buffers_;
   bool socket_is_writeable_{false};
 };
-
-

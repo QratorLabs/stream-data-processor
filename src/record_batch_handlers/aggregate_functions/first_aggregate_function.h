@@ -9,4 +9,3 @@ class FirstAggregateFunction : public AggregateFunction {
                           std::shared_ptr<arrow::Scalar> *result,
                           const std::string &ts_column_name = "") const override;
 };
-

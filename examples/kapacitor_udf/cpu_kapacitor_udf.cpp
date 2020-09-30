@@ -1,12 +1,7 @@
 #include <chrono>
 #include <csignal>
-#include <fstream>
 #include <memory>
-#include <string>
 #include <vector>
-#include <unordered_map>
-
-#include <gandiva/tree_expr_builder.h>
 
 #include <spdlog/spdlog.h>
 
@@ -69,7 +64,7 @@ int main(int argc, char** argv) {
   auto loop = uvw::Loop::getDefault();
   std::string socket_path("/var/run/cpu.sock");
 
-  UnixSocketServer server(std::make_shared<CpuAggregateUDFAgentClientFactory>(), socket_path, loop);
+  UnixSocketServer server(std::make_shared<CpuAggregateUDFAgentClientFactory>(), socket_path, loop.get());
 
   auto signal_handle = loop->resource<uvw::SignalHandle>();
   signal_handle->on<uvw::SignalEvent>([&](const uvw::SignalEvent& event, uvw::SignalHandle& handle) {

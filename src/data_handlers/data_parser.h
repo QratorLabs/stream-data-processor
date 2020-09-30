@@ -14,5 +14,3 @@ class DataParser : public DataHandler {
  private:
   std::shared_ptr<Parser> parser_;
 };
-
-

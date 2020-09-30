@@ -18,7 +18,7 @@ agent::Response BatchToStreamRequestHandler::init(const agent::InitRequest &init
   return response;
 }
 
-agent::Response BatchToStreamRequestHandler::snapshot() {
+agent::Response BatchToStreamRequestHandler::snapshot() const {
   agent::Response response;
   response.mutable_snapshot()->set_snapshot((in_batch_ ? "1" : "0") + batch_points_.SerializeAsString());
   return response;
@@ -51,9 +51,8 @@ void BatchToStreamRequestHandler::beginBatch(const agent::BeginBatch &batch) {
 
 void BatchToStreamRequestHandler::point(const agent::Point &point) {
   if (in_batch_) {
-    agent::Point copy_point;
-    copy_point.CopyFrom(point);
-    batch_points_.mutable_points()->Add(std::move(copy_point));
+    auto new_point = batch_points_.mutable_points()->Add();
+    new_point->CopyFrom(point);
   } else {
     agent::Response response;
     response.mutable_error()->set_error("Can't add point: not in batch");

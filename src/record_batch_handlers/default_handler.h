@@ -17,18 +17,18 @@ class DefaultHandler : public RecordBatchHandler {
     std::unordered_map<std::string, bool> bool_columns_default_values;
   };
 
-  template <typename U>
-  explicit DefaultHandler(U&& options)
-      : options_(std::forward<U>(options)) {
+  template <typename DefaultHandlerOptionsType>
+  explicit DefaultHandler(DefaultHandlerOptionsType&& options)
+      : options_(std::forward<DefaultHandlerOptionsType>(options)) {
 
   }
 
-  arrow::Status handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector& result) override;
+  arrow::Status handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector* result) override;
 
  private:
   template <typename T>
   arrow::Status addMissingColumn(const std::unordered_map<std::string, T> &missing_columns,
-                                 arrow::RecordBatchVector &record_batches) const;
+                                 arrow::RecordBatchVector *record_batches) const;
 
  private:
   DefaultHandlerOptions options_;

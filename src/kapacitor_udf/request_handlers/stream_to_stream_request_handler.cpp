@@ -13,7 +13,7 @@ agent::Response StreamToStreamRequestHandler::init(const agent::InitRequest &ini
   return response;
 }
 
-agent::Response StreamToStreamRequestHandler::snapshot() {
+agent::Response StreamToStreamRequestHandler::snapshot() const {
   agent::Response response;
   response.mutable_snapshot()->set_snapshot(batch_points_.SerializeAsString());
   return response;
@@ -34,9 +34,8 @@ void StreamToStreamRequestHandler::beginBatch(const agent::BeginBatch &batch) {
 }
 
 void StreamToStreamRequestHandler::point(const agent::Point &point) {
-  agent::Point copy_point;
-  copy_point.CopyFrom(point);
-  batch_points_.mutable_points()->Add(std::move(copy_point));
+  auto new_point = batch_points_.mutable_points()->Add();
+  new_point->CopyFrom(point);
   if (!batch_timer_->active()) {
     batch_timer_->start(batch_interval_, batch_interval_);
   }
