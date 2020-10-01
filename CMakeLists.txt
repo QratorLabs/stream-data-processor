@@ -14,7 +14,7 @@ find_library(ZeroMQ_LIBRARY
   PATHS ${PC_ZeroMQ_LIBRARY_DIRS}
   )
 add_library(dependency_zmq UNKNOWN IMPORTED GLOBAL)
-set_property(TARGET dependency_zmq PROPERTY IMPORTED_LOCATION ${ZeroMQ_LIBRARY})
+set_property(TARGET dependency_zmq PROPERTY IMPORTED_LOCATION "${ZeroMQ_LIBRARY}")
 #add_library(dependencies::zmq ALIAS dependency_zmq)      # Introduced in cmake 3.15
 message(STATUS "ZeroMQ include dir: ${ZeroMQ_INCLUDE_DIR}")
 message(STATUS "ZeroMQ lib dir: ${ZeroMQ_LIBRARY}")
@@ -22,7 +22,7 @@ message(STATUS "ZeroMQ lib dir: ${ZeroMQ_LIBRARY}")
 find_package(Arrow REQUIRED)
 message(STATUS "Arrow lib dir: ${Arrow_DIR}")
 
-set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${Arrow_DIR})
+set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${Arrow_DIR}")
 find_package(Gandiva REQUIRED)
 message(STATUS "Gandiva lib dir: ${Gandiva_DIR}")
 
@@ -30,7 +30,7 @@ find_package(spdlog REQUIRED)
 
 find_package(Protobuf REQUIRED)
 add_library(dependency_protobuf UNKNOWN IMPORTED GLOBAL)
-set_property(TARGET dependency_protobuf PROPERTY IMPORTED_LOCATION ${Protobuf_LIBRARY})
+set_property(TARGET dependency_protobuf PROPERTY IMPORTED_LOCATION "${Protobuf_LIBRARY}")
 #add_library(dependencies::protobuf ALIAS dependency_protobuf)      # Introduced in cmake 3.15
 
 include_directories("${Protobuf_INCLUDE_DIRS}")
@@ -46,7 +46,7 @@ add_subdirectory(third_party/bprinter)
 protobuf_generate_cpp(UDFProtoSources UDFProtoHeaders "${CMAKE_CURRENT_SOURCE_DIR}/src/kapacitor_udf/udf.proto")
 
 set(STREAM_DATA_PROCESSOR_SOURCES
-  "${UDFProtoSources}"
+  ${UDFProtoSources}
   src/consumers/print_consumer.cpp
   src/consumers/publisher_consumer.cpp
   src/consumers/tcp_consumer.cpp
@@ -93,7 +93,7 @@ set(STREAM_DATA_PROCESSOR_INCLUDE_DIRS
 set(LIBRARY_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src"
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bprinter/include"
-  "${STREAM_DATA_PROCESSOR_INCLUDE_DIRS}"
+  ${STREAM_DATA_PROCESSOR_INCLUDE_DIRS}
   )
 
 set(PROJECT_DEPENDENCIES
@@ -120,11 +120,11 @@ function(add_exec_target file_path)
   target_link_libraries("${file_name}" "${LIBRARY_NAME}")
 endfunction()
 
+add_subdirectory(examples)
+
 option(ENABLE_TESTS "enables tests building" ON)
 if(ENABLE_TESTS)
-  add_subdirectory(examples)
+  enable_testing()
+  add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/third_party/googletest" EXCLUDE_FROM_ALL)
+  add_subdirectory(test)
 endif()
-
-enable_testing()
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/third_party/googletest" EXCLUDE_FROM_ALL)
-add_subdirectory(test)
