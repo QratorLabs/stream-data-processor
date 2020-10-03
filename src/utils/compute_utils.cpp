@@ -83,6 +83,11 @@ arrow::Status ComputeUtils::sort(const std::vector<std::string>& column_names,
     return arrow::Status::OK();
   }
 
+  if (source->GetColumnByName(column_names[i]) == nullptr) {
+    ARROW_RETURN_NOT_OK(sort(column_names, i + 1, source, targets));
+    return arrow::Status::OK();
+  }
+
   std::shared_ptr<arrow::RecordBatch> sorted_batch;
   ARROW_RETURN_NOT_OK(sortByColumn(column_names[i], source, &sorted_batch));
   while (true) {

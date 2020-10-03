@@ -20,20 +20,43 @@ class CpuAggregateUDFAgentClientFactory : public UnixSocketClientFactory {
 
     AggregateHandler::AggregateOptions cputime_host_last_options{
         {
-            {"idle", {"last", "mean"}},
-            {"interrupt", {"last", "mean"}},
-            {"nice", {"last", "mean"}},
-            {"softirq", {"last", "mean"}},
-            {"steal", {"last", "mean"}},
-            {"system", {"last", "mean"}},
-            {"user", {"last", "mean"}},
-            {"wait", {"last", "mean"}}
-        }, true
+            {"idle", {
+              {AggregateHandler::AggregateFunctionEnumType::kLast, "idle.last"},
+              {AggregateHandler::AggregateFunctionEnumType::kMean, "idle.mean"}
+            }},
+            {"interrupt", {
+                {AggregateHandler::AggregateFunctionEnumType::kLast, "interrupt.last"},
+                {AggregateHandler::AggregateFunctionEnumType::kMean, "interrupt.mean"}
+            }},
+            {"nice", {
+                {AggregateHandler::AggregateFunctionEnumType::kLast, "nice.last"},
+                {AggregateHandler::AggregateFunctionEnumType::kMean, "nice.mean"}
+            }},
+            {"softirq", {
+                {AggregateHandler::AggregateFunctionEnumType::kLast, "softirq.last"},
+                {AggregateHandler::AggregateFunctionEnumType::kMean, "softirq.mean"}
+            }},
+            {"steal", {
+                {AggregateHandler::AggregateFunctionEnumType::kLast, "steal.last"},
+                {AggregateHandler::AggregateFunctionEnumType::kMean, "steal.mean"}
+            }},
+            {"system", {
+                {AggregateHandler::AggregateFunctionEnumType::kLast, "system.last"},
+                {AggregateHandler::AggregateFunctionEnumType::kMean, "system.mean"}
+            }},
+            {"user", {
+                {AggregateHandler::AggregateFunctionEnumType::kLast, "user.last"},
+                {AggregateHandler::AggregateFunctionEnumType::kMean, "user.mean"}
+            }},
+            {"wait", {
+                {AggregateHandler::AggregateFunctionEnumType::kLast, "wait.last"},
+                {AggregateHandler::AggregateFunctionEnumType::kMean, "wait.mean"}
+            }}
+        }, { }, "time", true, {AggregateHandler::AggregateFunctionEnumType::kLast, "time"}
     };
-    std::vector<std::string> cputime_host_last_grouping_columns{ };
     std::vector<std::shared_ptr<RecordBatchHandler>> handlers_pipeline{
         std::make_shared<AggregateHandler>(
-            cputime_host_last_grouping_columns, cputime_host_last_options, "time"
+            std::move(cputime_host_last_options)
         )
     };
 
@@ -61,8 +84,13 @@ int main(int argc, char** argv) {
   spdlog::set_level(spdlog::level::debug);
   spdlog::flush_every(std::chrono::seconds(5));
 
+  if (argc < 2) {
+    spdlog::error("Unix socket path not provided");
+    return 1;
+  }
+
   auto loop = uvw::Loop::getDefault();
-  std::string socket_path("/var/run/cpu.sock");
+  std::string socket_path(argv[1]);
 
   UnixSocketServer server(std::make_shared<CpuAggregateUDFAgentClientFactory>(), socket_path, loop.get());
 

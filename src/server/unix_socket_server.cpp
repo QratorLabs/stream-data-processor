@@ -1,6 +1,3 @@
-#include <sys/socket.h>
-#include <unistd.h>
-
 #include <spdlog/spdlog.h>
 
 #include "unix_socket_server.h"
@@ -9,7 +6,6 @@ UnixSocketServer::UnixSocketServer(std::shared_ptr<UnixSocketClientFactory> clie
                                    const std::string& socket_path,
                                    uvw::Loop* loop)
     : client_factory_(std::move(client_factory))
-    , sockfd_(socket(PF_LOCAL, SOCK_STREAM, 0))
     , socket_handle_(loop->resource<uvw::PipeHandle>()) {
   socket_handle_->on<uvw::ListenEvent>([this](const uvw::ListenEvent& event, uvw::PipeHandle& socket_handle) {
     spdlog::info("New socket connection!");
@@ -35,8 +31,4 @@ void UnixSocketServer::stop() {
   for (auto& client : clients_) {
     client->stop();
   }
-}
-
-UnixSocketServer::~UnixSocketServer() {
-  close(sockfd_);
 }

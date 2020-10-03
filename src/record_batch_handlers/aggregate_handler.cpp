@@ -1,4 +1,5 @@
 #include <unordered_set>
+#include <utility>
 
 #include "aggregate_handler.h"
 
@@ -6,13 +7,24 @@
 
 #include "utils/utils.h"
 
-const std::unordered_map<std::string, std::shared_ptr<AggregateFunction>> AggregateHandler::NAMES_TO_FUNCTIONS{
-    {"first", std::make_shared<FirstAggregateFunction>()},
-    {"last", std::make_shared<LastAggregateFunction>()},
-    {"max", std::make_shared<MaxAggregateFunction>()},
-    {"min", std::make_shared<MinAggregateFunction>()},
-    {"mean", std::make_shared<MeanAggregateFunction>()}
+const std::unordered_map<
+      AggregateHandler::AggregateFunctionEnumType,
+      std::shared_ptr<AggregateFunction>
+    > AggregateHandler::TYPES_TO_FUNCTIONS{
+    {kFirst, std::make_shared<FirstAggregateFunction>()},
+    {kLast, std::make_shared<LastAggregateFunction>()},
+    {kMax, std::make_shared<MaxAggregateFunction>()},
+    {kMin, std::make_shared<MinAggregateFunction>()},
+    {kMean, std::make_shared<MeanAggregateFunction>()}
 };
+
+AggregateHandler::AggregateHandler(const AggregateHandler::AggregateOptions& options) : options_(std::move(options)) {
+
+}
+
+AggregateHandler::AggregateHandler(AggregateHandler::AggregateOptions &&options) : options_(std::move(options)) {
+
+}
 
 arrow::Status AggregateHandler::handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector* result) {
   // Concatenating record batches to the one batch
@@ -20,14 +32,13 @@ arrow::Status AggregateHandler::handle(const arrow::RecordBatchVector& record_ba
   ARROW_RETURN_NOT_OK(DataConverter::concatenateRecordBatches(record_batches, &record_batch));
 
   // Trying to find timestamp field for time window or first/last aggregators
-  ARROW_RETURN_NOT_OK(findTsColumnName(record_batch));
-  if (options_.add_time_window_columns_ && ts_column_name_.empty()) {
-    return arrow::Status::Invalid("Timestamp column is necessary for adding time window columns");
+  if (options_.add_result_time_column && options_.time_column_name.empty()) {
+    return arrow::Status::Invalid("Timestamp column is necessary for adding result time column");
   }
 
   // Splitting into groups in sorted order
   arrow::RecordBatchVector groups;
-  ARROW_RETURN_NOT_OK(ComputeUtils::groupSortingByColumns(grouping_columns_, record_batch, &groups));
+  ARROW_RETURN_NOT_OK(ComputeUtils::groupSortingByColumns(options_.grouping_columns, record_batch, &groups));
 
   // Setting result schema
   if (result_schema_ == nullptr) {
@@ -38,9 +49,8 @@ arrow::Status AggregateHandler::handle(const arrow::RecordBatchVector& record_ba
   arrow::ArrayVector result_arrays;
 
   // Calculating "first" and "last" timestamps if needed
-  if (options_.add_time_window_columns_) {
-    ARROW_RETURN_NOT_OK(aggregateTsColumn(groups, "first", &result_arrays, pool));
-    ARROW_RETURN_NOT_OK(aggregateTsColumn(groups, "last", &result_arrays, pool));
+  if (options_.add_result_time_column) {
+    ARROW_RETURN_NOT_OK(aggregateTimeColumn(groups, kFirst, &result_arrays, pool));
   }
 
   // Adding unique group values of grouping columns to the result vector
@@ -48,8 +58,8 @@ arrow::Status AggregateHandler::handle(const arrow::RecordBatchVector& record_ba
 
   // Calculating aggregators
   for (auto& [column_name, aggregate_functions] : options_.aggregate_columns) {
-    for (auto &aggregation_function : aggregate_functions) {
-      ARROW_RETURN_NOT_OK(aggregate(groups, column_name, aggregation_function, &result_arrays, pool));
+    for (auto &aggregate_case : aggregate_functions) {
+      ARROW_RETURN_NOT_OK(aggregate(groups, column_name, aggregate_case.aggregate_function, &result_arrays, pool));
     }
   }
 
@@ -57,47 +67,22 @@ arrow::Status AggregateHandler::handle(const arrow::RecordBatchVector& record_ba
   return arrow::Status::OK();
 }
 
-arrow::Status AggregateHandler::findTsColumnName(const std::shared_ptr<arrow::RecordBatch>& record_batch) {
-  if (!ts_column_name_.empty()) {
-    auto ts_column = record_batch->schema()->GetFieldByName(ts_column_name_);
-    if (ts_column == nullptr) {
-      return arrow::Status::Invalid("Wrong timestamp column name: " + ts_column_name_);
-    }
-
-    return arrow::Status::OK();
-  }
-
-  for (auto& field : record_batch->schema()->fields()) {
-    if (field->type()->id() == arrow::Type::TIMESTAMP) {
-      if (ts_column_name_.empty()) {
-        ts_column_name_ = field->name();
-      } else {
-        return arrow::Status::Invalid("Timestamp column detection is ambiguous");
-      }
-    }
-  }
-
-  return arrow::Status::OK();
-}
-
 arrow::Status AggregateHandler::fillResultSchema(const std::shared_ptr<arrow::RecordBatch> &record_batch) {
   arrow::FieldVector result_fields;
-  if (options_.add_time_window_columns_) {
-    auto ts_column_type = record_batch->GetColumnByName(ts_column_name_)->type();
-    result_fields.push_back(arrow::field("from_time", ts_column_type));
-    result_fields.push_back(arrow::field("to_time", ts_column_type));
+  if (options_.add_result_time_column) {
+    auto ts_column_type = record_batch->GetColumnByName(options_.time_column_name)->type();
+    result_fields.push_back(arrow::field(options_.result_time_column_strategy.result_column_name,
+                                         arrow::timestamp(arrow::TimeUnit::SECOND)));
   }
 
-  for (auto& grouping_column_name : grouping_columns_) {
+  for (auto& grouping_column_name : options_.grouping_columns) {
     auto column = record_batch->GetColumnByName(grouping_column_name);
-    if (column == nullptr) {
-      return arrow::Status::Invalid("RecordBatch doesn't have such column: " + grouping_column_name);
+    if (column != nullptr) {
+      result_fields.push_back(arrow::field(grouping_column_name, column->type()));
     }
-
-    result_fields.push_back(arrow::field(grouping_column_name, column->type()));
   }
 
-  for (auto& [column_name, aggregate_functions] : options_.aggregate_columns) {
+  for (auto& [column_name, aggregate_cases] : options_.aggregate_columns) {
     auto column = record_batch->GetColumnByName(column_name);
     std::shared_ptr<arrow::DataType> column_type;
     if (column == nullptr) {
@@ -106,8 +91,8 @@ arrow::Status AggregateHandler::fillResultSchema(const std::shared_ptr<arrow::Re
       column_type = column->type();
     }
 
-    for (auto& aggregate_function : aggregate_functions) {
-      result_fields.push_back(arrow::field(column_name + '_' + aggregate_function, column_type));
+    for (auto& aggregate_case : aggregate_cases) {
+      result_fields.push_back(arrow::field(aggregate_case.result_column_name, column_type));
     }
   }
 
@@ -117,7 +102,7 @@ arrow::Status AggregateHandler::fillResultSchema(const std::shared_ptr<arrow::Re
 
 arrow::Status AggregateHandler::aggregate(const arrow::RecordBatchVector &groups,
                                           const std::string &aggregate_column_name,
-                                          const std::string &aggregate_function,
+                                          const AggregateFunctionEnumType &aggregate_function,
                                           arrow::ArrayVector *result_arrays,
                                           arrow::MemoryPool *pool) const {
   auto aggregate_column_field = groups.front()->schema()->GetFieldByName(aggregate_column_name);
@@ -133,10 +118,10 @@ arrow::Status AggregateHandler::aggregate(const arrow::RecordBatchVector &groups
   ARROW_RETURN_NOT_OK(ArrowUtils::makeArrayBuilder(aggregate_column_field->type()->id(), &builder, pool));
   for (auto& group : groups) {
     std::shared_ptr<arrow::Scalar> aggregated_value;
-    ARROW_RETURN_NOT_OK(NAMES_TO_FUNCTIONS.at(aggregate_function)->aggregate(group,
+    ARROW_RETURN_NOT_OK(TYPES_TO_FUNCTIONS.at(aggregate_function)->aggregate(group,
                                                                              aggregate_column_name,
                                                                              &aggregated_value,
-                                                                             ts_column_name_));
+                                                                             options_.time_column_name));
     ARROW_RETURN_NOT_OK(ArrowUtils::appendToBuilder(aggregated_value, &builder, aggregate_column_field->type()->id()));
   }
 
@@ -145,11 +130,11 @@ arrow::Status AggregateHandler::aggregate(const arrow::RecordBatchVector &groups
   return arrow::Status::OK();
 }
 
-arrow::Status AggregateHandler::aggregateTsColumn(const arrow::RecordBatchVector &groups,
-                                                  const std::string &aggregate_function,
-                                                  arrow::ArrayVector *result_arrays,
-                                                  arrow::MemoryPool *pool) const {
-  auto ts_column_type = groups.front()->GetColumnByName(ts_column_name_)->type();
+arrow::Status AggregateHandler::aggregateTimeColumn(const arrow::RecordBatchVector &groups,
+                                                    const AggregateFunctionEnumType &aggregate_function,
+                                                    arrow::ArrayVector *result_arrays,
+                                                    arrow::MemoryPool *pool) const {
+  auto ts_column_type = groups.front()->GetColumnByName(options_.time_column_name)->type();
   if (!ts_column_type->Equals(arrow::timestamp(arrow::TimeUnit::SECOND))) {
     return arrow::Status::NotImplemented("Aggregation currently supports arrow::timestamp(SECOND) type for timestamp "
                                          "field only"); // TODO: support any numeric type
@@ -158,10 +143,10 @@ arrow::Status AggregateHandler::aggregateTsColumn(const arrow::RecordBatchVector
   arrow::NumericBuilder<arrow::TimestampType> ts_builder(ts_column_type, pool);
   for (auto& group : groups) {
     std::shared_ptr<arrow::Scalar> ts;
-    ARROW_RETURN_NOT_OK(NAMES_TO_FUNCTIONS.at(aggregate_function)->aggregate(group,
-                                                                             ts_column_name_,
+    ARROW_RETURN_NOT_OK(TYPES_TO_FUNCTIONS.at(aggregate_function)->aggregate(group,
+                                                                             options_.time_column_name,
                                                                              &ts,
-                                                                             ts_column_name_));
+                                                                             options_.time_column_name));
     auto ts_cast_result = ts->CastTo(ts_column_type);
     if (!ts_cast_result.ok()) {
       return ts_cast_result.status();
@@ -178,7 +163,7 @@ arrow::Status AggregateHandler::aggregateTsColumn(const arrow::RecordBatchVector
 arrow::Status AggregateHandler::fillGroupingColumns(const arrow::RecordBatchVector& groups,
                                                     arrow::ArrayVector *result_arrays) const {
   std::unordered_set<std::string> grouping_columns;
-  for (auto& grouping_column : grouping_columns_) {
+  for (auto& grouping_column : options_.grouping_columns) {
     grouping_columns.insert(grouping_column);
   }
 

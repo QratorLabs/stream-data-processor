@@ -108,15 +108,25 @@ int main(int argc, char** argv) {
   std::shared_ptr<Consumer> aggregate_consumer = std::make_shared<FilePrintConsumer>(std::string(argv[0]) + "_result.txt");
 
   std::vector<std::string> aggregate_columns({"tag"});
-  AggregateHandler::AggregateOptions aggregate_options{{{"sum", {"first", "last", "min", "max"}},
-                                                        {"diff", {"first", "last", "min", "max"}}},
-                                                       true};
+  AggregateHandler::AggregateOptions aggregate_options{{
+    {"sum", {
+        {AggregateHandler::AggregateFunctionEnumType::kFirst, "sum_first"},
+        {AggregateHandler::AggregateFunctionEnumType::kLast, "sum_last"},
+        {AggregateHandler::AggregateFunctionEnumType::kMin, "sum_min"},
+        {AggregateHandler::AggregateFunctionEnumType::kMax, "sum_max"}
+    }},
+    {"diff", {
+        {AggregateHandler::AggregateFunctionEnumType::kFirst, "diff_first"},
+        {AggregateHandler::AggregateFunctionEnumType::kLast, "diff_last"},
+        {AggregateHandler::AggregateFunctionEnumType::kMin, "diff_min"},
+        {AggregateHandler::AggregateFunctionEnumType::kMax, "diff_max"}
+    }}
+    }, {"tag"}, "ts", true
+  };
   std::vector aggregate_consumers{aggregate_consumer};
   std::shared_ptr<Node> aggregate_node = std::make_shared<EvalNode>(
       "aggregate_node", std::move(aggregate_consumers),
-      std::make_shared<SerializedRecordBatchHandler>(std::make_shared<AggregateHandler>(aggregate_columns,
-                                                                                        aggregate_options,
-                                                                                        "ts"))
+      std::make_shared<SerializedRecordBatchHandler>(std::make_shared<AggregateHandler>(std::move(aggregate_options)))
   );
 
 

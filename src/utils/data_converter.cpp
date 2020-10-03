@@ -1,5 +1,7 @@
 #include <map>
 
+#include <spdlog/spdlog.h>
+
 #include "data_converter.h"
 
 arrow::Status DataConverter::convertTableToRecordBatch(const std::shared_ptr<arrow::Table>& table,
@@ -107,6 +109,8 @@ arrow::Status DataConverter::convertToPoints(const arrow::RecordBatchVector &rec
 
         auto& point = points->mutable_points()->operator[](points_count + j);
         auto scalar_value = get_scalar_result.ValueOrDie();
+
+        bool skip_column = false;
         if (column_name == options.measurement_column_name) {
           point.set_name(scalar_value->ToString());
         } else if (column_name == options.timestamp_column_name) {
@@ -131,8 +135,16 @@ arrow::Status DataConverter::convertToPoints(const arrow::RecordBatchVector &rec
               point.mutable_fieldsbool()->operator[](column_name) = std::static_pointer_cast<arrow::BooleanScalar>(scalar_value)->value;
               break;
             default:
-              return arrow::Status::NotImplemented("Currently supports field columns of arrow types:"
-                                                   "{arrow::int64, arrow::float64, arrow::utf8, arrow::boolean}");
+              spdlog::warn("Currently supports field columns of arrow types: "
+                           "arrow::int64, arrow::float64, arrow::utf8, arrow::boolean. "
+                           "Provided type is {}, column name: {}",
+                           column->type()->ToString(),
+                           record_batch->schema()->field(i)->name());
+              skip_column = true;
+          }
+
+          if (skip_column) {
+            break;
           }
         }
       }

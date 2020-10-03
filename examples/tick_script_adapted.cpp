@@ -100,25 +100,46 @@ int main(int argc, char** argv) {
       TransportUtils::ZMQTransportType::IPC
   );
 
-
   AggregateHandler::AggregateOptions cputime_host_last_options{
       {
-          {"idle", {"last", "mean"}},
-          {"interrupt", {"last", "mean"}},
-          {"nice", {"last", "mean"}},
-          {"softirq", {"last", "mean"}},
-          {"steal", {"last", "mean"}},
-          {"system", {"last", "mean"}},
-          {"user", {"last", "mean"}},
-          {"wait", {"last", "mean"}}
-      }, true
+          {"idle", {
+              {AggregateHandler::AggregateFunctionEnumType::kLast, "idle.last"},
+              {AggregateHandler::AggregateFunctionEnumType::kMean, "idle.mean"}
+          }},
+          {"interrupt", {
+              {AggregateHandler::AggregateFunctionEnumType::kLast, "interrupt.last"},
+              {AggregateHandler::AggregateFunctionEnumType::kMean, "interrupt.mean"}
+          }},
+          {"nice", {
+              {AggregateHandler::AggregateFunctionEnumType::kLast, "nice.last"},
+              {AggregateHandler::AggregateFunctionEnumType::kMean, "nice.mean"}
+          }},
+          {"softirq", {
+              {AggregateHandler::AggregateFunctionEnumType::kLast, "softirq.last"},
+              {AggregateHandler::AggregateFunctionEnumType::kMean, "softirq.mean"}
+          }},
+          {"steal", {
+              {AggregateHandler::AggregateFunctionEnumType::kLast, "steal.last"},
+              {AggregateHandler::AggregateFunctionEnumType::kMean, "steal.mean"}
+          }},
+          {"system", {
+              {AggregateHandler::AggregateFunctionEnumType::kLast, "system.last"},
+              {AggregateHandler::AggregateFunctionEnumType::kMean, "system.mean"}
+          }},
+          {"user", {
+              {AggregateHandler::AggregateFunctionEnumType::kLast, "user.last"},
+              {AggregateHandler::AggregateFunctionEnumType::kMean, "user.mean"}
+          }},
+          {"wait", {
+              {AggregateHandler::AggregateFunctionEnumType::kLast, "wait.last"},
+              {AggregateHandler::AggregateFunctionEnumType::kMean, "wait.mean"}
+          }}
+      }, { "host", "type" }, "time", true,
+      {AggregateHandler::AggregateFunctionEnumType::kLast, "time"}
   };
-  std::vector<std::string> cputime_host_last_grouping_columns{"host", "type"};
   std::shared_ptr<Node> cputime_host_last_aggregate_node = std::make_shared<EvalNode>(
       "cputime_host_last_aggregate_node",
-      std::make_shared<SerializedRecordBatchHandler>(std::make_shared<AggregateHandler>(
-          cputime_host_last_grouping_columns, cputime_host_last_options, "time"
-      ))
+      std::make_shared<SerializedRecordBatchHandler>(std::make_shared<AggregateHandler>(std::move(cputime_host_last_options)))
   );
 
 
@@ -172,19 +193,19 @@ int main(int argc, char** argv) {
   gandiva::ExpressionVector cputime_host_calc_expressions{
       gandiva::TreeExprBuilder::MakeExpression(
           "less_than", {
-              arrow::field("idle_mean", arrow::float64()),
+              arrow::field("idle.mean", arrow::float64()),
               arrow::field("info_host_level", arrow::float64())
           }, arrow::field("alert_info", arrow::boolean())
       ),
       gandiva::TreeExprBuilder::MakeExpression(
           "less_than", {
-              arrow::field("idle_mean", arrow::float64()),
+              arrow::field("idle.mean", arrow::float64()),
               arrow::field("warn_host_level", arrow::float64())
           }, arrow::field("alert_warn", arrow::boolean())
       ),
       gandiva::TreeExprBuilder::MakeExpression(
           "less_than", {
-              arrow::field("idle_mean", arrow::float64()),
+              arrow::field("idle.mean", arrow::float64()),
               arrow::field("crit_host_level", arrow::float64())
           }, arrow::field("alert_crit", arrow::boolean())
       )
@@ -228,23 +249,45 @@ int main(int argc, char** argv) {
 
   AggregateHandler::AggregateOptions cputime_win_last_options{
       {
-          {"idle", {"last", "mean"}},
-          {"interrupt", {"last", "mean"}},
-          {"nice", {"last", "mean"}},
-          {"softirq", {"last", "mean"}},
-          {"steal", {"last", "mean"}},
-          {"system", {"last", "mean"}},
-          {"user", {"last", "mean"}},
-          {"wait", {"last", "mean"}}
-      }, true
+          {"idle", {
+              {AggregateHandler::AggregateFunctionEnumType::kLast, "idle.last"},
+              {AggregateHandler::AggregateFunctionEnumType::kMean, "idle.mean"}
+          }},
+          {"interrupt", {
+              {AggregateHandler::AggregateFunctionEnumType::kLast, "interrupt.last"},
+              {AggregateHandler::AggregateFunctionEnumType::kMean, "interrupt.mean"}
+          }},
+          {"nice", {
+              {AggregateHandler::AggregateFunctionEnumType::kLast, "nice.last"},
+              {AggregateHandler::AggregateFunctionEnumType::kMean, "nice.mean"}
+          }},
+          {"softirq", {
+              {AggregateHandler::AggregateFunctionEnumType::kLast, "softirq.last"},
+              {AggregateHandler::AggregateFunctionEnumType::kMean, "softirq.mean"}
+          }},
+          {"steal", {
+              {AggregateHandler::AggregateFunctionEnumType::kLast, "steal.last"},
+              {AggregateHandler::AggregateFunctionEnumType::kMean, "steal.mean"}
+          }},
+          {"system", {
+              {AggregateHandler::AggregateFunctionEnumType::kLast, "system.last"},
+              {AggregateHandler::AggregateFunctionEnumType::kMean, "system.mean"}
+          }},
+          {"user", {
+              {AggregateHandler::AggregateFunctionEnumType::kLast, "user.last"},
+              {AggregateHandler::AggregateFunctionEnumType::kMean, "user.mean"}
+          }},
+          {"wait", {
+              {AggregateHandler::AggregateFunctionEnumType::kLast, "wait.last"},
+              {AggregateHandler::AggregateFunctionEnumType::kMean, "wait.mean"}
+          }}
+      }, { "cpu", "host", "type" }, "time", true,
+      {AggregateHandler::AggregateFunctionEnumType::kLast, "time"}
   };
 
-  std::vector<std::string> cputime_win_last_grouping_columns{"cpu", "host", "type"};
   std::shared_ptr<Node> cputime_win_last_aggregate_node = std::make_shared<EvalNode>(
       "cputime_win_last_aggregate_node",
-      std::make_shared<SerializedRecordBatchHandler>(std::make_shared<AggregateHandler>(
-          cputime_win_last_grouping_columns, cputime_win_last_options, "time"
-      ))
+      std::make_shared<SerializedRecordBatchHandler>(std::make_shared<AggregateHandler>(std::move(cputime_win_last_options)))
   );
 
 
@@ -300,19 +343,19 @@ int main(int argc, char** argv) {
   gandiva::ExpressionVector cputime_win_calc_expressions{
       gandiva::TreeExprBuilder::MakeExpression(
           "less_than", {
-              arrow::field("idle_mean", arrow::float64()),
+              arrow::field("idle.mean", arrow::float64()),
               arrow::field("info_core_level", arrow::float64())
           }, arrow::field("alert_info", arrow::boolean())
       ),
       gandiva::TreeExprBuilder::MakeExpression(
           "less_than", {
-              arrow::field("idle_mean", arrow::float64()),
+              arrow::field("idle.mean", arrow::float64()),
               arrow::field("warn_core_level", arrow::float64())
           }, arrow::field("alert_warn", arrow::boolean())
       ),
       gandiva::TreeExprBuilder::MakeExpression(
           "less_than", {
-              arrow::field("idle_mean", arrow::float64()),
+              arrow::field("idle.mean", arrow::float64()),
               arrow::field("crit_core_level", arrow::float64())
           }, arrow::field("alert_crit", arrow::boolean())
       )
