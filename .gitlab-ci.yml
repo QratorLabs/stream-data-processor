@@ -1,43 +1,60 @@
 stages:
-  - build_image
   - build
-  - test
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
-  DOCKER_DRIVER: overlay2
   DOCKER_IMAGE_NAME: qevent_intership_stream_data_processor_image
+  DOCKER_PROJECT_PATH: /home/stream-data-processor
 
-build_docker_image:
-  stage: build_image
-  only:
-    changes:
-      - Dockerfile
-      - .gitlab-ci.yml
-  image: docker:stable
-  script:
-    - docker info
-    - docker image build --build-arg GCC_IMAGE_VERSION=10.2.0 -t "${DOCKER_IMAGE_NAME}" .
+.docker_cleanup: &docker_cleanup
+  - docker container prune --filter "label=project=${CI_PROJECT_PATH}" --force
+  - docker volume prune --filter "label=project=${CI_PROJECT_PATH}" --force
+  - docker network prune --filter "label=project=${CI_PROJECT_PATH}" --force
 
-stream_data_processor_build:
+.setup_gentoo: &setup_image
+  - docker image build --build-arg GCC_IMAGE_VERSION=10.2.0 -t "${DOCKER_IMAGE_NAME}" .
+  - docker image list --filter=reference="${DOCKER_IMAGE_NAME}" --filter=before="${DOCKER_IMAGE_NAME}:latest"
+  - |
+    for image in $(
+        docker image list --no-trunc --quiet \
+          --filter=reference="${DOCKER_IMAGE_NAME}" \
+          --filter=before="${DOCKER_IMAGE_NAME}:latest"
+    ); do
+        docker image remove --force "${image}"
+    done
+
+.start_job_container: &start_job_container
+  - |
+    docker create \
+        --name "${CI_COMMIT_SHORT_SHA}-${CI_PIPELINE_ID}-${CI_JOB_ID}" \
+        --label "project=${CI_PROJECT_PATH}" \
+        --volume "${PWD}":"${DOCKER_PROJECT_PATH}" \
+        "${DOCKER_IMAGE_NAME}" \
+        sh -ex "${ENTRYSCRIPT:-/data/script.sh}"
+  - for src in ./*; do docker cp "${src}" "${CI_COMMIT_SHORT_SHA}-${CI_PIPELINE_ID}-${CI_JOB_ID}":/data/; done
+  - docker container start --attach "${CI_COMMIT_SHORT_SHA}-${CI_PIPELINE_ID}-${CI_JOB_ID}"
+
+default:
+  before_script:
+    - *setup_image
+    - *docker_cleanup
+  after_script:
+    - *docker_cleanup
+  tags:
+    - docker
+
+generic:
+  interruptible: true
   stage: build
-  image: $DOCKER_IMAGE_NAME
   script:
-    - mkdir build
-    - cd build
-    - cmake ..
-    - make test_main
-  artifacts:
-    paths:
-      - build
-  interruptible: true
-
-stream_data_processor_test:
-  stage: test
-  image: $DOCKER_IMAGE_NAME
-  script:
-    - cd build
-    - ./test/test_main
-  dependencies:
-    - stream_data_processor_build
-  interruptible: true
+    - |
+      cat > script.sh <<'EOF'
+      cd "${DOCKER_PROJECT_PATH}"
+      mkdir build
+      cd build
+      cmake ..
+      make test_main
+      ./test/test_main
+      EOF
+    - *start_job_container
+    - docker container rm -f "${CI_COMMIT_SHORT_SHA}-${CI_PIPELINE_ID}-${CI_JOB_ID}"
