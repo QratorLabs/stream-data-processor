@@ -40,8 +40,6 @@ default:
     - *docker_cleanup
   after_script:
     - *docker_cleanup
-  tags:
-    - docker
 
 generic:
   interruptible: true
