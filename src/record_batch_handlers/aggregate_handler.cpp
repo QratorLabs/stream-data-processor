@@ -18,7 +18,7 @@ const std::unordered_map<
     {kMean, std::make_shared<MeanAggregateFunction>()}
 };
 
-AggregateHandler::AggregateHandler(const AggregateHandler::AggregateOptions& options) : options_(std::move(options)) {
+AggregateHandler::AggregateHandler(const AggregateHandler::AggregateOptions& options) : options_(options) {
 
 }
 
@@ -71,7 +71,7 @@ arrow::Status AggregateHandler::fillResultSchema(const std::shared_ptr<arrow::Re
   arrow::FieldVector result_fields;
   if (options_.add_result_time_column) {
     auto ts_column_type = record_batch->GetColumnByName(options_.time_column_name)->type();
-    result_fields.push_back(arrow::field(options_.result_time_column_strategy.result_column_name,
+    result_fields.push_back(arrow::field(options_.result_time_column_rule.result_column_name,
                                          arrow::timestamp(arrow::TimeUnit::SECOND)));
   }
 

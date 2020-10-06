@@ -27,7 +27,7 @@ class AggregateHandler : public RecordBatchHandler {
     std::vector<std::string> grouping_columns;
     std::string time_column_name;
     bool add_result_time_column{false};
-    AggregateCase result_time_column_strategy{ kLast, "time" };
+    AggregateCase result_time_column_rule{kLast, "time" };
   };
 
   explicit AggregateHandler(const AggregateOptions& options);

@@ -13,12 +13,12 @@
 class DataConverter {
  public:
   struct PointsToRecordBatchesConversionOptions {
-    std::string timestamp_column_name;
+    std::string time_column_name;
     std::string measurement_column_name;
   };
 
   struct RecordBatchesToPointsConversionOptions {
-    std::string timestamp_column_name;
+    std::string time_column_name;
     std::string measurement_column_name;
     std::unordered_set<std::string> tag_columns_names;
   };

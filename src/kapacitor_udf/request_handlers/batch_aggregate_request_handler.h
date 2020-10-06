@@ -1,24 +1,16 @@
 #pragma once
 
-#include <memory>
 #include <string>
-#include <vector>
 
-#include <arrow/api.h>
-
-#include "kapacitor_udf/udf_agent.h"
+#include "record_batch_handlers/aggregate_handler.h"
 #include "record_batch_request_handler.h"
-#include "record_batch_handlers/record_batch_handler.h"
 #include "utils/data_converter.h"
 
 #include "udf.pb.h"
 
-class BatchToStreamRequestHandler : public RecordBatchRequestHandler {
+class BatchAggregateRequestHandler : public RecordBatchRequestHandler {
  public:
-  BatchToStreamRequestHandler(const std::shared_ptr<IUDFAgent> &agent,
-                              const DataConverter::PointsToRecordBatchesConversionOptions &to_record_batches_options,
-                              const DataConverter::RecordBatchesToPointsConversionOptions &to_points_options,
-                              const std::shared_ptr<RecordBatchHandler> &handler);
+  explicit BatchAggregateRequestHandler(const std::shared_ptr<IUDFAgent> &agent);
 
   [[nodiscard]] agent::Response info() const override;
   [[nodiscard]] agent::Response init(const agent::InitRequest& init_request) override;
@@ -29,5 +21,10 @@ class BatchToStreamRequestHandler : public RecordBatchRequestHandler {
   void endBatch(const agent::EndBatch& batch) override;
 
  private:
+  static const DataConverter::PointsToRecordBatchesConversionOptions TO_RECORD_BATCHES_OPTIONS;
+  static const DataConverter::RecordBatchesToPointsConversionOptions TO_POINTS_OPTIONS;
+
   bool in_batch_{false};
 };
+
+

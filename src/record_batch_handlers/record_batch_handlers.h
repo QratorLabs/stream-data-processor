@@ -9,3 +9,5 @@
 
 #include "join_handler.h"
 #include "window_handler.h"
+
+#include "pipeline_handler.h"

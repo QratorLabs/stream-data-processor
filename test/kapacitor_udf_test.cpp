@@ -6,7 +6,10 @@
 #include <gmock/gmock.h>
 
 #include "kapacitor_udf/udf_agent.h"
+#include "kapacitor_udf/request_handlers/aggregate_options_parser.h"
 #include "kapacitor_udf/request_handlers/batch_to_stream_request_handler.h"
+#include "record_batch_handlers/aggregate_handler.h"
+#include "record_batch_handlers/pipeline_handler.h"
 #include "record_batch_handlers/record_batch_handler.h"
 #include "utils/data_converter.h"
 
@@ -33,9 +36,9 @@ SCENARIO( "UDFAgent with RequestHandler interaction", "[BatchToStreamRequestHand
     };
     std::shared_ptr<RequestHandler> handler = std::make_shared<BatchToStreamRequestHandler>(
         mock_agent,
-        empty_handler_pipeline,
         to_record_batches_options,
-        to_points_options
+        to_points_options,
+        std::make_shared<PipelineHandler>(std::move(empty_handler_pipeline))
         );
 
     WHEN( "mirror Handler consumes points batch" ) {
@@ -90,6 +93,49 @@ SCENARIO( "UDFAgent with RequestHandler interaction", "[BatchToStreamRequestHand
       REQUIRE ( restore_response.has_restore() );
       REQUIRE( restore_response.restore().success() );
       handler->endBatch(agent::EndBatch());
+    }
+  }
+}
+
+SCENARIO( "AggregateOptionsParser behavior", "[AggregateOptionsParser]" ) {
+  GIVEN( "init_request from kapacitor" ) {
+    agent::InitRequest init_request;
+    WHEN ( "init_request is structured properly" ) {
+      std::string group_by_value{"tag"};
+      std::string aggregates_value{"last(field) as field.last"};
+      std::string time_rule_value{"last"};
+
+      auto group_by_option = init_request.mutable_options()->Add();
+      group_by_option->set_name(AggregateOptionsParser::GROUP_BY_OPTION_NAME);
+      auto group_by_option_value = group_by_option->mutable_values()->Add();
+      group_by_option_value->set_stringvalue(group_by_value);
+
+      auto aggregates_option = init_request.mutable_options()->Add();
+      aggregates_option->set_name(AggregateOptionsParser::AGGREGATES_OPTION_NAME);
+      auto aggregates_option_value = aggregates_option->mutable_values()->Add();
+      aggregates_option_value->set_stringvalue(aggregates_value);
+
+      auto time_rule_option = init_request.mutable_options()->Add();
+      time_rule_option->set_name(AggregateOptionsParser::TIME_AGGREGATE_RULE_OPTION_NAME);
+      auto time_rule_option_value = time_rule_option->mutable_values()->Add();
+      time_rule_option_value->set_stringvalue(time_rule_value);
+
+      THEN( "parsing is successful with right options" ) {
+        auto aggregate_options = AggregateOptionsParser::parseOptions(init_request.options());
+
+        REQUIRE( aggregate_options.grouping_columns.size() == 1 );
+        REQUIRE( aggregate_options.grouping_columns[0] == group_by_value );
+
+        REQUIRE( aggregate_options.aggregate_columns.size() == 1 );
+        REQUIRE( aggregate_options.aggregate_columns.find("field") != aggregate_options.aggregate_columns.end() );
+        REQUIRE( aggregate_options.aggregate_columns["field"].size() == 1 );
+        REQUIRE( aggregate_options.aggregate_columns["field"][0].aggregate_function == AggregateHandler::kLast );
+        REQUIRE( aggregate_options.aggregate_columns["field"][0].result_column_name == "field.last" );
+
+        REQUIRE( aggregate_options.result_time_column_rule.aggregate_function == AggregateHandler::kLast );
+
+        REQUIRE( aggregate_options.add_result_time_column );
+      }
     }
   }
 }

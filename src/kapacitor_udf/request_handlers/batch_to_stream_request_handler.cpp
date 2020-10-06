@@ -5,6 +5,14 @@
 #include "utils/data_converter.h"
 #include "utils/serializer.h"
 
+BatchToStreamRequestHandler::BatchToStreamRequestHandler(const std::shared_ptr<IUDFAgent> &agent,
+                                                         const DataConverter::PointsToRecordBatchesConversionOptions &to_record_batches_options,
+                                                         const DataConverter::RecordBatchesToPointsConversionOptions &to_points_options,
+                                                         const std::shared_ptr<RecordBatchHandler> &handler)
+    : RecordBatchRequestHandler(agent, to_record_batches_options, to_points_options, handler) {
+
+}
+
 agent::Response BatchToStreamRequestHandler::info() const {
   agent::Response response;
   response.mutable_info()->set_wants(agent::EdgeType::BATCH);

@@ -68,7 +68,7 @@ arrow::Status DataConverter::convertToRecordBatches(const agent::PointBatch &poi
   arrow::FieldVector schema_fields;
   arrow::ArrayVector column_arrays;
 
-  schema_fields.push_back(arrow::field(options.timestamp_column_name, arrow::timestamp(arrow::TimeUnit::SECOND)));
+  schema_fields.push_back(arrow::field(options.time_column_name, arrow::timestamp(arrow::TimeUnit::SECOND)));
   column_arrays.emplace_back();
   ARROW_RETURN_NOT_OK(timestamp_builder.Finish(&column_arrays.back()));
 
@@ -113,7 +113,7 @@ arrow::Status DataConverter::convertToPoints(const arrow::RecordBatchVector &rec
         bool skip_column = false;
         if (column_name == options.measurement_column_name) {
           point.set_name(scalar_value->ToString());
-        } else if (column_name == options.timestamp_column_name) {
+        } else if (column_name == options.time_column_name) {
           point.set_time(std::static_pointer_cast<arrow::Int64Scalar>(scalar_value)->value);
         } else {
           switch (column->type_id()) {
