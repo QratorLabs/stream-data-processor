@@ -46,7 +46,8 @@ generic:
   interruptible: true
   stage: build
   script:
-    - cat > script.sh <<'EOF'
+    - |
+      cat > script.sh <<'EOF'
       cd "${DOCKER_PROJECT_PATH}"
       mkdir build
       cd build
