@@ -48,6 +48,7 @@ generic:
   script:
     - |
       cat > script.sh <<'EOF'
+      echo "Entering ${DOCKER_PROJECT_PATH}..."
       cd "${DOCKER_PROJECT_PATH}"
       mkdir build
       cd build
