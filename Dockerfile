@@ -13,6 +13,10 @@ ENV ENV_ARROW_DEB_PCKG_SHA256="fdc8c22d411e62bcaa7bf9e2fd2d252ef40157a166c9acd7c
 ENV ENV_CPPZMQ_SHA256="e9203391a0b913576153a2ad22a2dc1479b1ec325beb6c46a3237c669aef5a52"
 ENV ENV_CATCH2_SHA256="36bcc9e6190923961be11e589d747e606515de95f10779e29853cfeae560bd6c"
 
+#ENV PROJECT_PATH="/stream_data_processor"
+#
+#COPY . "${PROJECT_PATH}"
+
 SHELL ["/bin/bash", "-c"]
 
 # Configure system for further build and run
@@ -37,3 +41,5 @@ RUN apt-get -o Acquire::Check-Valid-Until=false update \
     && echo "${ENV_CATCH2_SHA256} ${CATCH2_DIR_NAME}.tar.gz" | sha256sum -c \
     && tar -xvzf "${CATCH2_DIR_NAME}.tar.gz" \
     && pushd "${CATCH2_DIR_NAME}" && cmake -B"build" -H. -D"BUILD_TESTING"=OFF -G Ninja && cmake --build build/ --target install && popd
+
+#CMD bash "${PROJECT_PATH}/test_script.sh"
