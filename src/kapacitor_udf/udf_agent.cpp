@@ -1,5 +1,6 @@
 #include <sstream>
 #include <string>
+#include <type_traits>
 
 #include <spdlog/spdlog.h>
 #include <spdlog/fmt/bin_to_hex.h>
@@ -7,6 +8,14 @@
 
 #include "udf_agent.h"
 #include "utils/uvarint.h"
+
+template<typename UVWHandleType, typename LibuvHandleType>
+UDFAgent<UVWHandleType, LibuvHandleType>::UDFAgent(uvw::Loop* loop) {
+  static_assert(
+      std::is_same_v<UVWHandleType, uvw::TTYHandle> && std::is_same_v<LibuvHandleType, uv_tty_t>,
+          "From-loop constructor is available for ChildProcessBasedUDFAgent only"
+          );
+}
 
 template<>
 UDFAgent<uvw::TTYHandle, uv_tty_t>::UDFAgent(uvw::Loop* loop)
@@ -43,15 +52,26 @@ UDFAgent<UVWHandleType, LibuvHandleType>::UDFAgent(std::shared_ptr<uvw::StreamHa
   });
 }
 
+template UDFAgent<uvw::TTYHandle, uv_tty_t>::UDFAgent(std::shared_ptr<uvw::StreamHandle<uvw::TTYHandle, uv_tty_t>> in,
+    std::shared_ptr<uvw::StreamHandle<uvw::TTYHandle, uv_tty_t>> out);
+template UDFAgent<uvw::PipeHandle, uv_pipe_t>::UDFAgent(std::shared_ptr<uvw::StreamHandle<uvw::PipeHandle, uv_pipe_t>> in,
+    std::shared_ptr<uvw::StreamHandle<uvw::PipeHandle, uv_pipe_t>> out);
+
 template<typename UVWHandleType, typename LibuvHandleType>
 void UDFAgent<UVWHandleType, LibuvHandleType>::setHandler(const std::shared_ptr<RequestHandler> &request_handler) {
   request_handler_ = request_handler;
 }
 
+template void UDFAgent<uvw::TTYHandle, uv_tty_t>::setHandler(const std::shared_ptr<RequestHandler> &request_handler);
+template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::setHandler(const std::shared_ptr<RequestHandler> &request_handler);
+
 template<typename UVWHandleType, typename LibuvHandleType>
 void UDFAgent<UVWHandleType, LibuvHandleType>::start() {
   in_->read();
 }
+
+template void UDFAgent<uvw::TTYHandle, uv_tty_t>::start();
+template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::start();
 
 template<typename UVWHandleType, typename LibuvHandleType>
 void UDFAgent<UVWHandleType, LibuvHandleType>::stop() {
@@ -60,6 +80,9 @@ void UDFAgent<UVWHandleType, LibuvHandleType>::stop() {
   in_->stop();
   out_->stop();
 }
+
+template void UDFAgent<uvw::TTYHandle, uv_tty_t>::stop();
+template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::stop();
 
 template<typename UVWHandleType, typename LibuvHandleType>
 void UDFAgent<UVWHandleType, LibuvHandleType>::writeResponse(const agent::Response &response) {
@@ -71,6 +94,9 @@ void UDFAgent<UVWHandleType, LibuvHandleType>::writeResponse(const agent::Respon
   out_->write(out_stream.str().data(), out_stream.str().length());
   spdlog::debug("Response sent");
 }
+
+template void UDFAgent<uvw::TTYHandle, uv_tty_t>::writeResponse(const agent::Response &response);
+template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::writeResponse(const agent::Response &response);
 
 template<typename UVWHandleType, typename LibuvHandleType>
 bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(std::istream& input_stream) {
@@ -150,6 +176,9 @@ bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(std::istream& input_stre
   }
 }
 
+template bool UDFAgent<uvw::TTYHandle, uv_tty_t>::readLoop(std::istream& input_stream);
+template bool UDFAgent<uvw::PipeHandle, uv_pipe_t>::readLoop(std::istream& input_stream);
+
 template<typename UVWHandleType, typename LibuvHandleType>
 void UDFAgent<UVWHandleType, LibuvHandleType>::reportError(const std::string& error_message) {
   spdlog::error(error_message);
@@ -158,8 +187,8 @@ void UDFAgent<UVWHandleType, LibuvHandleType>::reportError(const std::string& er
   writeResponse(response);
 }
 
-template class UDFAgent<uvw::TTYHandle, uv_tty_t>;
-template class UDFAgent<uvw::PipeHandle, uv_pipe_t>;
+template void UDFAgent<uvw::TTYHandle, uv_tty_t>::reportError(const std::string& error_message);
+template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::reportError(const std::string& error_message);
 
 void AgentClient::start() {
   agent_->start();

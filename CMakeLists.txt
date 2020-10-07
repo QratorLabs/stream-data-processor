@@ -45,7 +45,24 @@ add_subdirectory(third_party/bprinter)
 
 protobuf_generate_cpp(UDFProtoSources UDFProtoHeaders "${CMAKE_CURRENT_SOURCE_DIR}/src/kapacitor_udf/udf.proto")
 
-set(STREAM_DATA_PROCESSOR_SOURCES
+set(STREAM_DATA_PROCESSOR_LIBRARY_NAME "stream_data_processor_lib")
+set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_PUBLIC_INCLUDE_DIRS"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src"
+  )
+set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_PRIVATE_INCLUDE_DIRS"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bprinter/include"
+  )
+set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_DEPENDENCIES"
+  uvw::uvw-static
+  arrow_shared
+  gandiva_shared
+  spdlog::spdlog
+  bprinter
+  dependency_zmq
+  dependency_protobuf
+  )
+set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_SOURCES"
   ${UDFProtoSources}
   src/consumers/print_consumer.cpp
   src/consumers/publisher_consumer.cpp
@@ -67,16 +84,9 @@ set(STREAM_DATA_PROCESSOR_SOURCES
   src/record_batch_handlers/aggregate_functions/first_aggregate_function.cpp
   src/record_batch_handlers/aggregate_functions/last_aggregate_function.cpp
   src/record_batch_handlers/aggregate_functions/mean_aggregate_function.cpp
-  src/kapacitor_udf/udf_agent.cpp
-  src/kapacitor_udf/request_handlers/aggregate_options_parser.cpp
-  src/kapacitor_udf/request_handlers/group_tags_parser.cpp
-  src/kapacitor_udf/request_handlers/batch_aggregate_request_handler.cpp
-  src/kapacitor_udf/request_handlers/record_batch_request_handler.cpp
-  src/kapacitor_udf/request_handlers/batch_to_stream_request_handler.cpp
-  src/kapacitor_udf/request_handlers/stream_to_stream_request_handler.cpp
-  src/server/unix_socket_server.cpp
   src/record_batch_handlers/window_handler.cpp
   src/record_batch_handlers/join_handler.cpp
+  src/server/unix_socket_server.cpp
   src/period_handlers/serialized_period_handler.cpp
   src/producers/tcp_producer.cpp
   src/producers/subscriber_producer.cpp
@@ -89,39 +99,73 @@ set(STREAM_DATA_PROCESSOR_SOURCES
   src/utils/serializer.cpp
   src/utils/string_utils.cpp
   src/utils/uvarint.cpp
-  src/node_pipeline/node_pipeline.cpp)
-
-set(STREAM_DATA_PROCESSOR_INCLUDE_DIRS
-  "${CMAKE_CURRENT_SOURCE_DIR}/src")
-
-set(LIBRARY_INCLUDE_DIRS
-  "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src"
-  "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bprinter/include"
-  ${STREAM_DATA_PROCESSOR_INCLUDE_DIRS}
+  src/node_pipeline/node_pipeline.cpp
   )
+list(APPEND LIBRARIES_NAMES "${STREAM_DATA_PROCESSOR_LIBRARY_NAME}")
 
-set(PROJECT_DEPENDENCIES
+set(KAPACITOR_UDF_LIBRARY_NAME "kapacitor_udf_lib")
+set("${KAPACITOR_UDF_LIBRARY_NAME}_PUBLIC_INCLUDE_DIRS"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third_party/uvw/src"
+  )
+set("${KAPACITOR_UDF_LIBRARY_NAME}_DEPENDENCIES"
   uvw::uvw-static
   arrow_shared
   gandiva_shared
   spdlog::spdlog
-  bprinter
-  dependency_zmq
   dependency_protobuf
   )
-
-set(LIBRARY_NAME "stream_data_processor")
+set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
+  ${UDFProtoSources}
+  src/kapacitor_udf/udf_agent.cpp
+  src/kapacitor_udf/request_handlers/aggregate_options_parser.cpp
+  src/kapacitor_udf/request_handlers/group_tags_parser.cpp
+  src/kapacitor_udf/request_handlers/batch_aggregate_request_handler.cpp
+  src/kapacitor_udf/request_handlers/record_batch_request_handler.cpp
+  src/kapacitor_udf/request_handlers/batch_to_stream_request_handler.cpp
+  src/kapacitor_udf/request_handlers/stream_to_stream_request_handler.cpp
+  src/record_batch_handlers/aggregate_handler.cpp
+  src/record_batch_handlers/default_handler.cpp
+  src/record_batch_handlers/filter_handler.cpp
+  src/record_batch_handlers/group_handler.cpp
+  src/record_batch_handlers/map_handler.cpp
+  src/record_batch_handlers/pipeline_handler.cpp
+  src/record_batch_handlers/sort_handler.cpp
+  src/record_batch_handlers/aggregate_functions/min_aggregate_function.cpp
+  src/record_batch_handlers/aggregate_functions/max_aggregate_function.cpp
+  src/record_batch_handlers/aggregate_functions/first_aggregate_function.cpp
+  src/record_batch_handlers/aggregate_functions/last_aggregate_function.cpp
+  src/record_batch_handlers/aggregate_functions/mean_aggregate_function.cpp
+  src/record_batch_handlers/window_handler.cpp
+  src/record_batch_handlers/join_handler.cpp
+  src/server/unix_socket_server.cpp
+  src/utils/arrow_utils.cpp
+  src/utils/parsers/csv_parser.cpp
+  src/utils/parsers/graphite_parser.cpp
+  src/utils/compute_utils.cpp
+  src/utils/data_converter.cpp
+  src/utils/transport_utils.cpp
+  src/utils/serializer.cpp
+  src/utils/string_utils.cpp
+  src/utils/uvarint.cpp
+  )
+list(APPEND LIBRARIES_NAMES "${KAPACITOR_UDF_LIBRARY_NAME}")
 
 set(BUILD_SHARED_LIBS OFF)
-add_library("${LIBRARY_NAME}" ${STREAM_DATA_PROCESSOR_SOURCES})
-target_include_directories("${LIBRARY_NAME}" PUBLIC ${LIBRARY_INCLUDE_DIRS})
-target_link_libraries("${LIBRARY_NAME}" ${PROJECT_DEPENDENCIES})
+foreach(library_name ${LIBRARIES_NAMES})
+  add_library("${library_name}" ${${library_name}_SOURCES})
+  target_include_directories("${library_name}" PUBLIC ${${library_name}_PUBLIC_INCLUDE_DIRS})
+  target_include_directories("${library_name}" PRIVATE ${${library_name}_PRIVATE_INCLUDE_DIRS})
+  target_link_libraries("${library_name}" ${${library_name}_DEPENDENCIES})
+endforeach()
 
 function(add_exec_target file_path)
   message(STATUS "Adding target for source file: ${file_path}")
   get_filename_component(file_name "${file_path}" NAME_WE)
   add_executable("${file_name}" "${file_path}")
-  target_link_libraries("${file_name}" "${LIBRARY_NAME}")
+  foreach(library IN LISTS ARGN)
+    target_link_libraries("${file_name}" "${library}")
+  endforeach()
 endfunction()
 
 add_subdirectory(examples)

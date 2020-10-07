@@ -24,16 +24,8 @@
 #include "kapacitor_udf/kapacitor_udf.h"
 
 int main(int argc, char** argv) {
-  std::regex re(R"((\S+)\((\w+)\)\s+as\s+(\S+))");
-  std::smatch matches;
-  std::string str("min(cpu) as min.cpu");
-  if (std::regex_match(str, matches, re)) {
-    for (auto& match : matches) {
-      std::cout << match.str() << std::endl;
-    }
-  } else {
-    std::cout << "Not matched" << std::endl;
-  }
+  auto loop = uvw::Loop::getDefault();
+  ChildProcessBasedUDFAgent agent(loop.get());
 
   return 0;
 }
