@@ -1,5 +1,9 @@
+#include <spdlog/spdlog.h>
+
 #include "aggregate_options_parser.h"
 #include "batch_aggregate_request_handler.h"
+#include "group_tags_parser.h"
+#include "record_batch_handlers/record_batch_handlers.h"
 
 const DataConverter::PointsToRecordBatchesConversionOptions DEFAULT_TO_RECORD_BATCHES_OPTIONS{
   "time",
@@ -40,13 +44,10 @@ agent::Response BatchAggregateRequestHandler::init(const agent::InitRequest &ini
   aggregate_options.result_time_column_rule.result_column_name = to_points_options_.time_column_name;
   aggregate_options.add_result_time_column = true;
   aggregate_options.time_column_name = to_record_batches_options_.time_column_name;
-  for (auto& grouping_column : aggregate_options.grouping_columns) {
-    if (to_points_options_.tag_columns_names.find(grouping_column) == to_points_options_.tag_columns_names.end()) {
-      to_points_options_.tag_columns_names.insert(grouping_column);
-    }
-  }
 
-  handler_ = std::make_shared<AggregateHandler>(std::move(aggregate_options));
+  auto aggregate_handler = std::make_shared<AggregateHandler>(std::move(aggregate_options));
+  handler_ = std::make_shared<PipelineHandler>();
+  std::static_pointer_cast<PipelineHandler>(handler_)->pushBackHandler(std::move(aggregate_handler));
 
   response.mutable_init()->set_success(true);
   return response;
@@ -96,5 +97,27 @@ void BatchAggregateRequestHandler::point(const agent::Point &point) {
 
 void BatchAggregateRequestHandler::endBatch(const agent::EndBatch &batch) {
   in_batch_ = false;
+
+  std::unordered_map<std::string, std::string> tag_values;
+  DefaultHandler::DefaultHandlerOptions default_options;
+  try {
+    tag_values = GroupTagsParser::parse(batch.group());
+  } catch (const GroupParserException& exc) {
+    agent::Response response;
+    response.mutable_error()->set_error(fmt::format("Error while parsing group string: {}", batch.group()));
+    agent_.lock()->writeResponse(response);
+  }
+
+  for ([[maybe_unused]] auto& [tag_name, _] : tag_values) {
+    to_points_options_.tag_columns_names.insert(tag_name);
+  }
+
+  default_options.string_columns_default_values = std::move(tag_values);
+  default_options.string_columns_default_values[to_points_options_.measurement_column_name] = batch.name();
+  std::static_pointer_cast<PipelineHandler>(handler_)->pushBackHandler(std::make_shared<DefaultHandler>(std::move(default_options)));
+
   handleBatch();
+
+  std::static_pointer_cast<PipelineHandler>(handler_)->popBackHandler();
+  to_points_options_.tag_columns_names.clear();
 }

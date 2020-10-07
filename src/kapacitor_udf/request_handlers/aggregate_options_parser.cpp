@@ -13,14 +13,12 @@ const std::unordered_map<
     {"mean", AggregateHandler::AggregateFunctionEnumType::kMean},
 };
 
-const std::string AggregateOptionsParser::GROUP_BY_OPTION_NAME{"groupBy"};
-const std::string AggregateOptionsParser::AGGREGATES_OPTION_NAME{"aggregates"};
+const std::string AggregateOptionsParser::AGGREGATES_OPTION_NAME{"aggregate"};
 const std::string AggregateOptionsParser::TIME_AGGREGATE_RULE_OPTION_NAME{"timeAggregateRule"};
 const std::regex AggregateOptionsParser::AGGREGATE_STRING_REGEX{R"((\S+)\((\w+)\)\s+as\s+(\S+))"};
 
 google::protobuf::Map<std::string, agent::OptionInfo> AggregateOptionsParser::getResponseOptionsMap() {
   google::protobuf::Map<std::string, agent::OptionInfo> options_map;
-  options_map[GROUP_BY_OPTION_NAME].add_valuetypes(agent::ValueType::STRING);
   options_map[AGGREGATES_OPTION_NAME].add_valuetypes(agent::ValueType::STRING);
   options_map[TIME_AGGREGATE_RULE_OPTION_NAME].add_valuetypes(agent::ValueType::STRING);
   return options_map;
@@ -30,23 +28,16 @@ AggregateHandler::AggregateOptions AggregateOptionsParser::parseOptions(const go
   AggregateHandler::AggregateOptions aggregate_options;
 
   for (auto& request_option : request_options) {
-    if (request_option.name() == GROUP_BY_OPTION_NAME) {
-      parseGroupingColumns(request_option, &aggregate_options);
-    } else if (request_option.name() == AGGREGATES_OPTION_NAME) {
+    if (request_option.name() == AGGREGATES_OPTION_NAME) {
       parseAggregates(request_option, &aggregate_options);
     } else if (request_option.name() == TIME_AGGREGATE_RULE_OPTION_NAME) {
       parseTimeAggregateRule(request_option, &aggregate_options);
+    } else {
+      throw InvalidOptionException(fmt::format("Unknown option name: {}", request_option.name()));
     }
   }
 
   return aggregate_options;
-}
-
-void AggregateOptionsParser::parseGroupingColumns(const agent::Option &grouping_columns_request_option,
-                                                  AggregateHandler::AggregateOptions *aggregate_options) {
-  for (auto& grouping_column_value : grouping_columns_request_option.values()) {
-    aggregate_options->grouping_columns.push_back(grouping_column_value.stringvalue());
-  }
 }
 
 void AggregateOptionsParser::parseAggregates(const agent::Option &aggregates_request_option,

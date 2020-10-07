@@ -32,14 +32,10 @@ class AggregateOptionsParser {
   static AggregateHandler::AggregateOptions parseOptions(const google::protobuf::RepeatedPtrField<agent::Option>& request_options);
 
  public:
-  static const std::string GROUP_BY_OPTION_NAME;
   static const std::string AGGREGATES_OPTION_NAME;
   static const std::string TIME_AGGREGATE_RULE_OPTION_NAME;
 
  private:
-  static void parseGroupingColumns(const agent::Option &grouping_columns_request_option,
-                                   AggregateHandler::AggregateOptions *aggregate_options);
-
   static void parseAggregates(const agent::Option &aggregates_request_option,
                               AggregateHandler::AggregateOptions *aggregate_options);
 

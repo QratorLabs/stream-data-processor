@@ -101,14 +101,8 @@ SCENARIO( "AggregateOptionsParser behavior", "[AggregateOptionsParser]" ) {
   GIVEN( "init_request from kapacitor" ) {
     agent::InitRequest init_request;
     WHEN ( "init_request is structured properly" ) {
-      std::string group_by_value{"tag"};
       std::string aggregates_value{"last(field) as field.last"};
       std::string time_rule_value{"last"};
-
-      auto group_by_option = init_request.mutable_options()->Add();
-      group_by_option->set_name(AggregateOptionsParser::GROUP_BY_OPTION_NAME);
-      auto group_by_option_value = group_by_option->mutable_values()->Add();
-      group_by_option_value->set_stringvalue(group_by_value);
 
       auto aggregates_option = init_request.mutable_options()->Add();
       aggregates_option->set_name(AggregateOptionsParser::AGGREGATES_OPTION_NAME);
@@ -122,9 +116,6 @@ SCENARIO( "AggregateOptionsParser behavior", "[AggregateOptionsParser]" ) {
 
       THEN( "parsing is successful with right options" ) {
         auto aggregate_options = AggregateOptionsParser::parseOptions(init_request.options());
-
-        REQUIRE( aggregate_options.grouping_columns.size() == 1 );
-        REQUIRE( aggregate_options.grouping_columns[0] == group_by_value );
 
         REQUIRE( aggregate_options.aggregate_columns.size() == 1 );
         REQUIRE( aggregate_options.aggregate_columns.find("field") != aggregate_options.aggregate_columns.end() );

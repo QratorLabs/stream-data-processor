@@ -1,8 +1,8 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 
-#include "record_batch_handlers/aggregate_handler.h"
 #include "record_batch_request_handler.h"
 #include "utils/data_converter.h"
 

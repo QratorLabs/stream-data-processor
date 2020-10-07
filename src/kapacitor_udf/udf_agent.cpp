@@ -68,7 +68,6 @@ void UDFAgent<UVWHandleType, LibuvHandleType>::writeResponse(const agent::Respon
   UVarIntCoder::encode(out_stream, response_data.length());
   out_stream << response_data;
   spdlog::debug("Response: {}", response.DebugString());
-  spdlog::debug("Handle is writable: {}", out_->writable());
   out_->write(out_stream.str().data(), out_stream.str().length());
   spdlog::debug("Response sent");
 }
