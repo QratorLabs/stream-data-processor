@@ -1,7 +1,7 @@
 #include "group_tags_parser.h"
 #include "utils/string_utils.h"
 
-std::unordered_map<std::string, std::string> GroupTagsParser::parse(const std::string &group_string) {
+std::unordered_map<std::string, std::string> GroupTagsParser::parse(const std::string& group_string) {
   std::vector<std::string> tag_values_strings;
 
   auto group_name_end_pos = group_string.find('\n');

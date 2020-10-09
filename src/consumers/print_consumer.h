@@ -16,7 +16,7 @@ class PrintConsumer : public Consumer {
   void stop() override;
 
  private:
-  void printRecordBatch(const arrow::RecordBatch &record_batch);
+  void printRecordBatch(const arrow::RecordBatch& record_batch);
 
  private:
   std::ofstream& ostrm_;

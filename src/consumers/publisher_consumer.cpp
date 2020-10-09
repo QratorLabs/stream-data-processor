@@ -13,7 +13,7 @@ void PublisherConsumer::start() {
   connect_timer_->start(CONNECT_TIMEOUT, CONNECT_TIMEOUT);
 }
 
-void PublisherConsumer::consume(const char *data, size_t length) {
+void PublisherConsumer::consume(const char* data, size_t length) {
   data_buffers_.push(std::make_shared<arrow::Buffer>(reinterpret_cast<const uint8_t*>(data), length));
 }
 
@@ -46,7 +46,7 @@ void PublisherConsumer::configureHandles() {
   });
 
   for (size_t i = 0; i < synchronize_pollers_.size(); ++i) {
-    synchronize_pollers_[i]->on<uvw::PollEvent>([this, i](const uvw::PollEvent &event, uvw::PollHandle &poller) {
+    synchronize_pollers_[i]->on<uvw::PollEvent>([this, i](const uvw::PollEvent& event, uvw::PollHandle& poller) {
       if (publisher_.synchronize_sockets()[i]->getsockopt<int>(ZMQ_EVENTS) & ZMQ_POLLIN) {
         TransportUtils::readMessage(*publisher_.synchronize_sockets()[i]);
         publisher_.addConnection();

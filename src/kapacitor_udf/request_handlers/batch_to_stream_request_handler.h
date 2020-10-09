@@ -15,10 +15,10 @@
 
 class BatchToStreamRequestHandler : public RecordBatchRequestHandler {
  public:
-  BatchToStreamRequestHandler(const std::shared_ptr<IUDFAgent> &agent,
-                              const DataConverter::PointsToRecordBatchesConversionOptions &to_record_batches_options,
-                              const DataConverter::RecordBatchesToPointsConversionOptions &to_points_options,
-                              const std::shared_ptr<RecordBatchHandler> &handler);
+  BatchToStreamRequestHandler(const std::shared_ptr<IUDFAgent>& agent,
+                              const DataConverter::PointsToRecordBatchesConversionOptions& to_record_batches_options,
+                              const DataConverter::RecordBatchesToPointsConversionOptions& to_points_options,
+                              const std::shared_ptr<RecordBatchHandler>& handler);
 
   [[nodiscard]] agent::Response info() const override;
   [[nodiscard]] agent::Response init(const agent::InitRequest& init_request) override;

@@ -11,8 +11,8 @@ GraphiteParser::GraphiteParser(const std::vector<std::string>& template_strings,
   }
 }
 
-arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Buffer> &buffer,
-                                                 std::vector<std::shared_ptr<arrow::RecordBatch>> &record_batches) {
+arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Buffer>& buffer,
+                                                 std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches) {
   auto metric_strings = StringUtils::split(buffer->ToString(), "\n");
   parseMetricStrings(metric_strings);
 
@@ -164,7 +164,7 @@ arrow::Type::type GraphiteParser::determineFieldType(const std::string& value) c
   return arrow::Type::STRING;
 }
 
-void GraphiteParser::parseMetricStrings(const std::vector<std::string> &metric_strings) {
+void GraphiteParser::parseMetricStrings(const std::vector<std::string>& metric_strings) {
   for (auto& metric_string : metric_strings) {
     std::shared_ptr<Metric> metric{nullptr};
     for (auto& metric_template : templates_) {
@@ -215,7 +215,7 @@ void GraphiteParser::Metric::mergeWith(const Metric& other) {
   }
 }
 
-GraphiteParser::MetricTemplate::MetricTemplate(const std::string &template_string) {
+GraphiteParser::MetricTemplate::MetricTemplate(const std::string& template_string) {
   auto template_string_parts = StringUtils::split(template_string, " ");
   size_t part_idx = 0;
 
@@ -234,7 +234,7 @@ GraphiteParser::MetricTemplate::MetricTemplate(const std::string &template_strin
   }
 }
 
-std::string GraphiteParser::MetricTemplate::prepareFilterRegex(const std::string &filter_string) const {
+std::string GraphiteParser::MetricTemplate::prepareFilterRegex(const std::string& filter_string) const {
   std::stringstream regex_string_builder;
   for (auto& c : filter_string) {
     switch (c) {
@@ -255,7 +255,7 @@ std::string GraphiteParser::MetricTemplate::prepareFilterRegex(const std::string
 const std::string GraphiteParser::MetricTemplate::MEASUREMENT_PART_ID{"measurement"};
 const std::string GraphiteParser::MetricTemplate::FIELD_PART_ID{"field"};
 
-void GraphiteParser::MetricTemplate::prepareTemplateParts(const std::string &template_string) {
+void GraphiteParser::MetricTemplate::prepareTemplateParts(const std::string& template_string) {
   if (template_string.empty()) {
     return;
   }
@@ -286,7 +286,7 @@ void GraphiteParser::MetricTemplate::addTemplatePart(const std::string& template
   }
 }
 
-void GraphiteParser::MetricTemplate::prepareAdditionalTags(const std::string &additional_tags_string) {
+void GraphiteParser::MetricTemplate::prepareAdditionalTags(const std::string& additional_tags_string) {
   auto additional_tags_parts = StringUtils::split(additional_tags_string, ",");
   for (auto& part : additional_tags_parts) {
     auto tag = StringUtils::split(part, "=");
@@ -294,7 +294,7 @@ void GraphiteParser::MetricTemplate::prepareAdditionalTags(const std::string &ad
   }
 }
 
-bool GraphiteParser::MetricTemplate::match(const std::string &metric_string) const {
+bool GraphiteParser::MetricTemplate::match(const std::string& metric_string) const {
   auto metric_parts = StringUtils::split(metric_string, " ");
 
   if (metric_parts.size() < 2 ||
@@ -309,8 +309,8 @@ bool GraphiteParser::MetricTemplate::match(const std::string &metric_string) con
 
 const std::string GraphiteParser::MetricTemplate::DEFAULT_FIELD_NAME{"value"};
 
-std::shared_ptr<GraphiteParser::Metric> GraphiteParser::MetricTemplate::buildMetric(const std::string &metric_string,
-                                                                    const std::string &separator) const {
+std::shared_ptr<GraphiteParser::Metric> GraphiteParser::MetricTemplate::buildMetric(const std::string& metric_string,
+                                                                    const std::string& separator) const {
   if (!match(metric_string)) {
     return nullptr;
   }

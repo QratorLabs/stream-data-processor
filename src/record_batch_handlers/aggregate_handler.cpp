@@ -22,7 +22,7 @@ AggregateHandler::AggregateHandler(const AggregateHandler::AggregateOptions& opt
 
 }
 
-AggregateHandler::AggregateHandler(AggregateHandler::AggregateOptions &&options) : options_(std::move(options)) {
+AggregateHandler::AggregateHandler(AggregateHandler::AggregateOptions&& options) : options_(std::move(options)) {
 
 }
 
@@ -67,7 +67,7 @@ arrow::Status AggregateHandler::handle(const arrow::RecordBatchVector& record_ba
   return arrow::Status::OK();
 }
 
-arrow::Status AggregateHandler::fillResultSchema(const std::shared_ptr<arrow::RecordBatch> &record_batch) {
+arrow::Status AggregateHandler::fillResultSchema(const std::shared_ptr<arrow::RecordBatch>& record_batch) {
   arrow::FieldVector result_fields;
   if (options_.add_result_time_column) {
     auto ts_column_type = record_batch->GetColumnByName(options_.time_column_name)->type();
@@ -100,11 +100,11 @@ arrow::Status AggregateHandler::fillResultSchema(const std::shared_ptr<arrow::Re
   return arrow::Status::OK();
 }
 
-arrow::Status AggregateHandler::aggregate(const arrow::RecordBatchVector &groups,
-                                          const std::string &aggregate_column_name,
-                                          const AggregateFunctionEnumType &aggregate_function,
-                                          arrow::ArrayVector *result_arrays,
-                                          arrow::MemoryPool *pool) const {
+arrow::Status AggregateHandler::aggregate(const arrow::RecordBatchVector& groups,
+                                          const std::string& aggregate_column_name,
+                                          const AggregateFunctionEnumType& aggregate_function,
+                                          arrow::ArrayVector* result_arrays,
+                                          arrow::MemoryPool* pool) const {
   auto aggregate_column_field = groups.front()->schema()->GetFieldByName(aggregate_column_name);
   if (aggregate_column_field == nullptr) {
     arrow::NullBuilder null_builder;
@@ -130,10 +130,10 @@ arrow::Status AggregateHandler::aggregate(const arrow::RecordBatchVector &groups
   return arrow::Status::OK();
 }
 
-arrow::Status AggregateHandler::aggregateTimeColumn(const arrow::RecordBatchVector &groups,
-                                                    const AggregateFunctionEnumType &aggregate_function,
-                                                    arrow::ArrayVector *result_arrays,
-                                                    arrow::MemoryPool *pool) const {
+arrow::Status AggregateHandler::aggregateTimeColumn(const arrow::RecordBatchVector& groups,
+                                                    const AggregateFunctionEnumType& aggregate_function,
+                                                    arrow::ArrayVector* result_arrays,
+                                                    arrow::MemoryPool* pool) const {
   auto ts_column_type = groups.front()->GetColumnByName(options_.time_column_name)->type();
   if (!ts_column_type->Equals(arrow::timestamp(arrow::TimeUnit::SECOND))) {
     return arrow::Status::NotImplemented("Aggregation currently supports arrow::timestamp(SECOND) type for timestamp "
@@ -161,7 +161,7 @@ arrow::Status AggregateHandler::aggregateTimeColumn(const arrow::RecordBatchVect
 }
 
 arrow::Status AggregateHandler::fillGroupingColumns(const arrow::RecordBatchVector& groups,
-                                                    arrow::ArrayVector *result_arrays) const {
+                                                    arrow::ArrayVector* result_arrays) const {
   std::unordered_set<std::string> grouping_columns;
   for (auto& grouping_column : options_.grouping_columns) {
     grouping_columns.insert(grouping_column);

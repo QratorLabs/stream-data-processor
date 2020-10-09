@@ -1,9 +1,9 @@
 #include "record_batch_request_handler.h"
 
-RecordBatchRequestHandler::RecordBatchRequestHandler(const std::shared_ptr<IUDFAgent> &agent,
+RecordBatchRequestHandler::RecordBatchRequestHandler(const std::shared_ptr<IUDFAgent>& agent,
                                                      DataConverter::PointsToRecordBatchesConversionOptions to_record_batches_options,
                                                      DataConverter::RecordBatchesToPointsConversionOptions to_points_options,
-                                                     const std::shared_ptr<RecordBatchHandler> &handler)
+                                                     const std::shared_ptr<RecordBatchHandler>& handler)
     : RequestHandler(agent)
     , handler_(handler)
     , to_record_batches_options_(std::move(to_record_batches_options))

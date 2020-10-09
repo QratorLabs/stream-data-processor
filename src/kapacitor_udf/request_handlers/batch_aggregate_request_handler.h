@@ -10,7 +10,7 @@
 
 class BatchAggregateRequestHandler : public RecordBatchRequestHandler {
  public:
-  explicit BatchAggregateRequestHandler(const std::shared_ptr<IUDFAgent> &agent);
+  explicit BatchAggregateRequestHandler(const std::shared_ptr<IUDFAgent>& agent);
 
   [[nodiscard]] agent::Response info() const override;
   [[nodiscard]] agent::Response init(const agent::InitRequest& init_request) override;

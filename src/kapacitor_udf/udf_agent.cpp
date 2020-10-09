@@ -58,12 +58,12 @@ template UDFAgent<uvw::PipeHandle, uv_pipe_t>::UDFAgent(std::shared_ptr<uvw::Str
     std::shared_ptr<uvw::StreamHandle<uvw::PipeHandle, uv_pipe_t>> out);
 
 template<typename UVWHandleType, typename LibuvHandleType>
-void UDFAgent<UVWHandleType, LibuvHandleType>::setHandler(const std::shared_ptr<RequestHandler> &request_handler) {
+void UDFAgent<UVWHandleType, LibuvHandleType>::setHandler(const std::shared_ptr<RequestHandler>& request_handler) {
   request_handler_ = request_handler;
 }
 
-template void UDFAgent<uvw::TTYHandle, uv_tty_t>::setHandler(const std::shared_ptr<RequestHandler> &request_handler);
-template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::setHandler(const std::shared_ptr<RequestHandler> &request_handler);
+template void UDFAgent<uvw::TTYHandle, uv_tty_t>::setHandler(const std::shared_ptr<RequestHandler>& request_handler);
+template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::setHandler(const std::shared_ptr<RequestHandler>& request_handler);
 
 template<typename UVWHandleType, typename LibuvHandleType>
 void UDFAgent<UVWHandleType, LibuvHandleType>::start() {
@@ -85,7 +85,7 @@ template void UDFAgent<uvw::TTYHandle, uv_tty_t>::stop();
 template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::stop();
 
 template<typename UVWHandleType, typename LibuvHandleType>
-void UDFAgent<UVWHandleType, LibuvHandleType>::writeResponse(const agent::Response &response) {
+void UDFAgent<UVWHandleType, LibuvHandleType>::writeResponse(const agent::Response& response) {
   auto response_data = response.SerializeAsString();
   std::ostringstream out_stream;
   UVarIntCoder::encode(out_stream, response_data.length());
@@ -95,8 +95,8 @@ void UDFAgent<UVWHandleType, LibuvHandleType>::writeResponse(const agent::Respon
   spdlog::debug("Response sent");
 }
 
-template void UDFAgent<uvw::TTYHandle, uv_tty_t>::writeResponse(const agent::Response &response);
-template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::writeResponse(const agent::Response &response);
+template void UDFAgent<uvw::TTYHandle, uv_tty_t>::writeResponse(const agent::Response& response);
+template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::writeResponse(const agent::Response& response);
 
 template<typename UVWHandleType, typename LibuvHandleType>
 bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(std::istream& input_stream) {

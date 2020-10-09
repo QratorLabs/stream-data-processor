@@ -20,7 +20,7 @@ arrow::Status TransportUtils::wrapMessage(const std::shared_ptr<arrow::Buffer>& 
   return arrow::Status::OK();
 }
 
-std::vector<std::pair<const char *, size_t>> TransportUtils::splitMessage(const char *message_data, size_t length) {
+std::vector<std::pair<const char *, size_t>> TransportUtils::splitMessage(const char* message_data, size_t length) {
   std::vector<std::pair<const char*, size_t>> parts;
   size_t last_offset = 0;
   while (last_offset < length) {
@@ -54,7 +54,7 @@ std::string TransportUtils::getSizeString(size_t size) {
   return std::string(MESSAGE_SIZE_STRING_LENGTH - size_string.size(), '0') + size_string;
 }
 
-size_t TransportUtils::parseMessageSize(const std::string &size_string) {
+size_t TransportUtils::parseMessageSize(const std::string& size_string) {
   auto start = size_string.find_first_not_of('0');
   if (start == std::string::npos) {
     return 0;

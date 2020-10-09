@@ -3,8 +3,8 @@
 #include "utils/serializer.h"
 
 template <>
-arrow::Status DefaultHandler::addMissingColumn<int64_t>(const std::unordered_map<std::string, int64_t> &missing_columns,
-                                                        arrow::RecordBatchVector *record_batches) const {
+arrow::Status DefaultHandler::addMissingColumn<int64_t>(const std::unordered_map<std::string, int64_t>& missing_columns,
+                                                        arrow::RecordBatchVector* record_batches) const {
   for (auto& [column_name, default_value] : missing_columns) {
     if (record_batches->back()->schema()->GetFieldByName(column_name) != nullptr) {
       continue;
@@ -31,8 +31,8 @@ arrow::Status DefaultHandler::addMissingColumn<int64_t>(const std::unordered_map
 }
 
 template <>
-arrow::Status DefaultHandler::addMissingColumn<double>(const std::unordered_map<std::string, double> &missing_columns,
-                                                       arrow::RecordBatchVector *record_batches) const {
+arrow::Status DefaultHandler::addMissingColumn<double>(const std::unordered_map<std::string, double>& missing_columns,
+                                                       arrow::RecordBatchVector* record_batches) const {
   for (auto& [column_name, default_value] : missing_columns) {
     if (record_batches->back()->schema()->GetFieldByName(column_name) != nullptr) {
       continue;
@@ -59,8 +59,8 @@ arrow::Status DefaultHandler::addMissingColumn<double>(const std::unordered_map<
 }
 
 template <>
-arrow::Status DefaultHandler::addMissingColumn<std::string>(const std::unordered_map<std::string, std::string> &missing_columns,
-                                                            arrow::RecordBatchVector *record_batches) const {
+arrow::Status DefaultHandler::addMissingColumn<std::string>(const std::unordered_map<std::string, std::string>& missing_columns,
+                                                            arrow::RecordBatchVector* record_batches) const {
   for (auto& [column_name, default_value] : missing_columns) {
     if (record_batches->back()->schema()->GetFieldByName(column_name) != nullptr) {
       continue;
@@ -87,8 +87,8 @@ arrow::Status DefaultHandler::addMissingColumn<std::string>(const std::unordered
 }
 
 template <>
-arrow::Status DefaultHandler::addMissingColumn<bool>(const std::unordered_map<std::string, bool> &missing_columns,
-                                                     arrow::RecordBatchVector *record_batches) const {
+arrow::Status DefaultHandler::addMissingColumn<bool>(const std::unordered_map<std::string, bool>& missing_columns,
+                                                     arrow::RecordBatchVector* record_batches) const {
   for (auto& [column_name, default_value] : missing_columns) {
     if (record_batches->back()->schema()->GetFieldByName(column_name) != nullptr) {
       continue;

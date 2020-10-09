@@ -142,7 +142,6 @@ int main(int argc, char** argv) {
       ), loop.get()
   );
 
-  
   pipelines.emplace_back();
   pipelines.back().addConsumer(aggregate_consumer);
   pipelines.back().setProducer(aggregate_producer);

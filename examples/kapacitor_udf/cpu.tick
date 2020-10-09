@@ -32,19 +32,6 @@ var cputime_all = stream
         .groupBy(*)
 // idle interrupt nice softirq steal system user wait
 
-// var cputime_host = cputime_all
-//     |groupBy('host', 'type')
-//     |flatten().tolerance(5s)
-//     |window()
-//         .period(5s)
-// 
-// var cputime_host_calc = cputime_host
-//     @cputimeAggregate()
-//     |default()
-//         .field('info_host_level', info_host_level)
-// 	    .field('warn_host_level', warn_host_level)
-// 	    .field('crit_host_level', crit_host_level)
-
 var cputime_all_win = cputime_all
     |groupBy('cpu', 'host', 'type')
         .byMeasurement()
@@ -97,20 +84,6 @@ cputime_win_calc
         .crit(lambda: "idle.mean" < "crit_core_level")
         .post(log_url)
 	    .id('{{ .Name }}/{{ .TaskName }}/cpu-idle-time-per-core:{{ .Group }}')
-
-// cputime_host_calc
-//     |default()
-//         .field('alert-author', '@kv:qrator.net')
-//         .field('incident-owners', 'nobody')
-//         .field('incident-is-expected', FALSE)
-//         .field('incident-comment', '')
-// 	    .field('alert-on', 'cpu-idle-time-mean-host')
-//     |alert()
-//         .info(lambda: "idle_mean" < "info_host_level")
-//         .warn(lambda: "idle_mean" < "warn_host_level")
-//         .crit(lambda: "idle_mean" < "crit_host_level")
-//         .post(log_url)
-// 	    .id('{{ .Name }}/{{ .TaskName }}/cpu-idle-time-mean-host:{{ .Group }}')
 
 load
     |default()

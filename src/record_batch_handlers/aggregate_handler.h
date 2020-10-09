@@ -36,17 +36,17 @@ class AggregateHandler : public RecordBatchHandler {
   arrow::Status handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector* result) override;
 
  private:
-  arrow::Status fillResultSchema(const std::shared_ptr<arrow::RecordBatch> &record_batch);
-  arrow::Status fillGroupingColumns(const arrow::RecordBatchVector& groups, arrow::ArrayVector *result_arrays) const;
+  arrow::Status fillResultSchema(const std::shared_ptr<arrow::RecordBatch>& record_batch);
+  arrow::Status fillGroupingColumns(const arrow::RecordBatchVector& groups, arrow::ArrayVector* result_arrays) const;
 
   arrow::Status aggregate(const arrow::RecordBatchVector& groups, const std::string& aggregate_column_name,
-      const AggregateFunctionEnumType& aggregate_function, arrow::ArrayVector *result_arrays,
-      arrow::MemoryPool *pool = arrow::default_memory_pool()) const;
+      const AggregateFunctionEnumType& aggregate_function, arrow::ArrayVector* result_arrays,
+      arrow::MemoryPool* pool = arrow::default_memory_pool()) const;
 
   arrow::Status aggregateTimeColumn(const arrow::RecordBatchVector& groups,
                                     const AggregateFunctionEnumType& aggregate_function,
-                                    arrow::ArrayVector *result_arrays,
-                                    arrow::MemoryPool *pool = arrow::default_memory_pool()) const;
+                                    arrow::ArrayVector* result_arrays,
+                                    arrow::MemoryPool* pool = arrow::default_memory_pool()) const;
 
  private:
   AggregateOptions options_;

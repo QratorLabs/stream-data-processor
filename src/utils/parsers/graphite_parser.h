@@ -66,8 +66,8 @@ class GraphiteParser : public Parser {
     explicit MetricTemplate(const std::string& template_string);
 
     [[nodiscard]] bool match(const std::string& metric_string) const;
-    [[nodiscard]] std::shared_ptr<Metric> buildMetric(const std::string &metric_string,
-                                                      const std::string &separator) const;
+    [[nodiscard]] std::shared_ptr<Metric> buildMetric(const std::string& metric_string,
+                                                      const std::string& separator) const;
 
    private:
     [[nodiscard]] std::string prepareFilterRegex(const std::string& filter_string) const;

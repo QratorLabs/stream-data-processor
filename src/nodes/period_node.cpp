@@ -5,14 +5,14 @@
 #include "period_node.h"
 #include "utils/utils.h"
 
-void PeriodNode::handleData(const char *data, size_t length) {
+void PeriodNode::handleData(const char* data, size_t length) {
   auto append_result = appendData(data, length);
   if (!append_result.ok()) {
     spdlog::get(name_)->error(append_result.message());
   }
 }
 
-arrow::Status PeriodNode::appendData(const char *data, size_t length) {
+arrow::Status PeriodNode::appendData(const char* data, size_t length) {
   auto data_buffer = std::make_shared<arrow::Buffer>(reinterpret_cast<const uint8_t *>(data), length);
   arrow::RecordBatchVector record_batches;
   ARROW_RETURN_NOT_OK(Serializer::deserializeRecordBatches(data_buffer, &record_batches));
@@ -68,9 +68,9 @@ arrow::Status PeriodNode::appendData(const char *data, size_t length) {
   return arrow::Status::OK();
 }
 
-arrow::Status PeriodNode::tsLowerBound(const std::shared_ptr<arrow::RecordBatch> &record_batch,
+arrow::Status PeriodNode::tsLowerBound(const std::shared_ptr<arrow::RecordBatch>& record_batch,
                                        const std::function<bool(std::time_t)>& pred,
-                                       size_t &lower_bound) {
+                                       size_t& lower_bound) {
   size_t left_bound = 0;
   size_t right_bound = record_batch->num_rows();
   while (left_bound != right_bound - 1) {

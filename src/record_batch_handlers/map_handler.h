@@ -20,9 +20,9 @@ class MapHandler : public RecordBatchHandler {
   arrow::Status handle(const arrow::RecordBatchVector& record_batches, arrow::RecordBatchVector* result) override;
 
  private:
-  static arrow::Status eval(arrow::RecordBatchVector *record_batches,
-                     const std::shared_ptr<gandiva::Projector> &projector,
-                     const std::shared_ptr<arrow::Schema> &result_schema) ;
+  static arrow::Status eval(arrow::RecordBatchVector* record_batches,
+                     const std::shared_ptr<gandiva::Projector>& projector,
+                     const std::shared_ptr<arrow::Schema>& result_schema) ;
 
   arrow::Status prepareProjector(const std::shared_ptr<arrow::Schema>& input_schema,
                                  std::shared_ptr<gandiva::Projector>* projector) const;

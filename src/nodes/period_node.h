@@ -47,16 +47,16 @@ class PeriodNode : public Node {
   }
 
   void start() override;
-  void handleData(const char *data, size_t length) override;
+  void handleData(const char* data, size_t length) override;
   void stop() override;
 
  private:
-  arrow::Status appendData(const char *data, size_t length);
+  arrow::Status appendData(const char* data, size_t length);
   void pass();
 
   void removeOldBuffers();
   arrow::Status tsLowerBound(const std::shared_ptr<arrow::RecordBatch>& record_batch,
-                             const std::function<bool (std::time_t)>& pred, size_t &lower_bound);
+                             const std::function<bool (std::time_t)>& pred, size_t& lower_bound);
 
  private:
   uint64_t period_;

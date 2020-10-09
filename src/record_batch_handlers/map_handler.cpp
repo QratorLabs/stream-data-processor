@@ -16,13 +16,13 @@ arrow::Status MapHandler::handle(const arrow::RecordBatchVector& record_batches,
   return arrow::Status::OK();
 }
 
-arrow::Status MapHandler::prepareProjector(const std::shared_ptr<arrow::Schema> &input_schema,
-                                           std::shared_ptr<gandiva::Projector> *projector) const {
+arrow::Status MapHandler::prepareProjector(const std::shared_ptr<arrow::Schema>& input_schema,
+                                           std::shared_ptr<gandiva::Projector>* projector) const {
   ARROW_RETURN_NOT_OK(gandiva::Projector::Make(input_schema, expressions_, projector));
   return arrow::Status::OK();
 }
 
-std::shared_ptr<arrow::Schema> MapHandler::prepareResultSchema(const std::shared_ptr<arrow::Schema> &input_schema) const {
+std::shared_ptr<arrow::Schema> MapHandler::prepareResultSchema(const std::shared_ptr<arrow::Schema>& input_schema) const {
   arrow::FieldVector result_fields;
   for (auto& input_field : input_schema->fields()) {
     result_fields.push_back(input_field);
@@ -35,9 +35,9 @@ std::shared_ptr<arrow::Schema> MapHandler::prepareResultSchema(const std::shared
   return arrow::schema(result_fields);
 }
 
-arrow::Status MapHandler::eval(arrow::RecordBatchVector *record_batches,
-                               const std::shared_ptr<gandiva::Projector> &projector,
-                               const std::shared_ptr<arrow::Schema> &result_schema) {
+arrow::Status MapHandler::eval(arrow::RecordBatchVector* record_batches,
+                               const std::shared_ptr<gandiva::Projector>& projector,
+                               const std::shared_ptr<arrow::Schema>& result_schema) {
   if (record_batches->empty()) {
     return arrow::Status::CapacityError("No data to handle");
   }

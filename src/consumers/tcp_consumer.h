@@ -14,16 +14,16 @@
 
 class TCPConsumer : public Consumer {
  public:
-  TCPConsumer(const std::vector<IPv4Endpoint> &target_endpoints, uvw::Loop* loop, bool is_external = false);
+  TCPConsumer(const std::vector<IPv4Endpoint>& target_endpoints, uvw::Loop* loop, bool is_external = false);
 
   void start() override;
   void consume(const char* data, size_t length) override;
   void stop() override;
 
  private:
-  void configureConnectTimer(size_t target_idx, const IPv4Endpoint &endpoint);
-  void configureTarget(size_t target_idx, const IPv4Endpoint &endpoint);
-  void sendData(const std::shared_ptr<arrow::Buffer> &data);
+  void configureConnectTimer(size_t target_idx, const IPv4Endpoint& endpoint);
+  void configureTarget(size_t target_idx, const IPv4Endpoint& endpoint);
+  void sendData(const std::shared_ptr<arrow::Buffer>& data);
   void flushBuffers();
 
  private:

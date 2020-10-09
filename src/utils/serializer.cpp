@@ -1,8 +1,8 @@
 #include "serializer.h"
 
-arrow::Status Serializer::serializeRecordBatches(const std::shared_ptr<arrow::Schema> &schema,
-                                                 const std::vector<std::shared_ptr<arrow::RecordBatch>> &record_batches,
-                                                 std::shared_ptr<arrow::Buffer> *target) {
+arrow::Status Serializer::serializeRecordBatches(const std::shared_ptr<arrow::Schema>& schema,
+                                                 const std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches,
+                                                 std::shared_ptr<arrow::Buffer>* target) {
   auto output_stream_result = arrow::io::BufferOutputStream::Create();
   if (!output_stream_result.ok()) {
     return output_stream_result.status();

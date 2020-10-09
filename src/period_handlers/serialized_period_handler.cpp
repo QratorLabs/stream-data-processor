@@ -7,8 +7,8 @@ SerializedPeriodHandler::SerializedPeriodHandler(std::shared_ptr<RecordBatchHand
 
 }
 
-arrow::Status SerializedPeriodHandler::handle(const std::deque<std::shared_ptr<arrow::Buffer>> &period,
-                                              std::shared_ptr<arrow::Buffer> *target) {
+arrow::Status SerializedPeriodHandler::handle(const std::deque<std::shared_ptr<arrow::Buffer>>& period,
+                                              std::shared_ptr<arrow::Buffer>* target) {
   arrow::RecordBatchVector period_vector;
   for (auto& buffer : period) {
     arrow::RecordBatchVector record_batch_vector;

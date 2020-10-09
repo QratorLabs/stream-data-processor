@@ -2,10 +2,10 @@
 
 #include "utils/compute_utils.h"
 
-arrow::Status LastAggregateFunction::aggregate(const std::shared_ptr<arrow::RecordBatch> &data,
-                                               const std::string &column_name,
-                                               std::shared_ptr<arrow::Scalar> *result,
-                                               const std::string &ts_column_name) const {
+arrow::Status LastAggregateFunction::aggregate(const std::shared_ptr<arrow::RecordBatch>& data,
+                                               const std::string& column_name,
+                                               std::shared_ptr<arrow::Scalar>* result,
+                                               const std::string& ts_column_name) const {
   if (ts_column_name.empty()) {
     return arrow::Status::Invalid("There should be a valid timestamp field for \"last\" aggregate function");
   }

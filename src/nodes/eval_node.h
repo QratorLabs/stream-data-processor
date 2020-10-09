@@ -27,12 +27,12 @@ class EvalNode : public Node {
   }
 
   void start() override;
-  void handleData(const char *data, size_t length) override;
+  void handleData(const char* data, size_t length) override;
   void stop() override;
 
  private:
-  arrow::Status processData(const std::shared_ptr<arrow::Buffer> &data_buffer,
-                            std::shared_ptr<arrow::Buffer> &processed_data);
+  arrow::Status processData(const std::shared_ptr<arrow::Buffer>& data_buffer,
+                            std::shared_ptr<arrow::Buffer>& processed_data);
 
  private:
   std::shared_ptr<DataHandler> data_handler_;

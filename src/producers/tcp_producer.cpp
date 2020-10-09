@@ -1,7 +1,7 @@
 #include "tcp_producer.h"
 #include "utils/transport_utils.h"
 
-TCPProducer::TCPProducer(const std::shared_ptr<Node>& node, const IPv4Endpoint &listen_endpoint,
+TCPProducer::TCPProducer(const std::shared_ptr<Node>& node, const IPv4Endpoint& listen_endpoint,
                          uvw::Loop* loop, bool is_external)
     : Producer(node)
     , listener_(loop->resource<uvw::TCPHandle>())
@@ -47,7 +47,7 @@ void TCPProducer::configureListener() {
   });
 }
 
-void TCPProducer::handleData(const char *data, size_t length) {
+void TCPProducer::handleData(const char* data, size_t length) {
   if (is_external_) {
     node_->handleData(data, length);
   } else {

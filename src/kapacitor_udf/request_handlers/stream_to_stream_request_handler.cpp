@@ -1,11 +1,11 @@
 #include "stream_to_stream_request_handler.h"
 
-StreamToStreamRequestHandler::StreamToStreamRequestHandler(const std::shared_ptr<IUDFAgent> &agent,
-                                                           const DataConverter::PointsToRecordBatchesConversionOptions &to_record_batches_options,
-                                                           const DataConverter::RecordBatchesToPointsConversionOptions &to_points_options,
-                                                           const std::shared_ptr<RecordBatchHandler> &handlers_pipeline,
-                                                           uvw::Loop *loop,
-                                                           const std::chrono::duration<uint64_t> &batch_interval)
+StreamToStreamRequestHandler::StreamToStreamRequestHandler(const std::shared_ptr<IUDFAgent>& agent,
+                                                           const DataConverter::PointsToRecordBatchesConversionOptions& to_record_batches_options,
+                                                           const DataConverter::RecordBatchesToPointsConversionOptions& to_points_options,
+                                                           const std::shared_ptr<RecordBatchHandler>& handlers_pipeline,
+                                                           uvw::Loop* loop,
+                                                           const std::chrono::duration<uint64_t>& batch_interval)
     : RecordBatchRequestHandler(agent, to_record_batches_options, to_points_options, handlers_pipeline)
     , batch_timer_(loop->resource<uvw::TimerHandle>())
     , batch_interval_(batch_interval) {
@@ -21,7 +21,7 @@ agent::Response StreamToStreamRequestHandler::info() const {
   return response;
 }
 
-agent::Response StreamToStreamRequestHandler::init(const agent::InitRequest &init_request) {
+agent::Response StreamToStreamRequestHandler::init(const agent::InitRequest& init_request) {
   agent::Response response;
   response.mutable_init()->set_success(true);
   return response;
@@ -33,7 +33,7 @@ agent::Response StreamToStreamRequestHandler::snapshot() const {
   return response;
 }
 
-agent::Response StreamToStreamRequestHandler::restore(const agent::RestoreRequest &restore_request) {
+agent::Response StreamToStreamRequestHandler::restore(const agent::RestoreRequest& restore_request) {
   agent::Response response;
   batch_points_.mutable_points()->Clear();
   batch_points_.ParseFromString(restore_request.snapshot());
@@ -41,13 +41,13 @@ agent::Response StreamToStreamRequestHandler::restore(const agent::RestoreReques
   return response;
 }
 
-void StreamToStreamRequestHandler::beginBatch(const agent::BeginBatch &batch) {
+void StreamToStreamRequestHandler::beginBatch(const agent::BeginBatch& batch) {
   agent::Response response;
   response.mutable_error()->set_error("Invalid BeginBatch request, UDF wants stream data");
   agent_.lock()->writeResponse(response);
 }
 
-void StreamToStreamRequestHandler::point(const agent::Point &point) {
+void StreamToStreamRequestHandler::point(const agent::Point& point) {
   auto new_point = batch_points_.mutable_points()->Add();
   new_point->CopyFrom(point);
   if (!batch_timer_->active()) {
@@ -55,7 +55,7 @@ void StreamToStreamRequestHandler::point(const agent::Point &point) {
   }
 }
 
-void StreamToStreamRequestHandler::endBatch(const agent::EndBatch &batch) {
+void StreamToStreamRequestHandler::endBatch(const agent::EndBatch& batch) {
   agent::Response response;
   response.mutable_error()->set_error("Invalid EndBatch request, UDF wants stream data");
   agent_.lock()->writeResponse(response);

@@ -5,7 +5,7 @@
 #include "print_consumer.h"
 #include "utils/serializer.h"
 
-PrintConsumer::PrintConsumer(std::ofstream &ostrm) : ostrm_(ostrm) {
+PrintConsumer::PrintConsumer(std::ofstream& ostrm) : ostrm_(ostrm) {
 
 }
 
@@ -13,8 +13,8 @@ void PrintConsumer::start() {
 
 }
 
-void PrintConsumer::consume(const char *data, size_t length) {
-  auto buffer = std::make_shared<arrow::Buffer>(reinterpret_cast<const uint8_t *>(data), length);
+void PrintConsumer::consume(const char* data, size_t length) {
+  auto buffer = std::make_shared<arrow::Buffer>(reinterpret_cast<const uint8_t*>(data), length);
   arrow::RecordBatchVector record_batches;
   auto deserialize_status = Serializer::deserializeRecordBatches(buffer, &record_batches);
   if (!deserialize_status.ok()) {
@@ -26,7 +26,7 @@ void PrintConsumer::consume(const char *data, size_t length) {
   }
 }
 
-void PrintConsumer::printRecordBatch(const arrow::RecordBatch &record_batch) {
+void PrintConsumer::printRecordBatch(const arrow::RecordBatch& record_batch) {
   bprinter::TablePrinter table_printer(&ostrm_);
   for (auto& field : record_batch.schema()->fields()) {
     switch (field->type()->id()) {

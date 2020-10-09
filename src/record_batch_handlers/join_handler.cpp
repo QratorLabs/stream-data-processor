@@ -107,9 +107,9 @@ arrow::Status JoinHandler::handle(const arrow::RecordBatchVector& record_batches
   return arrow::Status::OK();
 }
 
-arrow::Status JoinHandler::getJoinKey(const std::shared_ptr<arrow::RecordBatch> &record_batch,
+arrow::Status JoinHandler::getJoinKey(const std::shared_ptr<arrow::RecordBatch>& record_batch,
                                       size_t row_idx,
-                                      JoinHandler::JoinKey *join_key) const {
+                                      JoinHandler::JoinKey* join_key) const {
   std::stringstream key_string_builder;
   for (auto& join_column_name : join_on_columns_) {
     auto get_scalar_result = record_batch->GetColumnByName(join_column_name)->GetScalar(row_idx);

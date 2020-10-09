@@ -3,6 +3,9 @@ project(stream-data-processor)
 
 set(CMAKE_CXX_STANDARD 17)
 
+option(ENABLE_TESTS "enables tests building" OFF)
+option(BUILD_SHARED_LIBS "enables building shared libraries" OFF)
+
 find_package(PkgConfig)
 pkg_check_modules(PC_ZeroMQ QUIET zmq)
 find_path(ZeroMQ_INCLUDE_DIR
@@ -29,12 +32,10 @@ message(STATUS "Gandiva lib dir: ${Gandiva_DIR}")
 find_package(spdlog REQUIRED)
 
 find_package(Protobuf REQUIRED)
-add_library(dependency_protobuf UNKNOWN IMPORTED GLOBAL)
-set_property(TARGET dependency_protobuf PROPERTY IMPORTED_LOCATION "${Protobuf_LIBRARY}")
-#add_library(dependencies::protobuf ALIAS dependency_protobuf)      # Introduced in cmake 3.15
-
-include_directories("${Protobuf_INCLUDE_DIRS}")
+include_directories(${Protobuf_INCLUDE_DIRS})
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
+
+message(STATUS "Arrow libs: ${DEPENDENCY_ARROW_TARGET} ${DEPENDENCY_GANDIVA_TARGET}")
 
 set(BUILD_UVW_LIBS ON)
 set(BUILD_TESTING OFF CACHE BOOL "disable uvw build gtest" FORCE)
@@ -60,7 +61,7 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_DEPENDENCIES"
   spdlog::spdlog
   bprinter
   dependency_zmq
-  dependency_protobuf
+  protobuf::libprotobuf
   )
 set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_SOURCES"
   ${UDFProtoSources}
@@ -113,7 +114,7 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_DEPENDENCIES"
   arrow_shared
   gandiva_shared
   spdlog::spdlog
-  dependency_protobuf
+  protobuf::libprotobuf
   )
 set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   ${UDFProtoSources}
@@ -151,7 +152,6 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   )
 list(APPEND LIBRARIES_NAMES "${KAPACITOR_UDF_LIBRARY_NAME}")
 
-set(BUILD_SHARED_LIBS OFF)
 foreach(library_name ${LIBRARIES_NAMES})
   add_library("${library_name}" ${${library_name}_SOURCES})
   target_include_directories("${library_name}" PUBLIC ${${library_name}_PUBLIC_INCLUDE_DIRS})
@@ -170,7 +170,6 @@ endfunction()
 
 add_subdirectory(examples)
 
-option(ENABLE_TESTS "enables tests building" ON)
 if(ENABLE_TESTS)
   enable_testing()
   add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/third_party/googletest" EXCLUDE_FROM_ALL)

@@ -15,7 +15,7 @@ const DataConverter::RecordBatchesToPointsConversionOptions DEFAULT_TO_POINTS_OP
   "name"
 };
 
-BatchAggregateRequestHandler::BatchAggregateRequestHandler(const std::shared_ptr<IUDFAgent> &agent)
+BatchAggregateRequestHandler::BatchAggregateRequestHandler(const std::shared_ptr<IUDFAgent>& agent)
     : RecordBatchRequestHandler(agent, DEFAULT_TO_RECORD_BATCHES_OPTIONS, DEFAULT_TO_POINTS_OPTIONS) {
 
 }
@@ -29,7 +29,7 @@ agent::Response BatchAggregateRequestHandler::info() const {
   return response;
 }
 
-agent::Response BatchAggregateRequestHandler::init(const agent::InitRequest &init_request) {
+agent::Response BatchAggregateRequestHandler::init(const agent::InitRequest& init_request) {
   agent::Response response;
   AggregateHandler::AggregateOptions aggregate_options;
 
@@ -59,7 +59,7 @@ agent::Response BatchAggregateRequestHandler::snapshot() const {
   return response;
 }
 
-agent::Response BatchAggregateRequestHandler::restore(const agent::RestoreRequest &restore_request) {
+agent::Response BatchAggregateRequestHandler::restore(const agent::RestoreRequest& restore_request) {
   agent::Response response;
   if (restore_request.snapshot().empty()) {
     response.mutable_restore()->set_success(false);
@@ -80,11 +80,11 @@ agent::Response BatchAggregateRequestHandler::restore(const agent::RestoreReques
   return response;
 }
 
-void BatchAggregateRequestHandler::beginBatch(const agent::BeginBatch &batch) {
+void BatchAggregateRequestHandler::beginBatch(const agent::BeginBatch& batch) {
   in_batch_ = true;
 }
 
-void BatchAggregateRequestHandler::point(const agent::Point &point) {
+void BatchAggregateRequestHandler::point(const agent::Point& point) {
   if (in_batch_) {
     auto new_point = batch_points_.mutable_points()->Add();
     new_point->CopyFrom(point);
@@ -95,7 +95,7 @@ void BatchAggregateRequestHandler::point(const agent::Point &point) {
   }
 }
 
-void BatchAggregateRequestHandler::endBatch(const agent::EndBatch &batch) {
+void BatchAggregateRequestHandler::endBatch(const agent::EndBatch& batch) {
   in_batch_ = false;
 
   std::unordered_map<std::string, std::string> tag_values;

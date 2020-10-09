@@ -9,7 +9,7 @@ class DataParser : public DataHandler {
  public:
   explicit DataParser(std::shared_ptr<Parser> parser);
 
-  arrow::Status handle(const std::shared_ptr<arrow::Buffer> &source, std::shared_ptr<arrow::Buffer>* target) override;
+  arrow::Status handle(const std::shared_ptr<arrow::Buffer>& source, std::shared_ptr<arrow::Buffer>* target) override;
 
  private:
   std::shared_ptr<Parser> parser_;

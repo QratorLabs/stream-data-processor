@@ -24,7 +24,7 @@ google::protobuf::Map<std::string, agent::OptionInfo> AggregateOptionsParser::ge
   return options_map;
 }
 
-AggregateHandler::AggregateOptions AggregateOptionsParser::parseOptions(const google::protobuf::RepeatedPtrField<agent::Option> &request_options) {
+AggregateHandler::AggregateOptions AggregateOptionsParser::parseOptions(const google::protobuf::RepeatedPtrField<agent::Option>& request_options) {
   AggregateHandler::AggregateOptions aggregate_options;
 
   for (auto& request_option : request_options) {
@@ -40,8 +40,8 @@ AggregateHandler::AggregateOptions AggregateOptionsParser::parseOptions(const go
   return aggregate_options;
 }
 
-void AggregateOptionsParser::parseAggregates(const agent::Option &aggregates_request_option,
-                                             AggregateHandler::AggregateOptions *aggregate_options) {
+void AggregateOptionsParser::parseAggregates(const agent::Option& aggregates_request_option,
+                                             AggregateHandler::AggregateOptions* aggregate_options) {
   for (auto& aggregate_string_value : aggregates_request_option.values()) {
     std::smatch match;
     if (std::regex_match(aggregate_string_value.stringvalue(), match, AGGREGATE_STRING_REGEX)) {
@@ -58,8 +58,8 @@ void AggregateOptionsParser::parseAggregates(const agent::Option &aggregates_req
   }
 }
 
-void AggregateOptionsParser::parseTimeAggregateRule(const agent::Option &time_aggregate_rule_option,
-                                                    AggregateHandler::AggregateOptions *aggregate_options) {
+void AggregateOptionsParser::parseTimeAggregateRule(const agent::Option& time_aggregate_rule_option,
+                                                    AggregateHandler::AggregateOptions* aggregate_options) {
   if (time_aggregate_rule_option.values_size() != 1) {
     throw InvalidOptionException("timeAggregateRule option should accept exactly one argument");
   }

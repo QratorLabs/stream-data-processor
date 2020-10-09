@@ -24,7 +24,7 @@ arrow::Status FilterHandler::handle(const arrow::RecordBatchVector& record_batch
   return arrow::Status::OK();
 }
 
-arrow::Status FilterHandler::prepareFilter(const std::shared_ptr<arrow::Schema> &schema,
+arrow::Status FilterHandler::prepareFilter(const std::shared_ptr<arrow::Schema>& schema,
                                            std::shared_ptr<gandiva::Filter>* filter) const {
   if (conditions_.empty()) {
     return arrow::Status::Invalid("Expected at least one condition for filter");

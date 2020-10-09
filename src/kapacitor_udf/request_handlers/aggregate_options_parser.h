@@ -36,11 +36,11 @@ class AggregateOptionsParser {
   static const std::string TIME_AGGREGATE_RULE_OPTION_NAME;
 
  private:
-  static void parseAggregates(const agent::Option &aggregates_request_option,
-                              AggregateHandler::AggregateOptions *aggregate_options);
+  static void parseAggregates(const agent::Option& aggregates_request_option,
+                              AggregateHandler::AggregateOptions* aggregate_options);
 
-  static void parseTimeAggregateRule(const agent::Option &time_aggregate_rule_option,
-                                     AggregateHandler::AggregateOptions *aggregate_options);
+  static void parseTimeAggregateRule(const agent::Option& time_aggregate_rule_option,
+                                     AggregateHandler::AggregateOptions* aggregate_options);
 
  private:
   static const std::unordered_map<std::string, AggregateHandler::AggregateFunctionEnumType> FUNCTION_NAMES_TO_TYPES;

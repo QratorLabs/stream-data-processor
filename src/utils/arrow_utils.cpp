@@ -1,8 +1,8 @@
 #include "arrow_utils.h"
 
 arrow::Status ArrowUtils::makeArrayBuilder(arrow::Type::type type,
-                                                 std::shared_ptr<arrow::ArrayBuilder> *builder,
-                                                 arrow::MemoryPool *pool) {
+                                                 std::shared_ptr<arrow::ArrayBuilder>* builder,
+                                                 arrow::MemoryPool* pool) {
   switch (type) {
     case arrow::Type::INT64:
       *builder = std::make_shared<arrow::Int64Builder>(pool);
@@ -27,7 +27,7 @@ arrow::Status ArrowUtils::makeArrayBuilder(arrow::Type::type type,
   }
 }
 
-arrow::Status ArrowUtils::appendToBuilder(const std::shared_ptr<arrow::Scalar> &value,
+arrow::Status ArrowUtils::appendToBuilder(const std::shared_ptr<arrow::Scalar>& value,
                                                 std::shared_ptr<arrow::ArrayBuilder>* builder,
                                                 arrow::Type::type type) {
   switch (type) {

@@ -33,7 +33,7 @@ class Node {
   virtual void handleData(const char* data, size_t length) = 0;
   virtual void stop() = 0;
 
-  const std::string& getName() const;
+  [[nodiscard]] const std::string& getName() const;
 
   void addConsumer(const std::shared_ptr<Consumer>& consumer);
 

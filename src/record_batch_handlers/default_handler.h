@@ -27,8 +27,8 @@ class DefaultHandler : public RecordBatchHandler {
 
  private:
   template <typename T>
-  arrow::Status addMissingColumn(const std::unordered_map<std::string, T> &missing_columns,
-                                 arrow::RecordBatchVector *record_batches) const;
+  arrow::Status addMissingColumn(const std::unordered_map<std::string, T>& missing_columns,
+                                 arrow::RecordBatchVector* record_batches) const;
 
  private:
   DefaultHandlerOptions options_;

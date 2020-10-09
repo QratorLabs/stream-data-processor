@@ -81,6 +81,6 @@ int main(int argc, char** argv) {
   }
 
   loop->run();
-  
+
   return 0;
 }

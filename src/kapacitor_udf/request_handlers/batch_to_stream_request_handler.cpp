@@ -5,10 +5,10 @@
 #include "utils/data_converter.h"
 #include "utils/serializer.h"
 
-BatchToStreamRequestHandler::BatchToStreamRequestHandler(const std::shared_ptr<IUDFAgent> &agent,
-                                                         const DataConverter::PointsToRecordBatchesConversionOptions &to_record_batches_options,
-                                                         const DataConverter::RecordBatchesToPointsConversionOptions &to_points_options,
-                                                         const std::shared_ptr<RecordBatchHandler> &handler)
+BatchToStreamRequestHandler::BatchToStreamRequestHandler(const std::shared_ptr<IUDFAgent>& agent,
+                                                         const DataConverter::PointsToRecordBatchesConversionOptions& to_record_batches_options,
+                                                         const DataConverter::RecordBatchesToPointsConversionOptions& to_points_options,
+                                                         const std::shared_ptr<RecordBatchHandler>& handler)
     : RecordBatchRequestHandler(agent, to_record_batches_options, to_points_options, handler) {
 
 }
@@ -20,7 +20,7 @@ agent::Response BatchToStreamRequestHandler::info() const {
   return response;
 }
 
-agent::Response BatchToStreamRequestHandler::init(const agent::InitRequest &init_request) {
+agent::Response BatchToStreamRequestHandler::init(const agent::InitRequest& init_request) {
   agent::Response response;
   response.mutable_init()->set_success(true);
   return response;
@@ -32,7 +32,7 @@ agent::Response BatchToStreamRequestHandler::snapshot() const {
   return response;
 }
 
-agent::Response BatchToStreamRequestHandler::restore(const agent::RestoreRequest &restore_request) {
+agent::Response BatchToStreamRequestHandler::restore(const agent::RestoreRequest& restore_request) {
   agent::Response response;
   if (restore_request.snapshot().empty()) {
     response.mutable_restore()->set_success(false);
@@ -53,11 +53,11 @@ agent::Response BatchToStreamRequestHandler::restore(const agent::RestoreRequest
   return response;
 }
 
-void BatchToStreamRequestHandler::beginBatch(const agent::BeginBatch &batch) {
+void BatchToStreamRequestHandler::beginBatch(const agent::BeginBatch& batch) {
   in_batch_ = true;
 }
 
-void BatchToStreamRequestHandler::point(const agent::Point &point) {
+void BatchToStreamRequestHandler::point(const agent::Point& point) {
   if (in_batch_) {
     auto new_point = batch_points_.mutable_points()->Add();
     new_point->CopyFrom(point);
@@ -68,7 +68,7 @@ void BatchToStreamRequestHandler::point(const agent::Point &point) {
   }
 }
 
-void BatchToStreamRequestHandler::endBatch(const agent::EndBatch &batch) {
+void BatchToStreamRequestHandler::endBatch(const agent::EndBatch& batch) {
   in_batch_ = false;
   handleBatch();
 }

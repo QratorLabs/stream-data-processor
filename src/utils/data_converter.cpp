@@ -36,7 +36,7 @@ arrow::Status DataConverter::concatenateRecordBatches(const std::vector<std::sha
 }
 
 
-arrow::Status DataConverter::convertToRecordBatches(const agent::PointBatch &points,
+arrow::Status DataConverter::convertToRecordBatches(const agent::PointBatch& points,
                                                     arrow::RecordBatchVector* record_batches,
                                                     const PointsToRecordBatchesConversionOptions& options) {
   auto pool = arrow::default_memory_pool();
@@ -88,7 +88,7 @@ arrow::Status DataConverter::convertToRecordBatches(const agent::PointBatch &poi
   return arrow::Status::OK();
 }
 
-arrow::Status DataConverter::convertToPoints(const arrow::RecordBatchVector &record_batches,
+arrow::Status DataConverter::convertToPoints(const arrow::RecordBatchVector& record_batches,
                                              agent::PointBatch* points,
                                              const RecordBatchesToPointsConversionOptions& options) {
   size_t points_count = 0;
@@ -157,7 +157,7 @@ arrow::Status DataConverter::convertToPoints(const arrow::RecordBatchVector &rec
 }
 
 template<typename T, typename BuilderType>
-void DataConverter::addBuilders(const google::protobuf::Map<std::string, T> &data_map,
+void DataConverter::addBuilders(const google::protobuf::Map<std::string, T>& data_map,
                                 std::map<std::string, BuilderType>* builders,
                                 arrow::MemoryPool* pool) {
   for (auto& value : data_map) {
@@ -168,7 +168,7 @@ void DataConverter::addBuilders(const google::protobuf::Map<std::string, T> &dat
 }
 
 template<typename T, typename BuilderType>
-arrow::Status DataConverter::appendValues(const google::protobuf::Map<std::string, T> &data_map,
+arrow::Status DataConverter::appendValues(const google::protobuf::Map<std::string, T>& data_map,
                                           std::map<std::string, BuilderType>* builders) {
   for (auto& [field_name, builder] : *builders) {
     if (data_map.find(field_name) != data_map.end()) {
@@ -185,7 +185,7 @@ template<typename BuilderType>
 arrow::Status DataConverter::buildColumnArrays(arrow::ArrayVector* column_arrays,
                                                arrow::FieldVector* schema_fields,
                                                std::map<std::string, BuilderType>* builders,
-                                               const std::shared_ptr<arrow::DataType> &data_type) {
+                                               const std::shared_ptr<arrow::DataType>& data_type) {
   for (auto& [field_name, builder] : *builders) {
     schema_fields->push_back(arrow::field(field_name, data_type));
     column_arrays->emplace_back();

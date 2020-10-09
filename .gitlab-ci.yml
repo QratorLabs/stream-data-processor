@@ -30,7 +30,7 @@ variables:
         --label "project=${CI_PROJECT_PATH}" \
         --env DOCKER_PROJECT_PATH="${DOCKER_PROJECT_PATH}" \
         "${DOCKER_IMAGE_NAME}" \
-        sh "${DOCKER_PROJECT_PATH}/script.sh"
+        sh -e "${DOCKER_PROJECT_PATH}/test_script.sh"
   - docker cp . "${CI_COMMIT_SHORT_SHA}-${CI_PIPELINE_ID}-${CI_JOB_ID}":"${DOCKER_PROJECT_PATH}"
   - docker container start --attach "${CI_COMMIT_SHORT_SHA}-${CI_PIPELINE_ID}-${CI_JOB_ID}"
 
@@ -47,15 +47,5 @@ generic:
   interruptible: true
   stage: build
   script:
-    - |
-      cat > script.sh <<'EOF'
-      echo "Entering ${DOCKER_PROJECT_PATH}..."
-      cd "${DOCKER_PROJECT_PATH}"
-      mkdir build
-      cd build
-      cmake ..
-      make test_main
-      ./test/test_main
-      EOF
     - *start_job_container
     - docker container rm -f "${CI_COMMIT_SHORT_SHA}-${CI_PIPELINE_ID}-${CI_JOB_ID}"

@@ -5,7 +5,7 @@ const uint8_t UVarIntCoder::SHIFT_SIZE = 7;
 const uint8_t UVarIntCoder::VARINT_MORE_MASK = (1 << 7);
 const uint8_t UVarIntCoder::VARINT_MASK = VARINT_MORE_MASK - 1;
 
-std::ostream& UVarIntCoder::encode(std::ostream &writer, uint32_t value) {
+std::ostream& UVarIntCoder::encode(std::ostream& writer, uint32_t value) {
   uint8_t bits = value & VARINT_MASK;
   value >>= SHIFT_SIZE;
   while (value > 0) {
@@ -17,7 +17,7 @@ std::ostream& UVarIntCoder::encode(std::ostream &writer, uint32_t value) {
   return writer << bits;
 }
 
-uint32_t UVarIntCoder::decode(std::istream &reader) {
+uint32_t UVarIntCoder::decode(std::istream& reader) {
   uint32_t result = 0;
   uint8_t shift = 0;
   while (true) {
