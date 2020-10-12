@@ -2,7 +2,7 @@
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 echo "Checking formatting..."
-find "${SCRIPT_DIR}/src" "${SCRIPT_DIR}/examples" -name \*.h -print0 -o -name \*.cpp --print0 | xargs -0 clang-format --dry-run --Werror --ferror-limit=1
+find "${SCRIPT_DIR}/src" "${SCRIPT_DIR}/examples" -name \*.h -print0 -o -name \*.cpp -print0 | xargs -0 clang-format --dry-run --Werror --ferror-limit=1
 echo "Entering build directory: ${SCRIPT_DIR}/build ..."
 mkdir -p "${SCRIPT_DIR}/build"
 pushd "${SCRIPT_DIR}/build" || exit
