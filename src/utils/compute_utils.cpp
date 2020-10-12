@@ -2,18 +2,21 @@
 
 #include "compute_utils.h"
 
-arrow::Status ComputeUtils::groupSortingByColumns(const std::vector<std::string>& column_names,
-                                                  const std::shared_ptr<arrow::RecordBatch>& record_batch,
-                                                  std::vector<std::shared_ptr<arrow::RecordBatch>>* grouped) {
+arrow::Status ComputeUtils::groupSortingByColumns(
+    const std::vector<std::string>& column_names,
+    const std::shared_ptr<arrow::RecordBatch>& record_batch,
+    std::vector<std::shared_ptr<arrow::RecordBatch>>* grouped) {
   return sort(column_names, 0, record_batch, grouped);
 }
 
-arrow::Status ComputeUtils::sortByColumn(const std::string& column_name,
-                                         const std::shared_ptr<arrow::RecordBatch>& source,
-                                         std::shared_ptr<arrow::RecordBatch>* target) {
+arrow::Status ComputeUtils::sortByColumn(
+    const std::string& column_name,
+    const std::shared_ptr<arrow::RecordBatch>& source,
+    std::shared_ptr<arrow::RecordBatch>* target) {
   auto sorting_column = source->GetColumnByName(column_name);
   if (sorting_column->type_id() == arrow::Type::TIMESTAMP) {
-    auto converted_sorting_column_result = sorting_column->View(arrow::int64());
+    auto converted_sorting_column_result =
+        sorting_column->View(arrow::int64());
     if (!converted_sorting_column_result.ok()) {
       return converted_sorting_column_result.status();
     }
@@ -26,7 +29,8 @@ arrow::Status ComputeUtils::sortByColumn(const std::string& column_name,
     return sorted_idx_result.status();
   }
 
-  auto sorted_record_batch_result = arrow::compute::Take(source, sorted_idx_result.ValueOrDie());
+  auto sorted_record_batch_result =
+      arrow::compute::Take(source, sorted_idx_result.ValueOrDie());
   if (!sorted_record_batch_result.ok()) {
     return sorted_record_batch_result.status();
   }
@@ -35,7 +39,9 @@ arrow::Status ComputeUtils::sortByColumn(const std::string& column_name,
   return arrow::Status::OK();
 }
 
-arrow::Status ComputeUtils::argMinMax(std::shared_ptr<arrow::Array> array, std::pair<size_t, size_t>* arg_min_max) {
+arrow::Status ComputeUtils::argMinMax(
+    std::shared_ptr<arrow::Array> array,
+    std::pair<size_t, size_t>* arg_min_max) {
   if (array->type_id() == arrow::Type::TIMESTAMP) {
     auto converted_sorting_column_result = array->View(arrow::int64());
     if (!converted_sorting_column_result.ok()) {
@@ -59,11 +65,17 @@ arrow::Status ComputeUtils::argMinMax(std::shared_ptr<arrow::Array> array, std::
       return get_scalar_result.status();
     }
 
-    if (get_scalar_result.ValueOrDie()->Equals(min_max_ts_result.ValueOrDie().scalar_as<arrow::StructScalar>().value[0])) {
+    if (get_scalar_result.ValueOrDie()->Equals(
+            min_max_ts_result.ValueOrDie()
+                .scalar_as<arrow::StructScalar>()
+                .value[0])) {
       arg_min = i;
     }
 
-    if (get_scalar_result.ValueOrDie()->Equals(min_max_ts_result.ValueOrDie().scalar_as<arrow::StructScalar>().value[1])) {
+    if (get_scalar_result.ValueOrDie()->Equals(
+            min_max_ts_result.ValueOrDie()
+                .scalar_as<arrow::StructScalar>()
+                .value[1])) {
       arg_max = i;
     }
 
@@ -74,10 +86,10 @@ arrow::Status ComputeUtils::argMinMax(std::shared_ptr<arrow::Array> array, std::
   return arrow::Status::OK();
 }
 
-arrow::Status ComputeUtils::sort(const std::vector<std::string>& column_names,
-                                 size_t i,
-                                 const std::shared_ptr<arrow::RecordBatch>& source,
-                                 std::vector<std::shared_ptr<arrow::RecordBatch>>* targets) {
+arrow::Status ComputeUtils::sort(
+    const std::vector<std::string>& column_names, size_t i,
+    const std::shared_ptr<arrow::RecordBatch>& source,
+    std::vector<std::shared_ptr<arrow::RecordBatch>>* targets) {
   if (i == column_names.size()) {
     targets->push_back(source);
     return arrow::Status::OK();
@@ -103,29 +115,37 @@ arrow::Status ComputeUtils::sort(const std::vector<std::string>& column_names,
       return max_val.status();
     }
 
-    auto equals_result = arrow::compute::Compare(sorted_keys, min_val.ValueOrDie(),
-                                                 arrow::compute::CompareOptions(arrow::compute::CompareOperator::EQUAL));
+    auto equals_result =
+        arrow::compute::Compare(sorted_keys, min_val.ValueOrDie(),
+                                arrow::compute::CompareOptions(
+                                    arrow::compute::CompareOperator::EQUAL));
     if (!equals_result.ok()) {
       return equals_result.status();
     }
 
-    auto filter_equals_result = arrow::compute::Filter(sorted_batch, equals_result.ValueOrDie());
+    auto filter_equals_result =
+        arrow::compute::Filter(sorted_batch, equals_result.ValueOrDie());
     if (!filter_equals_result.ok()) {
       return filter_equals_result.status();
     }
 
-    ARROW_RETURN_NOT_OK(sort(column_names, i + 1, filter_equals_result.ValueOrDie().record_batch(), targets));
+    ARROW_RETURN_NOT_OK(sort(column_names, i + 1,
+                             filter_equals_result.ValueOrDie().record_batch(),
+                             targets));
     if (min_val.ValueOrDie()->Equals(max_val.ValueOrDie())) {
       break;
     }
 
-    auto not_equals_result = arrow::compute::Compare(sorted_keys, min_val.ValueOrDie(),
-                                                     arrow::compute::CompareOptions(arrow::compute::CompareOperator::NOT_EQUAL));
+    auto not_equals_result = arrow::compute::Compare(
+        sorted_keys, min_val.ValueOrDie(),
+        arrow::compute::CompareOptions(
+            arrow::compute::CompareOperator::NOT_EQUAL));
     if (!not_equals_result.ok()) {
       return equals_result.status();
     }
 
-    auto filter_not_equals_result = arrow::compute::Filter(sorted_batch, not_equals_result.ValueOrDie());
+    auto filter_not_equals_result =
+        arrow::compute::Filter(sorted_batch, not_equals_result.ValueOrDie());
     if (!filter_not_equals_result.ok()) {
       return filter_not_equals_result.status();
     }

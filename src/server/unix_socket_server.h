@@ -11,8 +11,7 @@
 class UnixSocketServer {
  public:
   UnixSocketServer(std::shared_ptr<UnixSocketClientFactory> client_factory,
-                   const std::string& socket_path,
-                   uvw::Loop* loop);
+                   const std::string& socket_path, uvw::Loop* loop);
 
   void start();
   void stop();

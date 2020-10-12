@@ -12,5 +12,6 @@ class UnixSocketClient {
 
 class UnixSocketClientFactory {
  public:
-  virtual std::shared_ptr<UnixSocketClient> createClient(const std::shared_ptr<uvw::PipeHandle>& pipe_handle) = 0;
+  virtual std::shared_ptr<UnixSocketClient> createClient(
+      const std::shared_ptr<uvw::PipeHandle>& pipe_handle) = 0;
 };

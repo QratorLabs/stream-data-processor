@@ -5,13 +5,15 @@
 #include "utils/data_converter.h"
 #include "utils/serializer.h"
 
-BatchToStreamRequestHandler::BatchToStreamRequestHandler(const std::shared_ptr<IUDFAgent>& agent,
-                                                         const DataConverter::PointsToRecordBatchesConversionOptions& to_record_batches_options,
-                                                         const DataConverter::RecordBatchesToPointsConversionOptions& to_points_options,
-                                                         const std::shared_ptr<RecordBatchHandler>& handler)
-    : RecordBatchRequestHandler(agent, to_record_batches_options, to_points_options, handler) {
-
-}
+BatchToStreamRequestHandler::BatchToStreamRequestHandler(
+    const std::shared_ptr<IUDFAgent>& agent,
+    const DataConverter::PointsToRecordBatchesConversionOptions&
+        to_record_batches_options,
+    const DataConverter::RecordBatchesToPointsConversionOptions&
+        to_points_options,
+    const std::shared_ptr<RecordBatchHandler>& handler)
+    : RecordBatchRequestHandler(agent, to_record_batches_options,
+                                to_points_options, handler) {}
 
 agent::Response BatchToStreamRequestHandler::info() const {
   agent::Response response;
@@ -20,7 +22,8 @@ agent::Response BatchToStreamRequestHandler::info() const {
   return response;
 }
 
-agent::Response BatchToStreamRequestHandler::init(const agent::InitRequest& init_request) {
+agent::Response BatchToStreamRequestHandler::init(
+    const agent::InitRequest& init_request) {
   agent::Response response;
   response.mutable_init()->set_success(true);
   return response;
@@ -28,19 +31,23 @@ agent::Response BatchToStreamRequestHandler::init(const agent::InitRequest& init
 
 agent::Response BatchToStreamRequestHandler::snapshot() const {
   agent::Response response;
-  response.mutable_snapshot()->set_snapshot((in_batch_ ? "1" : "0") + batch_points_.SerializeAsString());
+  response.mutable_snapshot()->set_snapshot(
+      (in_batch_ ? "1" : "0") + batch_points_.SerializeAsString());
   return response;
 }
 
-agent::Response BatchToStreamRequestHandler::restore(const agent::RestoreRequest& restore_request) {
+agent::Response BatchToStreamRequestHandler::restore(
+    const agent::RestoreRequest& restore_request) {
   agent::Response response;
   if (restore_request.snapshot().empty()) {
     response.mutable_restore()->set_success(false);
-    response.mutable_restore()->set_error("Can't restore from empty snapshot");
+    response.mutable_restore()->set_error(
+        "Can't restore from empty snapshot");
     return response;
   }
 
-  if (restore_request.snapshot()[0] != '0' && restore_request.snapshot()[0] != '1') {
+  if (restore_request.snapshot()[0] != '0' &&
+      restore_request.snapshot()[0] != '1') {
     response.mutable_restore()->set_success(false);
     response.mutable_restore()->set_error("Invalid snapshot");
     return response;

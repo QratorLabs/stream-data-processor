@@ -4,9 +4,7 @@
 #include <fstream>
 #include <string>
 
-class EOFException : public std::exception {
-
-};
+class EOFException : public std::exception {};
 
 class UVarIntCoder {
  public:

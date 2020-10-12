@@ -15,13 +15,13 @@ class PublisherConsumer : public Consumer {
  public:
   template <typename PublisherType>
   PublisherConsumer(PublisherType&& publisher, uvw::Loop* loop)
-      : publisher_(std::forward<PublisherType>(publisher))
-      , publisher_poller_(loop->resource<uvw::PollHandle>(publisher_.publisher_socket()->getsockopt<int>(ZMQ_FD)))
-      , connect_timer_(loop->resource<uvw::TimerHandle>()) {
+      : publisher_(std::forward<PublisherType>(publisher)),
+        publisher_poller_(loop->resource<uvw::PollHandle>(
+            publisher_.publisher_socket()->getsockopt<int>(ZMQ_FD))),
+        connect_timer_(loop->resource<uvw::TimerHandle>()) {
     for (auto& synchronize_socket : publisher_.synchronize_sockets()) {
-      synchronize_pollers_.push_back(
-          loop->resource<uvw::PollHandle>(synchronize_socket->getsockopt<int>(ZMQ_FD))
-      );
+      synchronize_pollers_.push_back(loop->resource<uvw::PollHandle>(
+          synchronize_socket->getsockopt<int>(ZMQ_FD)));
     }
 
     configureHandles();

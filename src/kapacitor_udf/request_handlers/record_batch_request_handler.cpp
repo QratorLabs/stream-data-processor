@@ -1,15 +1,15 @@
 #include "record_batch_request_handler.h"
 
-RecordBatchRequestHandler::RecordBatchRequestHandler(const std::shared_ptr<IUDFAgent>& agent,
-                                                     DataConverter::PointsToRecordBatchesConversionOptions to_record_batches_options,
-                                                     DataConverter::RecordBatchesToPointsConversionOptions to_points_options,
-                                                     const std::shared_ptr<RecordBatchHandler>& handler)
-    : RequestHandler(agent)
-    , handler_(handler)
-    , to_record_batches_options_(std::move(to_record_batches_options))
-    , to_points_options_(std::move(to_points_options)) {
-
-}
+RecordBatchRequestHandler::RecordBatchRequestHandler(
+    const std::shared_ptr<IUDFAgent>& agent,
+    DataConverter::PointsToRecordBatchesConversionOptions
+        to_record_batches_options,
+    DataConverter::RecordBatchesToPointsConversionOptions to_points_options,
+    const std::shared_ptr<RecordBatchHandler>& handler)
+    : RequestHandler(agent),
+      handler_(handler),
+      to_record_batches_options_(std::move(to_record_batches_options)),
+      to_points_options_(std::move(to_points_options)) {}
 
 void RecordBatchRequestHandler::handleBatch() {
   agent::Response response;
@@ -21,7 +21,8 @@ void RecordBatchRequestHandler::handleBatch() {
   }
 
   arrow::RecordBatchVector record_batches;
-  auto convert_result = DataConverter::convertToRecordBatches(batch_points_, &record_batches, to_record_batches_options_);
+  auto convert_result = DataConverter::convertToRecordBatches(
+      batch_points_, &record_batches, to_record_batches_options_);
   batch_points_.mutable_points()->Clear();
   if (!convert_result.ok()) {
     response.mutable_error()->set_error(convert_result.message());
@@ -40,7 +41,8 @@ void RecordBatchRequestHandler::handleBatch() {
   record_batches = std::move(result);
 
   agent::PointBatch response_points;
-  convert_result = DataConverter::convertToPoints(record_batches, &response_points, to_points_options_);
+  convert_result = DataConverter::convertToPoints(
+      record_batches, &response_points, to_points_options_);
   if (!convert_result.ok()) {
     response.mutable_error()->set_error(convert_result.message());
     agent_.lock()->writeResponse(response);

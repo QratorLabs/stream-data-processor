@@ -5,18 +5,16 @@
 #include "print_consumer.h"
 #include "utils/serializer.h"
 
-PrintConsumer::PrintConsumer(std::ofstream& ostrm) : ostrm_(ostrm) {
+PrintConsumer::PrintConsumer(std::ofstream& ostrm) : ostrm_(ostrm) {}
 
-}
-
-void PrintConsumer::start() {
-
-}
+void PrintConsumer::start() {}
 
 void PrintConsumer::consume(const char* data, size_t length) {
-  auto buffer = std::make_shared<arrow::Buffer>(reinterpret_cast<const uint8_t*>(data), length);
+  auto buffer = std::make_shared<arrow::Buffer>(
+      reinterpret_cast<const uint8_t*>(data), length);
   arrow::RecordBatchVector record_batches;
-  auto deserialize_status = Serializer::deserializeRecordBatches(buffer, &record_batches);
+  auto deserialize_status =
+      Serializer::deserializeRecordBatches(buffer, &record_batches);
   if (!deserialize_status.ok()) {
     throw std::runtime_error(deserialize_status.message());
   }
@@ -39,8 +37,7 @@ void PrintConsumer::printRecordBatch(const arrow::RecordBatch& record_batch) {
       case arrow::Type::STRING:
         table_printer.AddColumn(field->name(), STRING_COLUMN_WIDTH);
         break;
-      default:
-        table_printer.AddColumn(field->name(), DEFAULT_COLUMN_WIDTH);
+      default: table_printer.AddColumn(field->name(), DEFAULT_COLUMN_WIDTH);
     }
   }
 
@@ -60,16 +57,9 @@ void PrintConsumer::printRecordBatch(const arrow::RecordBatch& record_batch) {
   ostrm_ << std::endl;
 }
 
-void PrintConsumer::stop() {
-
-}
-
+void PrintConsumer::stop() {}
 
 FilePrintConsumer::FilePrintConsumer(const std::string& file_name)
-    : PrintConsumer(ostrm_obj_), ostrm_obj_(file_name) {
+    : PrintConsumer(ostrm_obj_), ostrm_obj_(file_name) {}
 
-}
-
-FilePrintConsumer::~FilePrintConsumer() {
-  ostrm_obj_.close();
-}
+FilePrintConsumer::~FilePrintConsumer() { ostrm_obj_.close(); }

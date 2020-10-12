@@ -8,9 +8,8 @@
 #include "data_parser.h"
 #include "utils/serializer.h"
 
-DataParser::DataParser(std::shared_ptr<Parser> parser) : parser_(std::move(parser)) {
-
-}
+DataParser::DataParser(std::shared_ptr<Parser> parser)
+    : parser_(std::move(parser)) {}
 
 arrow::Status DataParser::handle(const std::shared_ptr<arrow::Buffer>& source,
                                  std::shared_ptr<arrow::Buffer>* target) {
@@ -20,6 +19,7 @@ arrow::Status DataParser::handle(const std::shared_ptr<arrow::Buffer>& source,
     return arrow::Status::CapacityError("No data to parse");
   }
 
-  ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(record_batches.back()->schema(), record_batches, target));
+  ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(
+      record_batches.back()->schema(), record_batches, target));
   return arrow::Status::OK();
 }

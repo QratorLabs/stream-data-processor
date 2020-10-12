@@ -1,6 +1,8 @@
 #!/bin/bash
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+echo "Checking formatting..."
+find "${SCRIPT_DIR}/src" "${SCRIPT_DIR}/examples" -name \*.h -print -o -name \*.cpp | xargs clang-format --dry-run -Werror --ferror-limit=1
 echo "Entering build directory: ${SCRIPT_DIR}/build ..."
 mkdir -p "${SCRIPT_DIR}/build"
 pushd "${SCRIPT_DIR}/build" || exit

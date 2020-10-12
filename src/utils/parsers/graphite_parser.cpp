@@ -4,15 +4,17 @@
 #include "graphite_parser.h"
 #include "utils/string_utils.h"
 
-GraphiteParser::GraphiteParser(const std::vector<std::string>& template_strings, std::string separator)
+GraphiteParser::GraphiteParser(
+    const std::vector<std::string>& template_strings, std::string separator)
     : separator_(std::move(separator)) {
   for (auto& template_string : template_strings) {
     templates_.emplace_back(template_string);
   }
 }
 
-arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Buffer>& buffer,
-                                                 std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches) {
+arrow::Status GraphiteParser::parseRecordBatches(
+    const std::shared_ptr<arrow::Buffer>& buffer,
+    std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches) {
   auto metric_strings = StringUtils::split(buffer->ToString(), "\n");
   parseMetricStrings(metric_strings);
 
@@ -22,7 +24,8 @@ arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Bu
   for (auto& metric : parsed_metrics_) {
     // Adding builders for tags
     for (auto& metric_tag : metric->tags) {
-      if (tags_id_to_builders.find(metric_tag.first) == tags_id_to_builders.end()) {
+      if (tags_id_to_builders.find(metric_tag.first) ==
+          tags_id_to_builders.end()) {
         tags_id_to_builders.emplace(metric_tag.first, pool);
       }
     }
@@ -30,9 +33,11 @@ arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Bu
     // Determining fields types for further usage
     for (auto& metric_field : metric->fields) {
       auto metric_field_type = determineFieldType(metric_field.second);
-      if (fields_types.find(metric_field.first) == fields_types.end()
-          || (fields_types[metric_field.first] == arrow::Type::INT64 && metric_field_type != arrow::Type::INT64)
-          || (fields_types[metric_field.first] != arrow::Type::STRING && metric_field_type == arrow::Type::STRING)) {
+      if (fields_types.find(metric_field.first) == fields_types.end() ||
+          (fields_types[metric_field.first] == arrow::Type::INT64 &&
+           metric_field_type != arrow::Type::INT64) ||
+          (fields_types[metric_field.first] != arrow::Type::STRING &&
+           metric_field_type == arrow::Type::STRING)) {
         fields_types[metric_field.first] = metric_field_type;
       }
     }
@@ -46,21 +51,23 @@ arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Bu
         field_builders[field.first] = std::make_shared<arrow::Int64Builder>();
         break;
       case arrow::Type::DOUBLE:
-        field_builders[field.first] = std::make_shared<arrow::DoubleBuilder>();
+        field_builders[field.first] =
+            std::make_shared<arrow::DoubleBuilder>();
         break;
       case arrow::Type::STRING:
-        field_builders[field.first] = std::make_shared<arrow::StringBuilder>();
+        field_builders[field.first] =
+            std::make_shared<arrow::StringBuilder>();
         break;
-      default:
-        return arrow::Status::RError("Unexpected field type");
+      default: return arrow::Status::RError("Unexpected field type");
     }
   }
 
   char* str_end;
-  arrow::TimestampBuilder timestamp_builder(arrow::timestamp(arrow::TimeUnit::SECOND), pool);
+  arrow::TimestampBuilder timestamp_builder(
+      arrow::timestamp(arrow::TimeUnit::SECOND), pool);
   arrow::StringBuilder measurement_name_builder;
   for (auto& metric : parsed_metrics_) {
-    //Building timestamp field
+    // Building timestamp field
     if (metric->timestamp != -1) {
       ARROW_RETURN_NOT_OK(timestamp_builder.Append(metric->timestamp));
     } else {
@@ -68,7 +75,8 @@ arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Bu
     }
 
     // Building measurement field
-    ARROW_RETURN_NOT_OK(measurement_name_builder.Append(metric->measurement_name));
+    ARROW_RETURN_NOT_OK(
+        measurement_name_builder.Append(metric->measurement_name));
 
     // Building tag fields
     for (auto& tag : tags_id_to_builders) {
@@ -85,16 +93,22 @@ arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Bu
         auto field_value = metric->fields[field.first];
         switch (fields_types[field.first]) {
           case arrow::Type::INT64:
-            ARROW_RETURN_NOT_OK(std::static_pointer_cast<arrow::Int64Builder>(field.second)->Append(std::strtoll(field_value.c_str(), &str_end, 10)));
+            ARROW_RETURN_NOT_OK(
+                std::static_pointer_cast<arrow::Int64Builder>(field.second)
+                    ->Append(
+                        std::strtoll(field_value.c_str(), &str_end, 10)));
             break;
           case arrow::Type::DOUBLE:
-            ARROW_RETURN_NOT_OK(std::static_pointer_cast<arrow::DoubleBuilder>(field.second)->Append(std::strtod(field_value.c_str(), &str_end)));
+            ARROW_RETURN_NOT_OK(
+                std::static_pointer_cast<arrow::DoubleBuilder>(field.second)
+                    ->Append(std::strtod(field_value.c_str(), &str_end)));
             break;
           case arrow::Type::STRING:
-            ARROW_RETURN_NOT_OK(std::static_pointer_cast<arrow::StringBuilder>(field.second)->Append(field_value));
+            ARROW_RETURN_NOT_OK(
+                std::static_pointer_cast<arrow::StringBuilder>(field.second)
+                    ->Append(field_value));
             break;
-          default:
-            return arrow::Status::RError("Unexpected field type");
+          default: return arrow::Status::RError("Unexpected field type");
         }
       } else {
         ARROW_RETURN_NOT_OK(field.second->AppendNull());
@@ -108,7 +122,8 @@ arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Bu
   // Creating schema and finishing builders
   column_arrays.emplace_back();
   ARROW_RETURN_NOT_OK(timestamp_builder.Finish(&column_arrays.back()));
-  fields.push_back(arrow::field("time", arrow::timestamp(arrow::TimeUnit::SECOND)));
+  fields.push_back(
+      arrow::field("time", arrow::timestamp(arrow::TimeUnit::SECOND)));
 
   fields.push_back(arrow::field("measurement", arrow::utf8()));
   column_arrays.emplace_back();
@@ -133,19 +148,18 @@ arrow::Status GraphiteParser::parseRecordBatches(const std::shared_ptr<arrow::Bu
       case arrow::Type::STRING:
         fields.push_back(arrow::field(field.first, arrow::utf8()));
         break;
-      default:
-        return arrow::Status::RError("Unexpected field type");
+      default: return arrow::Status::RError("Unexpected field type");
     }
   }
 
-  record_batches.push_back(arrow::RecordBatch::Make(arrow::schema(fields),
-      parsed_metrics_.size(),
-      column_arrays));
+  record_batches.push_back(arrow::RecordBatch::Make(
+      arrow::schema(fields), parsed_metrics_.size(), column_arrays));
   parsed_metrics_.clear();
   return arrow::Status::OK();
 }
 
-arrow::Type::type GraphiteParser::determineFieldType(const std::string& value) const {
+arrow::Type::type GraphiteParser::determineFieldType(
+    const std::string& value) const {
   if (value == "0") {
     return arrow::Type::INT64;
   }
@@ -164,11 +178,13 @@ arrow::Type::type GraphiteParser::determineFieldType(const std::string& value) c
   return arrow::Type::STRING;
 }
 
-void GraphiteParser::parseMetricStrings(const std::vector<std::string>& metric_strings) {
+void GraphiteParser::parseMetricStrings(
+    const std::vector<std::string>& metric_strings) {
   for (auto& metric_string : metric_strings) {
     std::shared_ptr<Metric> metric{nullptr};
     for (auto& metric_template : templates_) {
-      if ((metric = metric_template.buildMetric(metric_string, separator_)) != nullptr) {
+      if ((metric = metric_template.buildMetric(metric_string, separator_)) !=
+          nullptr) {
         break;
       }
     }
@@ -184,10 +200,10 @@ void GraphiteParser::parseMetricStrings(const std::vector<std::string>& metric_s
   }
 }
 
-GraphiteParser::Metric::Metric(std::string &&measurement_name, GraphiteParser::SortedKVContainer<std::string> &&tags)
-    : measurement_name(measurement_name), tags(tags) {
-
-}
+GraphiteParser::Metric::Metric(
+    std::string&& measurement_name,
+    GraphiteParser::SortedKVContainer<std::string>&& tags)
+    : measurement_name(measurement_name), tags(tags) {}
 
 std::string GraphiteParser::Metric::getKeyString() const {
   std::vector<std::string> key_parts;
@@ -215,12 +231,14 @@ void GraphiteParser::Metric::mergeWith(const Metric& other) {
   }
 }
 
-GraphiteParser::MetricTemplate::MetricTemplate(const std::string& template_string) {
+GraphiteParser::MetricTemplate::MetricTemplate(
+    const std::string& template_string) {
   auto template_string_parts = StringUtils::split(template_string, " ");
   size_t part_idx = 0;
 
   if (template_string_parts.size() == 3 ||
-      (template_string_parts.size() == 2 && template_string_parts[1].find('=') == std::string::npos)) {
+      (template_string_parts.size() == 2 &&
+       template_string_parts[1].find('=') == std::string::npos)) {
     auto filter_regex_string = prepareFilterRegex(template_string_parts[0]);
     filter_ = std::make_shared<std::regex>(filter_regex_string);
     ++part_idx;
@@ -234,28 +252,26 @@ GraphiteParser::MetricTemplate::MetricTemplate(const std::string& template_strin
   }
 }
 
-std::string GraphiteParser::MetricTemplate::prepareFilterRegex(const std::string& filter_string) const {
+std::string GraphiteParser::MetricTemplate::prepareFilterRegex(
+    const std::string& filter_string) const {
   std::stringstream regex_string_builder;
   for (auto& c : filter_string) {
     switch (c) {
-      case '.':
-        regex_string_builder << "\\.";
-        break;
-      case '*':
-        regex_string_builder << ".+";
-        break;
-      default:
-        regex_string_builder << c;
+      case '.': regex_string_builder << "\\."; break;
+      case '*': regex_string_builder << ".+"; break;
+      default: regex_string_builder << c;
     }
   }
 
   return regex_string_builder.str();
 }
 
-const std::string GraphiteParser::MetricTemplate::MEASUREMENT_PART_ID{"measurement"};
+const std::string GraphiteParser::MetricTemplate::MEASUREMENT_PART_ID{
+    "measurement"};
 const std::string GraphiteParser::MetricTemplate::FIELD_PART_ID{"field"};
 
-void GraphiteParser::MetricTemplate::prepareTemplateParts(const std::string& template_string) {
+void GraphiteParser::MetricTemplate::prepareTemplateParts(
+    const std::string& template_string) {
   if (template_string.empty()) {
     return;
   }
@@ -266,9 +282,10 @@ void GraphiteParser::MetricTemplate::prepareTemplateParts(const std::string& tem
   }
 
   auto last_part = template_string_parts.back();
-  multiple_last_part_ = !last_part.empty() && last_part.back() == '*'
-      && (last_part.substr(0, last_part.size() - 1) == MEASUREMENT_PART_ID
-          || last_part.substr(0, last_part.size() - 1) == FIELD_PART_ID);
+  multiple_last_part_ =
+      !last_part.empty() && last_part.back() == '*' &&
+      (last_part.substr(0, last_part.size() - 1) == MEASUREMENT_PART_ID ||
+       last_part.substr(0, last_part.size() - 1) == FIELD_PART_ID);
   if (multiple_last_part_) {
     addTemplatePart(last_part.substr(0, last_part.size() - 1));
   } else {
@@ -276,7 +293,8 @@ void GraphiteParser::MetricTemplate::prepareTemplateParts(const std::string& tem
   }
 }
 
-void GraphiteParser::MetricTemplate::addTemplatePart(const std::string& template_part) {
+void GraphiteParser::MetricTemplate::addTemplatePart(
+    const std::string& template_part) {
   if (template_part == MEASUREMENT_PART_ID) {
     parts_.push_back({TemplatePartType::MEASUREMENT});
   } else if (template_part == FIELD_PART_ID) {
@@ -286,15 +304,18 @@ void GraphiteParser::MetricTemplate::addTemplatePart(const std::string& template
   }
 }
 
-void GraphiteParser::MetricTemplate::prepareAdditionalTags(const std::string& additional_tags_string) {
-  auto additional_tags_parts = StringUtils::split(additional_tags_string, ",");
+void GraphiteParser::MetricTemplate::prepareAdditionalTags(
+    const std::string& additional_tags_string) {
+  auto additional_tags_parts =
+      StringUtils::split(additional_tags_string, ",");
   for (auto& part : additional_tags_parts) {
     auto tag = StringUtils::split(part, "=");
     additional_tags_[tag[0]] = tag[1];
   }
 }
 
-bool GraphiteParser::MetricTemplate::match(const std::string& metric_string) const {
+bool GraphiteParser::MetricTemplate::match(
+    const std::string& metric_string) const {
   auto metric_parts = StringUtils::split(metric_string, " ");
 
   if (metric_parts.size() < 2 ||
@@ -303,14 +324,16 @@ bool GraphiteParser::MetricTemplate::match(const std::string& metric_string) con
   }
 
   auto metric_description_parts = StringUtils::split(metric_parts[0], ".");
-  return metric_description_parts.size() == parts_.size()
-      || (metric_description_parts.size() > parts_.size() && multiple_last_part_);
+  return metric_description_parts.size() == parts_.size() ||
+         (metric_description_parts.size() > parts_.size() &&
+          multiple_last_part_);
 }
 
 const std::string GraphiteParser::MetricTemplate::DEFAULT_FIELD_NAME{"value"};
 
-std::shared_ptr<GraphiteParser::Metric> GraphiteParser::MetricTemplate::buildMetric(const std::string& metric_string,
-                                                                    const std::string& separator) const {
+std::shared_ptr<GraphiteParser::Metric>
+GraphiteParser::MetricTemplate::buildMetric(
+    const std::string& metric_string, const std::string& separator) const {
   if (!match(metric_string)) {
     return nullptr;
   }
@@ -325,9 +348,7 @@ std::shared_ptr<GraphiteParser::Metric> GraphiteParser::MetricTemplate::buildMet
       case MEASUREMENT:
         measurement_name_parts.push_back(metric_description_parts[i]);
         break;
-      case FIELD:
-        field_parts.push_back(metric_description_parts[i]);
-        break;
+      case FIELD: field_parts.push_back(metric_description_parts[i]); break;
       case TAG:
         if (tags_parts.find(parts_[i].id) == tags_parts.end()) {
           tags_parts.emplace(parts_[i].id, std::vector<std::string>{});
@@ -338,37 +359,37 @@ std::shared_ptr<GraphiteParser::Metric> GraphiteParser::MetricTemplate::buildMet
     }
   }
 
-  if (metric_description_parts.size() > parts_.size() && multiple_last_part_) {
+  if (metric_description_parts.size() > parts_.size() &&
+      multiple_last_part_) {
     for (size_t i = parts_.size(); i < metric_description_parts.size(); ++i) {
       switch (parts_.back().type) {
         case MEASUREMENT:
           measurement_name_parts.push_back(metric_description_parts[i]);
           break;
-        case FIELD:
-          field_parts.push_back(metric_description_parts[i]);
-          break;
+        case FIELD: field_parts.push_back(metric_description_parts[i]); break;
         default:
-          throw std::runtime_error("Unexpected multiple template part with type TAG");
+          throw std::runtime_error(
+              "Unexpected multiple template part with type TAG");
       }
     }
   }
 
   GraphiteParser::SortedKVContainer<std::string> tags;
   for (auto& tag : tags_parts) {
-    tags.emplace(tag.first, std::move(StringUtils::concatenateStrings(tag.second, separator)));
+    tags.emplace(tag.first, std::move(StringUtils::concatenateStrings(
+                                tag.second, separator)));
   }
 
-  for (auto& tag : additional_tags_) {
-    tags.emplace(tag.first, tag.second);
-  }
+  for (auto& tag : additional_tags_) { tags.emplace(tag.first, tag.second); }
 
-  auto metric = std::make_shared<Metric>(
-      std::move(StringUtils::concatenateStrings(measurement_name_parts, separator)),
-      std::move(tags)
-      );
+  auto metric =
+      std::make_shared<Metric>(std::move(StringUtils::concatenateStrings(
+                                   measurement_name_parts, separator)),
+                               std::move(tags));
 
   if (!field_parts.empty()) {
-    metric->fields[StringUtils::concatenateStrings(field_parts, separator)] = metric_parts[1];
+    metric->fields[StringUtils::concatenateStrings(field_parts, separator)] =
+        metric_parts[1];
   } else {
     metric->fields[DEFAULT_FIELD_NAME] = metric_parts[1];
   }
@@ -381,7 +402,9 @@ std::shared_ptr<GraphiteParser::Metric> GraphiteParser::MetricTemplate::buildMet
   return metric;
 }
 
-bool GraphiteParser::MetricComparator::operator()(const std::shared_ptr<Metric>& metric1, const std::shared_ptr<Metric>& metric2) const {
+bool GraphiteParser::MetricComparator::operator()(
+    const std::shared_ptr<Metric>& metric1,
+    const std::shared_ptr<Metric>& metric2) const {
   if (metric1->timestamp == metric2->timestamp) {
     return std::less<>()(metric1->getKeyString(), metric2->getKeyString());
   }

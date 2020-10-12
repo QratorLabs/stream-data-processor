@@ -1,9 +1,9 @@
 #pragma once
 
 #include <ctime>
+#include <deque>
 #include <functional>
 #include <string>
-#include <deque>
 
 #include <arrow/api.h>
 
@@ -14,37 +14,32 @@
 
 class PeriodNode : public Node {
  public:
-  PeriodNode(const std::string& name,
-             uint64_t range, uint64_t period,
+  PeriodNode(const std::string& name, uint64_t range, uint64_t period,
              std::string ts_column_name,
              std::shared_ptr<PeriodHandler> period_handler)
-      : Node(name)
-      , period_(period)
-      , ts_column_name_(std::move(ts_column_name))
-      , period_handler_(std::move(period_handler))
-      /* Not quite fair window range. Actually it considers to be a multiple of window period */
-      , separation_idx_(std::vector<size_t>(
-          range / period + (range % period > 0 ? 1 : 0) - 1, 0
-      )) {
-
-  }
+      : Node(name),
+        period_(period),
+        ts_column_name_(std::move(ts_column_name)),
+        period_handler_(std::move(period_handler))
+        /* Not quite fair window range. Actually it considers to be a multiple
+           of window period */
+        ,
+        separation_idx_(std::vector<size_t>(
+            range / period + (range % period > 0 ? 1 : 0) - 1, 0)) {}
 
   template <typename ConsumerVectorType>
-  PeriodNode(const std::string& name,
-             ConsumerVectorType&& consumers,
-             uint64_t range, uint64_t period,
-             std::string ts_column_name,
+  PeriodNode(const std::string& name, ConsumerVectorType&& consumers,
+             uint64_t range, uint64_t period, std::string ts_column_name,
              std::shared_ptr<PeriodHandler> period_handler)
-      : Node(name, std::forward<ConsumerVectorType>(consumers))
-      , period_(period)
-      , ts_column_name_(std::move(ts_column_name))
-      , period_handler_(std::move(period_handler))
-      /* Not quite fair window range. Actually it considers to be a multiple of window period */
-      , separation_idx_(std::vector<size_t>(
-          range / period + (range % period > 0 ? 1 : 0) - 1, 0
-      )) {
-
-  }
+      : Node(name, std::forward<ConsumerVectorType>(consumers)),
+        period_(period),
+        ts_column_name_(std::move(ts_column_name)),
+        period_handler_(std::move(period_handler))
+        /* Not quite fair window range. Actually it considers to be a multiple
+           of window period */
+        ,
+        separation_idx_(std::vector<size_t>(
+            range / period + (range % period > 0 ? 1 : 0) - 1, 0)) {}
 
   void start() override;
   void handleData(const char* data, size_t length) override;
@@ -55,8 +50,9 @@ class PeriodNode : public Node {
   void pass();
 
   void removeOldBuffers();
-  arrow::Status tsLowerBound(const std::shared_ptr<arrow::RecordBatch>& record_batch,
-                             const std::function<bool (std::time_t)>& pred, size_t& lower_bound);
+  arrow::Status tsLowerBound(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch,
+      const std::function<bool(std::time_t)>& pred, size_t& lower_bound);
 
  private:
   uint64_t period_;

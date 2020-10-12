@@ -7,6 +7,7 @@
 
 class Parser {
  public:
-  virtual arrow::Status parseRecordBatches(const std::shared_ptr<arrow::Buffer>& buffer,
-                                           std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches) = 0;
+  virtual arrow::Status parseRecordBatches(
+      const std::shared_ptr<arrow::Buffer>& buffer,
+      std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches) = 0;
 };

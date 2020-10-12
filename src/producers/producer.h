@@ -8,9 +8,7 @@
 
 class Producer {
  public:
-  explicit Producer(const std::shared_ptr<Node>& node) : node_(node) {
-
-  }
+  explicit Producer(const std::shared_ptr<Node>& node) : node_(node) {}
 
   virtual void start() = 0;
   virtual void stop() = 0;

@@ -12,17 +12,20 @@
 
 class RecordBatchRequestHandler : public RequestHandler {
  public:
-  RecordBatchRequestHandler(const std::shared_ptr<IUDFAgent>& agent,
-                            DataConverter::PointsToRecordBatchesConversionOptions to_record_batches_options,
-                            DataConverter::RecordBatchesToPointsConversionOptions to_points_options,
-                            const std::shared_ptr<RecordBatchHandler> &handler = nullptr);
+  RecordBatchRequestHandler(
+      const std::shared_ptr<IUDFAgent>& agent,
+      DataConverter::PointsToRecordBatchesConversionOptions
+          to_record_batches_options,
+      DataConverter::RecordBatchesToPointsConversionOptions to_points_options,
+      const std::shared_ptr<RecordBatchHandler>& handler = nullptr);
 
  protected:
   void handleBatch();
 
  protected:
   std::shared_ptr<RecordBatchHandler> handler_;
-  DataConverter::PointsToRecordBatchesConversionOptions to_record_batches_options_;
+  DataConverter::PointsToRecordBatchesConversionOptions
+      to_record_batches_options_;
   DataConverter::RecordBatchesToPointsConversionOptions to_points_options_;
   agent::PointBatch batch_points_;
 };

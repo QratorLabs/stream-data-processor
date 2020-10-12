@@ -2,9 +2,9 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <regex>
 #include <string>
 #include <vector>
-#include <regex>
 
 #include <gandiva/tree_expr_builder.h>
 
@@ -16,12 +16,12 @@
 
 #include "consumers/consumers.h"
 #include "data_handlers/data_handlers.h"
-#include "nodes/nodes.h"
+#include "kapacitor_udf/kapacitor_udf.h"
 #include "node_pipeline/node_pipeline.h"
+#include "nodes/nodes.h"
 #include "producers/producers.h"
 #include "utils/parsers/graphite_parser.h"
 #include "utils/utils.h"
-#include "kapacitor_udf/kapacitor_udf.h"
 
 int main(int argc, char** argv) {
   auto loop = uvw::Loop::getDefault();

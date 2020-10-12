@@ -7,9 +7,11 @@
 
 class SerializedRecordBatchHandler : public DataHandler {
  public:
-  explicit SerializedRecordBatchHandler(std::shared_ptr<RecordBatchHandler> handler_strategy);
+  explicit SerializedRecordBatchHandler(
+      std::shared_ptr<RecordBatchHandler> handler_strategy);
 
-  arrow::Status handle(const std::shared_ptr<arrow::Buffer>& source, std::shared_ptr<arrow::Buffer>* target) override;
+  arrow::Status handle(const std::shared_ptr<arrow::Buffer>& source,
+                       std::shared_ptr<arrow::Buffer>* target) override;
 
  private:
   std::shared_ptr<RecordBatchHandler> handler_strategy_;

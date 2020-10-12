@@ -32,8 +32,9 @@ template <typename UVWHandleType, typename LibuvHandleType>
 class UDFAgent : public IUDFAgent {
  public:
   explicit UDFAgent(uvw::Loop* loop);
-  UDFAgent(std::shared_ptr<uvw::StreamHandle<UVWHandleType, LibuvHandleType>> in,
-           std::shared_ptr<uvw::StreamHandle<UVWHandleType, LibuvHandleType>> out);
+  UDFAgent(
+      std::shared_ptr<uvw::StreamHandle<UVWHandleType, LibuvHandleType>> in,
+      std::shared_ptr<uvw::StreamHandle<UVWHandleType, LibuvHandleType>> out);
 
   void setHandler(const std::shared_ptr<RequestHandler>& request_handler);
 
