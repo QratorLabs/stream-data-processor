@@ -1,5 +1,5 @@
 Checks: '-*,cppcoreguidelines-*,-cppcoreguidelines-init-variables,-cppcoreguidelines-narrowing-conversions,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-pro-type-reinterpret-cast,-cppcoreguidelines-avoid-magic-numbers'
-HeaderFilterRegex: '.*(?<!\.pb\.)(h|cc)'
+HeaderFilterRegex: '.*'
 WarningsAsErrors: ''
 CheckOptions:
   - key: readability-identifier-naming.NamespaceCase
