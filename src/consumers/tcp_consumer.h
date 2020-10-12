@@ -28,6 +28,7 @@ class TCPConsumer : public Consumer {
 
  private:
   static const std::chrono::duration<uint64_t, std::milli> RETRY_DELAY;
+  static const int CONNECTION_REFUSED_ERROR_CODE = -61;
 
   bool is_external_;
   std::vector<std::shared_ptr<uvw::TCPHandle>> targets_;

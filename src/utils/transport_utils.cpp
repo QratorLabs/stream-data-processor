@@ -44,7 +44,10 @@ bool TransportUtils::send(zmq::socket_t & socket, const std::string & string, zm
 
 std::string TransportUtils::receive(zmq::socket_t & socket, zmq::recv_flags flags) {
   zmq::message_t message;
-  socket.recv(message, flags);
+  auto recv_result = socket.recv(message, flags);
+  if (!recv_result.has_value()) {
+    return std::string();
+  }
 
   return std::string(static_cast<char*>(message.data()), message.size());
 }

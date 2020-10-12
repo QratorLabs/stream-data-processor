@@ -17,7 +17,7 @@ SHELL ["bash", "-c"]
 
 # Configure system for further build and run
 RUN apt-get update \
-    && apt-get install --no-install-recommends --no-install-suggests --yes --verbose-versions autoconf automake libtool curl g++ unzip cmake ninja-build wget tar pkg-config ca-certificates lsb-release git libzmq3-dev libspdlog-dev libprotobuf-dev protobuf-compiler \
+    && apt-get install --no-install-recommends --no-install-suggests --yes --verbose-versions autoconf automake libtool curl g++ unzip cmake ninja-build wget tar pkg-config ca-certificates lsb-release git libzmq3-dev libspdlog-dev libprotobuf-dev protobuf-compiler clang-tidy clang-format \
     \
     && if [ "${ENV_ARROW_DEB_PCKG_SHA256}" = "" ]; then echo "arrow deb package sha256 hash sum environment variable is empty. Exiting..." ; exit 1 ; fi \
     && wget -O "${ARROW_DEB_PCKG_NAME}" "https://apache.bintray.com/arrow/debian/apache-arrow-archive-keyring-latest-$(lsb_release --codename --short).deb" \

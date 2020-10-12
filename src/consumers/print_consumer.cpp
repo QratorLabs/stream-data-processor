@@ -31,16 +31,16 @@ void PrintConsumer::printRecordBatch(const arrow::RecordBatch& record_batch) {
   for (auto& field : record_batch.schema()->fields()) {
     switch (field->type()->id()) {
       case arrow::Type::INT64:
-        table_printer.AddColumn(field->name(), 15);
+        table_printer.AddColumn(field->name(), INT_COLUMN_WIDTH);
         break;
       case arrow::Type::DOUBLE:
-        table_printer.AddColumn(field->name(), 20);
+        table_printer.AddColumn(field->name(), DOUBLE_COLUMN_WIDTH);
         break;
       case arrow::Type::STRING:
-        table_printer.AddColumn(field->name(), 25);
+        table_printer.AddColumn(field->name(), STRING_COLUMN_WIDTH);
         break;
       default:
-        table_printer.AddColumn(field->name(), 15);
+        table_printer.AddColumn(field->name(), DEFAULT_COLUMN_WIDTH);
     }
   }
 

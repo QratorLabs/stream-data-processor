@@ -28,7 +28,7 @@ void TCPConsumer::configureTarget(size_t target_idx, const IPv4Endpoint& endpoin
   });
 
   targets_[target_idx]->on<uvw::ErrorEvent>([this, target_idx](const uvw::ErrorEvent& event, uvw::TCPHandle& target) {
-    if (event.code() == -61) { // connection refused, try again later
+    if (event.code() == CONNECTION_REFUSED_ERROR_CODE) { // connection refused, try again later
       connect_timers_[target_idx]->start(RETRY_DELAY, std::chrono::duration<uint64_t, std::milli>(0));
     }
   });

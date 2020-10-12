@@ -30,7 +30,7 @@ UDFAgent<UVWHandleType, LibuvHandleType>::UDFAgent(std::shared_ptr<uvw::StreamHa
     : in_(std::move(in))
     , out_(std::move(out)) {
   in_->template on<uvw::DataEvent>([this](const uvw::DataEvent& event, uvw::StreamHandle<UVWHandleType, LibuvHandleType>& handle) {
-    spdlog::debug("New data of size {}: {}", event.length, spdlog::to_hex(std::string(event.data.get(), event.length)));
+    spdlog::debug("New data of size {}", event.length);
     std::istringstream data_stream(std::string(event.data.get(), event.length));
     if (!readLoop(data_stream)) {
       stop();
@@ -92,7 +92,6 @@ void UDFAgent<UVWHandleType, LibuvHandleType>::writeResponse(const agent::Respon
   out_stream << response_data;
   spdlog::debug("Response: {}", response.DebugString());
   out_->write(out_stream.str().data(), out_stream.str().length());
-  spdlog::debug("Response sent");
 }
 
 template void UDFAgent<uvw::TTYHandle, uv_tty_t>::writeResponse(const agent::Response& response);
@@ -103,7 +102,6 @@ bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(std::istream& input_stre
   agent::Request request;
   while (true) {
     try {
-      spdlog::debug("Residual size: {}, residual string: {}", residual_request_size_, spdlog::to_hex(residual_request_data_));
       uint32_t request_size;
       if (residual_request_size_ == 0) {
         request_size = UVarIntCoder::decode(input_stream);
@@ -112,7 +110,6 @@ bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(std::istream& input_stre
         residual_request_size_ = 0;
       }
 
-      spdlog::debug("Decoded request size: {}", request_size);
       std::string request_data;
       request_data.resize(request_size);
       input_stream.read(request_data.data(), request_size);
@@ -122,7 +119,6 @@ bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(std::istream& input_stre
         residual_request_data_.clear();
       }
 
-      spdlog::debug("Read {} bytes", input_stream.gcount());
       if (input_stream.gcount() < request_size) {
         residual_request_size_ = request_size - input_stream.gcount();
         residual_request_data_ = std::move(request_data.substr(0, input_stream.gcount()));
@@ -166,11 +162,9 @@ bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(std::istream& input_stre
           spdlog::error("received unhandled request with enum number {}", request.message_case());
       }
     } catch (const EOFException&) {
-      spdlog::debug("EOF reached");
       return true;
     } catch (const std::exception& exc) {
-      std::string error_message = fmt::format("error processing request: {}", exc.what());
-      reportError(error_message);
+      reportError(fmt::format("error processing request: {}", exc.what()));
       return false;
     }
   }

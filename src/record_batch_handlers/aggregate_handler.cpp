@@ -8,8 +8,8 @@
 #include "utils/utils.h"
 
 const std::unordered_map<
-      AggregateHandler::AggregateFunctionEnumType,
-      std::shared_ptr<AggregateFunction>
+    AggregateHandler::AggregateFunctionEnumType,
+    std::shared_ptr<AggregateFunction>
     > AggregateHandler::TYPES_TO_FUNCTIONS{
     {kFirst, std::make_shared<FirstAggregateFunction>()},
     {kLast, std::make_shared<LastAggregateFunction>()},

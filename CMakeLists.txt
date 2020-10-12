@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 option(ENABLE_TESTS "enables tests building" OFF)
 option(BUILD_SHARED_LIBS "enables building shared libraries" OFF)
+option(CLANG_TIDY_LINT "enables clang-tidy linter" OFF)
 
 find_package(PkgConfig)
 pkg_check_modules(PC_ZeroMQ QUIET zmq)
@@ -37,14 +38,11 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
 message(STATUS "Arrow libs: ${DEPENDENCY_ARROW_TARGET} ${DEPENDENCY_GANDIVA_TARGET}")
 
-set(BUILD_UVW_LIBS ON)
-set(BUILD_TESTING OFF CACHE BOOL "disable uvw build gtest" FORCE)
-add_subdirectory(third_party/uvw)
-
-set(USE_BOOST_KARMA OFF CACHE BOOL "" FORCE)
-add_subdirectory(third_party/bprinter)
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 
 protobuf_generate_cpp(UDFProtoSources UDFProtoHeaders "${CMAKE_CURRENT_SOURCE_DIR}/src/kapacitor_udf/udf.proto")
+add_library(protofiles_object_library OBJECT ${UDFProtoSources})
+set_target_properties(protofiles_object_library PROPERTIES CXX_CLANG_TIDY "")
 
 set(STREAM_DATA_PROCESSOR_LIBRARY_NAME "stream_data_processor_lib")
 set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_PUBLIC_INCLUDE_DIRS"
@@ -64,7 +62,7 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_DEPENDENCIES"
   protobuf::libprotobuf
   )
 set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_SOURCES"
-  ${UDFProtoSources}
+  $<TARGET_OBJECTS:protofiles_object_library>
   src/consumers/print_consumer.cpp
   src/consumers/publisher_consumer.cpp
   src/consumers/tcp_consumer.cpp
@@ -117,7 +115,7 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_DEPENDENCIES"
   protobuf::libprotobuf
   )
 set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
-  ${UDFProtoSources}
+  $<TARGET_OBJECTS:protofiles_object_library>
   src/kapacitor_udf/udf_agent.cpp
   src/kapacitor_udf/request_handlers/aggregate_options_parser.cpp
   src/kapacitor_udf/request_handlers/group_tags_parser.cpp
@@ -152,6 +150,10 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   )
 list(APPEND LIBRARIES_NAMES "${KAPACITOR_UDF_LIBRARY_NAME}")
 
+if (CLANG_TIDY_LINT)
+  set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
+endif()
+
 foreach(library_name ${LIBRARIES_NAMES})
   add_library("${library_name}" ${${library_name}_SOURCES})
   target_include_directories("${library_name}" PUBLIC ${${library_name}_PUBLIC_INCLUDE_DIRS})
@@ -172,6 +174,5 @@ add_subdirectory(examples)
 
 if(ENABLE_TESTS)
   enable_testing()
-  add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/third_party/googletest" EXCLUDE_FROM_ALL)
   add_subdirectory(test)
 endif()

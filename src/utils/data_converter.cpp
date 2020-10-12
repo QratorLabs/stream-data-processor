@@ -91,13 +91,13 @@ arrow::Status DataConverter::convertToRecordBatches(const agent::PointBatch& poi
 arrow::Status DataConverter::convertToPoints(const arrow::RecordBatchVector& record_batches,
                                              agent::PointBatch* points,
                                              const RecordBatchesToPointsConversionOptions& options) {
-  size_t points_count = 0;
+  int points_count = 0;
   for (auto& record_batch : record_batches) {
     points->mutable_points()->Reserve(points_count + record_batch->num_rows());
     for (int i = 0; i < record_batch->num_columns(); ++i) {
       auto& column_name = record_batch->column_name(i);
       auto column = record_batch->column(i);
-      for (size_t j = 0; j < column->length(); ++j) {
+      for (int j = 0; j < column->length(); ++j) {
         auto get_scalar_result = column->GetScalar(j);
         if (!get_scalar_result.ok()) {
           return get_scalar_result.status();

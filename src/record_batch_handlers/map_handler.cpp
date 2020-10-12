@@ -47,7 +47,7 @@ arrow::Status MapHandler::eval(arrow::RecordBatchVector* record_batches,
   for (auto& record_batch : *record_batches) {
     arrow::ArrayVector result_arrays;
     ARROW_RETURN_NOT_OK(projector->Evaluate(*record_batch, pool, &result_arrays));
-    for (size_t i = 0; i < result_arrays.size(); ++i) {
+    for (int i = 0; i < result_arrays.size(); ++i) {
       auto add_column_result = record_batch->AddColumn(
           input_schema_size + i,
           result_schema->field(input_schema_size + i),
