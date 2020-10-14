@@ -24,19 +24,22 @@ message(STATUS "ZeroMQ include dir: ${ZeroMQ_INCLUDE_DIR}")
 message(STATUS "ZeroMQ lib dir: ${ZeroMQ_LIBRARY}")
 
 find_package(Arrow REQUIRED)
-message(STATUS "Arrow lib dir: ${Arrow_DIR}")
+message(STATUS "Arrow cmake dir: ${Arrow_DIR}")
 
 set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${Arrow_DIR}")
 find_package(Gandiva REQUIRED)
-message(STATUS "Gandiva lib dir: ${Gandiva_DIR}")
+message(STATUS "Gandiva cmake dir: ${Gandiva_DIR}")
+
+if(NOT BUILD_SHARED_LIBS)
+  set(THREADS_PREFER_PTHREAD_FLAG ON)
+  find_package(Threads REQUIRED)
+endif ()
 
 find_package(spdlog REQUIRED)
 
 find_package(Protobuf REQUIRED)
 include_directories(${Protobuf_INCLUDE_DIRS})
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
-
-message(STATUS "Arrow libs: ${DEPENDENCY_ARROW_TARGET} ${DEPENDENCY_GANDIVA_TARGET}")
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 

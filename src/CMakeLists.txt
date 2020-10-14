@@ -1,3 +1,15 @@
+macro(add_arrow_dependency dependencies_list_name)
+  if(BUILD_SHARED_LIBS)
+    list(APPEND "${dependencies_list_name}" arrow_shared)
+  else()
+    list(APPEND "${dependencies_list_name}" arrow_static Threads::Threads)
+  endif()
+endmacro()
+
+macro(add_gandiva_dependency dependencies_list_name)
+  list(APPEND "${dependencies_list_name}" gandiva_shared)
+endmacro()
+
 set(STREAM_DATA_PROCESSOR_LIBRARY_NAME "stream_data_processor_lib")
 set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_PUBLIC_INCLUDE_DIRS"
   "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -8,13 +20,13 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_PRIVATE_INCLUDE_DIRS"
   )
 set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_DEPENDENCIES"
   uvw::uvw-static
-  arrow_shared
-  gandiva_shared
   spdlog::spdlog
   bprinter
   dependency_zmq
   protobuf::libprotobuf
   )
+add_arrow_dependency("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_DEPENDENCIES")
+add_gandiva_dependency("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_DEPENDENCIES")
 set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_SOURCES"
   $<TARGET_OBJECTS:protofiles_object_library>
   consumers/print_consumer.cpp
@@ -63,11 +75,11 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_PUBLIC_INCLUDE_DIRS"
   )
 set("${KAPACITOR_UDF_LIBRARY_NAME}_DEPENDENCIES"
   uvw::uvw-static
-  arrow_shared
-  gandiva_shared
   spdlog::spdlog
   protobuf::libprotobuf
   )
+add_arrow_dependency("${KAPACITOR_UDF_LIBRARY_NAME}_DEPENDENCIES")
+add_gandiva_dependency("${KAPACITOR_UDF_LIBRARY_NAME}_DEPENDENCIES")
 set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   $<TARGET_OBJECTS:protofiles_object_library>
   kapacitor_udf/udf_agent.cpp
