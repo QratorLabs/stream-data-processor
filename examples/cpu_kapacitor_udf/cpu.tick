@@ -8,24 +8,6 @@ var info_core_level = 5
 var warn_core_level = 3
 var crit_core_level = 0
 
-var info_host_level = 20
-var warn_host_level = 10
-var crit_host_level = 5
-
-var info_load_level = 30
-var warn_load_level = 60
-var crit_load_level = 70
-
-var load = stream
-    |from()
-        .measurement('load')
-	.groupBy(*)
-    |flatten().tolerance(5s)
-    |default()
-        .field('info_load_level', info_load_level)
-	    .field('warn_load_level', warn_load_level)
-	    .field('crit_load_level', crit_load_level)
-
 var cputime_all = stream
     |from()
         .measurement('cpu')
@@ -84,18 +66,3 @@ cputime_win_calc
         .crit(lambda: "idle.mean" < "crit_core_level")
         .post(log_url)
 	    .id('{{ .Name }}/{{ .TaskName }}/cpu-idle-time-per-core:{{ .Group }}')
-
-load
-    |default()
-        .field('alet-author', '@kv:qrator.net')
-        .field('incident-owners', 'nobody')
-        .field('incident-is-expected', FALSE)
-        .field('incident-comment', '')
-	    .field('alert-on', 'cpu-load')
-    |alert()
-        .info(lambda: "longterm" > "info_load_level")
-	    .warn(lambda: "longterm" > "warn_load_level")
-	    .crit(lambda: "longterm" > "crit_load_level")
-	    .post(log_url)
-	    .id('{{ .Name }}/{{ .TaskName }}:{{ .Group }}')
-
