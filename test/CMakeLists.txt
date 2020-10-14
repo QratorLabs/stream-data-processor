@@ -1,15 +1,17 @@
+set(CMAKE_CXX_CLANG_TIDY "")
+
 find_package(Catch2 REQUIRED)
-include(CTest)
 include(ParseAndAddCatchTests)
 
-function(add_test_target file_path)
-  add_exec_target(${file_path})
-  get_filename_component(file_name "${file_path}" NAME_WE)
-  file(GLOB test_files "./*_test.cpp")
-  target_sources(${file_name} PRIVATE "${test_files}")
-  message(STATUS "Adding test: ${file_name}")
-  target_link_libraries(${file_name} Catch2::Catch2)
-  ParseAndAddCatchTests(${file_name})
-endfunction()
+add_exec_target("${CMAKE_CURRENT_SOURCE_DIR}/test_main.cpp" stream_data_processor_lib kapacitor_udf_lib)
+target_sources(test_main PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/gmock_catch_interceptor.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/aggregate_functions_test.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/kapacitor_udf_test.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/parsers_test.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/record_batch_handlers_test.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/uvarint_test.cpp"
+  )
 
-add_test_target(test_main.cpp)
+target_link_libraries(test_main Catch2::Catch2 gmock gmock_main)
+ParseAndAddCatchTests(test_main)

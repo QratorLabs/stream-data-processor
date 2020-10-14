@@ -2,19 +2,27 @@
 
 #include <memory>
 
-#include "uvw.hpp"
+#include <uvw.hpp>
 
 #include <zmq.hpp>
 
-#include "producer.h"
 #include "nodes/node.h"
+#include "producer.h"
 #include "utils/transport_utils.h"
 
 class SubscriberProducer : public Producer {
  public:
-  SubscriberProducer(std::shared_ptr<Node> node,
-                     TransportUtils::Subscriber &&subscriber,
-                     const std::shared_ptr<uvw::Loop>& loop);
+  template <typename SubscriberType>
+  SubscriberProducer(const std::shared_ptr<Node>& node,
+                     SubscriberType&& subscriber, uvw::Loop* loop)
+      : Producer(node),
+        subscriber_(std::forward<SubscriberType>(subscriber)),
+        poller_(loop->resource<uvw::PollHandle>(
+            subscriber_.subscriber_socket().getsockopt<int>(ZMQ_FD))),
+        synchronize_poller_(loop->resource<uvw::PollHandle>(
+            subscriber_.synchronize_socket().getsockopt<int>(ZMQ_FD))) {
+    configurePollers();
+  }
 
   void start() override;
   void stop() override;
@@ -33,5 +41,3 @@ class SubscriberProducer : public Producer {
   std::shared_ptr<uvw::PollHandle> synchronize_poller_;
   bool ready_to_confirm_connection_{false};
 };
-
-

@@ -2,7 +2,8 @@
 
 #include "string_utils.h"
 
-std::vector<std::string> StringUtils::split(const std::string &str, const std::string &delimiter) {
+std::vector<std::string> StringUtils::split(const std::string& str,
+                                            const std::string& delimiter) {
   std::vector<std::string> parts;
   size_t last = 0;
   size_t next = 0;
@@ -15,7 +16,8 @@ std::vector<std::string> StringUtils::split(const std::string &str, const std::s
   return parts;
 }
 
-std::string StringUtils::concatenateStrings(const std::vector<std::string> &parts, const std::string &delimiter) {
+std::string StringUtils::concatenateStrings(
+    const std::vector<std::string>& parts, const std::string& delimiter) {
   if (parts.empty()) {
     return "";
   }

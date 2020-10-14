@@ -1,0 +1,26 @@
+BasedOnStyle: Google
+
+Language: Cpp
+AlignTrailingComments: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortBlocksOnASingleLine: Empty
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: true
+AlwaysBreakTemplateDeclarations: Yes
+BinPackParameters: true
+PointerAlignment: Left
+ColumnLimit: 78
+ConstructorInitializerIndentWidth: 4
+IncludeBlocks: Preserve
+IndentCaseLabels: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesInAngles: false
+SpacesInCStyleCastParentheses: false
+SpacesInContainerLiterals: true
+SpacesInParentheses: false
+Standard: Auto
+UseTab: Never

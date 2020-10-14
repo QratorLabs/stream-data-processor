@@ -4,7 +4,7 @@
 
 #include <catch2/catch.hpp>
 
-#include "data_handlers/aggregate_functions/aggregate_functions.h"
+#include "record_batch_handlers/aggregate_functions/aggregate_functions.h"
 #include "test_help.h"
 
 TEST_CASE( "mean of two even integers is integer", "[MeanAggregateFunction]" ) {

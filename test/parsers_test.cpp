@@ -2,7 +2,6 @@
 #include <memory>
 #include <sstream>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include <arrow/api.h>
@@ -83,7 +82,7 @@ TEST_CASE( "parse using multiple templates", "[GraphiteParser]" ) {
       "value",
       "time"
   });
-  
+
   size_t metric_0 = 0;
   size_t metric_1 = 1;
   if (std::static_pointer_cast<arrow::StringScalar>(

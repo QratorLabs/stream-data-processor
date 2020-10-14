@@ -16,9 +16,14 @@ class PrintConsumer : public Consumer {
   void stop() override;
 
  private:
-  void printRecordBatch(const std::shared_ptr<arrow::RecordBatch> &record_batch);
+  void printRecordBatch(const arrow::RecordBatch& record_batch);
 
  private:
+  static const size_t INT_COLUMN_WIDTH = 15;
+  static const size_t DOUBLE_COLUMN_WIDTH = 20;
+  static const size_t STRING_COLUMN_WIDTH = 25;
+  static const size_t DEFAULT_COLUMN_WIDTH = 15;
+
   std::ofstream& ostrm_;
 };
 

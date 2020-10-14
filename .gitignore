@@ -48,7 +48,7 @@ _deps
 
 /cmake-build-debug*/
 /.idea/
-/executables/experiments.cpp
+/examples/experiments.cpp
 *.DS_Store
 *.pytest_cache
 /build/

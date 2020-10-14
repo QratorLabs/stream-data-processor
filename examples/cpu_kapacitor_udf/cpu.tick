@@ -1,0 +1,68 @@
+dbrp "graphite"."default"
+
+var log_url = 'http://127.0.0.1:4198'
+var win_period = 7m
+var win_every = 2m
+
+var info_core_level = 5
+var warn_core_level = 3
+var crit_core_level = 0
+
+var cputime_all = stream
+    |from()
+        .measurement('cpu')
+        .groupBy(*)
+// idle interrupt nice softirq steal system user wait
+
+var cputime_all_win = cputime_all
+    |groupBy('cpu', 'host', 'type')
+        .byMeasurement()
+    |flatten().tolerance(5s)
+    |window()
+        .period(win_period)
+        .every(win_every)
+
+var cputime_win_calc = cputime_all_win
+    @aggregateUDF()
+        .aggregate('last(idle) as idle.last')
+        .aggregate('mean(idle) as idle.mean')
+        .aggregate('last(interrupt) as interrupt.last')
+        .aggregate('mean(interrupt) as interrupt.mean')
+        .aggregate('last(nice) as nice.last')
+        .aggregate('mean(nice) as nice.mean')
+        .aggregate('last(softirq) as softirq.last')
+        .aggregate('mean(softirq) as softirq.mean')
+        .aggregate('last(steal) as steal.last')
+        .aggregate('mean(steal) as steal.mean')
+        .aggregate('last(system) as system.last')
+        .aggregate('mean(system) as system.mean')
+        .aggregate('last(user) as user.last')
+        .aggregate('mean(user) as user.mean')
+        .aggregate('last(wait) as wait.last')
+        .aggregate('mean(wait) as wait.mean')
+        .timeAggregateRule('last')
+    |log()
+
+cputime_win_calc
+    |default()
+        .field('alert-author', '@kv:qrator.net')
+        .field('incident-owners', 'nobody')
+        .field('incident-is-expected', FALSE)
+        .field('incident-comment', '')
+	    .field('alert-on', 'cpu-idle-time-per-core')
+
+	    .field('info_core_level', info_core_level)
+	    .field('warn_core_level', warn_core_level)
+	    .field('crit_core_level', crit_core_level)
+    //  durations are not supported for default()
+    //  .field('win_period', win_period)
+    //  .field('win_every', win_every)
+    |eval(lambda: win_period, lambda: win_every)
+        .as('win-period', 'win-every')
+        .keep()
+    |alert()
+        .info(lambda: "idle.mean" < "info_core_level")
+        .warn(lambda: "idle.mean" < "warn_core_level")
+        .crit(lambda: "idle.mean" < "crit_core_level")
+        .post(log_url)
+	    .id('{{ .Name }}/{{ .TaskName }}/cpu-idle-time-per-core:{{ .Group }}')

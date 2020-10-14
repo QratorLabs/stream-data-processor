@@ -7,12 +7,8 @@
 #include <catch2/catch.hpp>
 
 inline void arrowAssertNotOk(const arrow::Status& status) {
-  if (!status.ok()) {
-    INFO(status.ToString());
-    FAIL();
-  }
-
-  SUCCEED();
+  INFO(status.ToString());
+  REQUIRE( status.ok() );
 }
 
 inline void checkSize(const std::shared_ptr<arrow::RecordBatch>& record_batch, size_t num_rows, size_t num_columns) {
