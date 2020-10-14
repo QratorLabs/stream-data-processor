@@ -1,9 +1,5 @@
 macro(add_arrow_dependency dependencies_list_name)
-  if(BUILD_SHARED_LIBS)
-    list(APPEND "${dependencies_list_name}" arrow_shared)
-  else()
-    list(APPEND "${dependencies_list_name}" arrow_static Threads::Threads)
-  endif()
+  list(APPEND "${dependencies_list_name}" arrow_shared)
 endmacro()
 
 macro(add_gandiva_dependency dependencies_list_name)
