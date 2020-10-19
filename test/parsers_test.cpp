@@ -2,7 +2,6 @@
 #include <memory>
 #include <sstream>
 #include <string>
-#include <vector>
 
 #include <arrow/api.h>
 
@@ -12,8 +11,10 @@
 #include "utils/parsers/graphite_parser.h"
 
 TEST_CASE( "parse sample metric with custom separator", "[GraphiteParser]") {
-  std::vector<std::string> templates{"measurement.measurement.field.field.region"};
-  std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(templates, "_");
+  GraphiteParser::GraphiteParserOptions parser_options {{
+    "measurement.measurement.field.field.region"
+  }, "time", "_"};
+  std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(parser_options);
   auto metric_buffer = std::make_shared<arrow::Buffer>("cpu.usage.idle.percent.eu-east 100");
   arrow::RecordBatchVector record_batch_vector;
   arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector));
@@ -37,8 +38,10 @@ TEST_CASE( "parse sample metric with custom separator", "[GraphiteParser]") {
 }
 
 TEST_CASE( "parse using template with multiple ending", "[GraphiteParser]" ) {
-  std::vector<std::string> templates{"region.measurement*"};
-  std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(templates);
+  GraphiteParser::GraphiteParserOptions parser_options {{
+    "region.measurement*"
+  }};
+  std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(parser_options);
   auto metric_buffer = std::make_shared<arrow::Buffer>("us.cpu.load 100");
   arrow::RecordBatchVector record_batch_vector;
   arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector));
@@ -62,11 +65,11 @@ TEST_CASE( "parse using template with multiple ending", "[GraphiteParser]" ) {
 }
 
 TEST_CASE( "parse using multiple templates", "[GraphiteParser]" ) {
-  std::vector<std::string> templates{
+  GraphiteParser::GraphiteParserOptions parser_options {{
       "*.*.* region.region.measurement",
       "*.*.*.* region.region.host.measurement",
-  };
-  std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(templates);
+  }};
+  std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(parser_options);
   auto metric_buffer = std::make_shared<arrow::Buffer>("cn.south.mem-usage 50\n"
                                                        "us.west.localhost.cpu 100");
   arrow::RecordBatchVector record_batch_vector;
@@ -110,11 +113,11 @@ TEST_CASE( "parse using multiple templates", "[GraphiteParser]" ) {
 }
 
 TEST_CASE ( "parse with filters", "[GraphiteParser]" ) {
-  std::vector<std::string> templates{
-      "cpu.* measurement.measurement.region",
-      "mem.* measurement.measurement.host"
-  };
-  std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(templates);
+  GraphiteParser::GraphiteParserOptions parser_options {{
+          "cpu.* measurement.measurement.region",
+          "mem.* measurement.measurement.host"
+  }};
+  std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(parser_options);
   auto metric_buffer = std::make_shared<arrow::Buffer>("cpu.load.eu-east 100\n"
                                                        "mem.cached.localhost 256");
   arrow::RecordBatchVector record_batch_vector;
@@ -157,10 +160,10 @@ TEST_CASE ( "parse with filters", "[GraphiteParser]" ) {
 }
 
 TEST_CASE( "parse and add additional tags", "[GraphiteParser]" ) {
-  std::vector<std::string> templates{
-      "measurement.measurement.field.region datacenter=1a"
-  };
-  std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(templates);
+  GraphiteParser::GraphiteParserOptions parser_options {{
+    "measurement.measurement.field.region datacenter=1a"
+  }};
+  std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(parser_options);
   auto metric_buffer = std::make_shared<arrow::Buffer>("cpu.usage.idle.eu-east 100");
   arrow::RecordBatchVector record_batch_vector;
   arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector));
@@ -187,8 +190,10 @@ TEST_CASE( "parse and add additional tags", "[GraphiteParser]" ) {
 }
 
 TEST_CASE( "parse timestamp", "[GraphiteParser]" ) {
-  std::vector<std::string> templates{"measurement.measurement.field.field.region"};
-  std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(templates);
+  GraphiteParser::GraphiteParserOptions parser_options {{
+    "measurement.measurement.field.field.region"
+  }};
+  std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(parser_options);
   auto now = std::time(nullptr);
   std::stringstream metric_string_builder;
   metric_string_builder << "cpu.usage.idle.percent.eu-east 100 " << now;
@@ -217,8 +222,10 @@ TEST_CASE( "parse timestamp", "[GraphiteParser]" ) {
 }
 
 TEST_CASE( "merge two metrics with the same tag values set into the one record", "[GraphiteParser]" ) {
-  std::vector<std::string> templates{"measurement.measurement.field.field.region"};
-  std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(templates);
+  GraphiteParser::GraphiteParserOptions parser_options {{
+    "measurement.measurement.field.field.region"
+  }};
+  std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(parser_options);
   auto now = std::time(nullptr);
   std::stringstream metric_string_builder;
   metric_string_builder << "cpu.usage.idle.percent.eu-east 100 " << now << "\n"

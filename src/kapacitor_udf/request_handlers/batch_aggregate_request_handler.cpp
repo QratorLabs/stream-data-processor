@@ -41,7 +41,6 @@ agent::Response BatchAggregateRequestHandler::init(
 
   aggregate_options.result_time_column_rule.result_column_name =
       to_points_options_.time_column_name;
-  aggregate_options.add_result_time_column = true;
   aggregate_options.time_column_name =
       to_record_batches_options_.time_column_name;
 

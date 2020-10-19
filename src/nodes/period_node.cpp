@@ -23,11 +23,11 @@ arrow::Status PeriodNode::appendData(const char* data, size_t length) {
   ARROW_RETURN_NOT_OK(
       DataConverter::concatenateRecordBatches(record_batches, &record_batch));
   ARROW_RETURN_NOT_OK(ComputeUtils::sortByColumn(
-      ts_column_name_, record_batch, &record_batch));
+      time_column_name_, record_batch, &record_batch));
 
   if (first_ts_in_current_batch_ == 0) {
     auto min_ts_result =
-        record_batch->GetColumnByName(ts_column_name_)->GetScalar(0);
+        record_batch->GetColumnByName(time_column_name_)->GetScalar(0);
     if (!min_ts_result.ok()) {
       return min_ts_result.status();
     }
@@ -37,7 +37,7 @@ arrow::Status PeriodNode::appendData(const char* data, size_t length) {
                                      ->value;
   }
 
-  auto max_ts_result = record_batch->GetColumnByName(ts_column_name_)
+  auto max_ts_result = record_batch->GetColumnByName(time_column_name_)
                            ->GetScalar(record_batch->num_rows() - 1);
   if (!max_ts_result.ok()) {
     return max_ts_result.status();
@@ -64,7 +64,7 @@ arrow::Status PeriodNode::appendData(const char* data, size_t length) {
 
     pass();
 
-    auto ts_result = record_batch->GetColumnByName(ts_column_name_)
+    auto ts_result = record_batch->GetColumnByName(time_column_name_)
                          ->GetScalar(divide_index);
     if (!ts_result.ok()) {
       return ts_result.status();
@@ -90,7 +90,7 @@ arrow::Status PeriodNode::tsLowerBound(
   while (left_bound != right_bound - 1) {
     auto middle = (left_bound + right_bound) / 2;
     auto ts_result =
-        record_batch->GetColumnByName(ts_column_name_)->GetScalar(middle);
+        record_batch->GetColumnByName(time_column_name_)->GetScalar(middle);
     if (!ts_result.ok()) {
       return ts_result.status();
     }
@@ -106,7 +106,7 @@ arrow::Status PeriodNode::tsLowerBound(
   }
 
   auto ts_result =
-      record_batch->GetColumnByName(ts_column_name_)->GetScalar(left_bound);
+      record_batch->GetColumnByName(time_column_name_)->GetScalar(left_bound);
   if (!ts_result.ok()) {
     return ts_result.status();
   }

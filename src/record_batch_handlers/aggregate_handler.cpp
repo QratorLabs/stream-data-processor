@@ -33,7 +33,7 @@ arrow::Status AggregateHandler::handle(
       DataConverter::concatenateRecordBatches(record_batches, &record_batch));
 
   // Trying to find timestamp field for time window or first/last aggregators
-  if (options_.add_result_time_column && options_.time_column_name.empty()) {
+  if (options_.time_column_name.empty()) {
     return arrow::Status::Invalid(
         "Timestamp column is necessary for adding result time column");
   }
@@ -51,11 +51,9 @@ arrow::Status AggregateHandler::handle(
   auto pool = arrow::default_memory_pool();
   arrow::ArrayVector result_arrays;
 
-  // Calculating "first" and "last" timestamps if needed
-  if (options_.add_result_time_column) {
-    ARROW_RETURN_NOT_OK(
-        aggregateTimeColumn(groups, kFirst, &result_arrays, pool));
-  }
+  // Calculating "first" and "last" timestamps
+  ARROW_RETURN_NOT_OK(
+      aggregateTimeColumn(groups, kFirst, &result_arrays, pool));
 
   // Adding unique group values of grouping columns to the result vector
   ARROW_RETURN_NOT_OK(fillGroupingColumns(groups, &result_arrays));
@@ -78,13 +76,11 @@ arrow::Status AggregateHandler::handle(
 arrow::Status AggregateHandler::fillResultSchema(
     const std::shared_ptr<arrow::RecordBatch>& record_batch) {
   arrow::FieldVector result_fields;
-  if (options_.add_result_time_column) {
-    auto ts_column_type =
-        record_batch->GetColumnByName(options_.time_column_name)->type();
-    result_fields.push_back(
-        arrow::field(options_.result_time_column_rule.result_column_name,
-                     arrow::timestamp(arrow::TimeUnit::SECOND)));
-  }
+  auto ts_column_type =
+      record_batch->GetColumnByName(options_.time_column_name)->type();
+  result_fields.push_back(
+      arrow::field(options_.result_time_column_rule.result_column_name,
+                   arrow::timestamp(arrow::TimeUnit::SECOND)));
 
   for (auto& grouping_column_name : options_.grouping_columns) {
     auto column = record_batch->GetColumnByName(grouping_column_name);

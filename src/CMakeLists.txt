@@ -31,9 +31,10 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_SOURCES"
   nodes/node.cpp
   nodes/eval_node.cpp
   nodes/period_node.cpp
-  data_handlers/data_parser.cpp
+  nodes/data_handlers/data_parser.cpp
+  nodes/data_handlers/serialized_record_batch_handler.cpp
+  nodes/period_handlers/serialized_period_handler.cpp
   record_batch_handlers/aggregate_handler.cpp
-  data_handlers/serialized_record_batch_handler.cpp
   record_batch_handlers/default_handler.cpp
   record_batch_handlers/filter_handler.cpp
   record_batch_handlers/group_handler.cpp
@@ -48,7 +49,6 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_SOURCES"
   record_batch_handlers/window_handler.cpp
   record_batch_handlers/join_handler.cpp
   server/unix_socket_server.cpp
-  period_handlers/serialized_period_handler.cpp
   producers/tcp_producer.cpp
   producers/subscriber_producer.cpp
   utils/arrow_utils.cpp

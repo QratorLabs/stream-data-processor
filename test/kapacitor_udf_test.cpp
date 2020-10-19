@@ -124,8 +124,6 @@ SCENARIO( "AggregateOptionsParser behavior", "[AggregateOptionsParser]" ) {
         REQUIRE( aggregate_options.aggregate_columns["field"][0].result_column_name == "field.last" );
 
         REQUIRE( aggregate_options.result_time_column_rule.aggregate_function == AggregateHandler::kLast );
-
-        REQUIRE( aggregate_options.add_result_time_column );
       }
     }
   }

@@ -85,7 +85,6 @@ void AggregateOptionsParser::parseTimeAggregateRule(
         "Invalid aggregate function name: {}", time_aggregate_function_name));
   }
 
-  aggregate_options->add_result_time_column = true;
   aggregate_options->result_time_column_rule.aggregate_function =
       FUNCTION_NAMES_TO_TYPES.at(time_aggregate_function_name);
 }

@@ -3,10 +3,10 @@
 #include <uvw.hpp>
 
 #include "consumers/consumers.h"
-#include "data_handlers/data_handlers.h"
+#include "nodes/data_handlers/data_handlers.h"
 #include "node_pipeline/node_pipeline.h"
 #include "nodes/nodes.h"
-#include "period_handlers/serialized_period_handler.h"
+#include "nodes/period_handlers/serialized_period_handler.h"
 #include "producers/producers.h"
 #include "record_batch_handlers/record_batch_handlers.h"
 #include "utils/parsers/csv_parser.h"

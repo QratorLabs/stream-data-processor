@@ -15,8 +15,13 @@
 
 class GraphiteParser : public Parser {
  public:
-  explicit GraphiteParser(const std::vector<std::string>& template_strings,
-                          std::string separator = ".");
+  struct GraphiteParserOptions {
+    std::vector<std::string> template_strings;
+    std::string time_column_name{"time"};
+    std::string separator{"."};
+  };
+
+  explicit GraphiteParser(const GraphiteParserOptions& parser_options);
 
   arrow::Status parseRecordBatches(
       const std::shared_ptr<arrow::Buffer>& buffer,
@@ -95,6 +100,7 @@ class GraphiteParser : public Parser {
   };
 
   std::string separator_;
+  std::string time_column_name_;
   std::vector<MetricTemplate> templates_;
   std::set<std::shared_ptr<Metric>, MetricComparator> parsed_metrics_;
 };

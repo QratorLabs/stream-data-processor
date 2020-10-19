@@ -13,7 +13,7 @@ arrow::Status SortHandler::handle(
 
   std::vector<std::shared_ptr<arrow::RecordBatch>> sorted_record_batches;
   ARROW_RETURN_NOT_OK(ComputeUtils::groupSortingByColumns(
-      column_names_, record_batch, &sorted_record_batches));
+      sort_by_columns_, record_batch, &sorted_record_batches));
 
   ARROW_RETURN_NOT_OK(DataConverter::concatenateRecordBatches(
       sorted_record_batches, &record_batch));

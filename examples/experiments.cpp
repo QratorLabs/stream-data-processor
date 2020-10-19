@@ -15,7 +15,7 @@
 #include <zmq.hpp>
 
 #include "consumers/consumers.h"
-#include "data_handlers/data_handlers.h"
+#include "nodes/data_handlers/data_handlers.h"
 #include "kapacitor_udf/kapacitor_udf.h"
 #include "node_pipeline/node_pipeline.h"
 #include "nodes/nodes.h"

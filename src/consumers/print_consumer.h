@@ -30,6 +30,13 @@ class PrintConsumer : public Consumer {
 class FilePrintConsumer : public PrintConsumer {
  public:
   explicit FilePrintConsumer(const std::string& file_name);
+
+  FilePrintConsumer(const FilePrintConsumer&) = delete;
+  FilePrintConsumer& operator=(const FilePrintConsumer&) = delete;
+
+  FilePrintConsumer(FilePrintConsumer&&) = delete;
+  FilePrintConsumer& operator=(FilePrintConsumer&&) = delete;
+
   ~FilePrintConsumer();
 
  private:

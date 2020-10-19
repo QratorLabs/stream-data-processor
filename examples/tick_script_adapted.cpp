@@ -13,10 +13,10 @@
 #include <zmq.hpp>
 
 #include "consumers/consumers.h"
-#include "data_handlers/data_handlers.h"
+#include "nodes/data_handlers/data_handlers.h"
 #include "node_pipeline/node_pipeline.h"
 #include "nodes/nodes.h"
-#include "period_handlers/serialized_period_handler.h"
+#include "nodes/period_handlers/serialized_period_handler.h"
 #include "producers/producers.h"
 #include "record_batch_handlers/record_batch_handlers.h"
 #include "utils/parsers/graphite_parser.h"
@@ -41,12 +41,15 @@ int main(int argc, char** argv) {
 
   std::unordered_map<std::string, NodePipeline> pipelines;
 
-  std::vector<std::string> template_strings{
-      "*.cpu.*.percent.* host.measurement.cpu.type.field"};
+  GraphiteParser::GraphiteParserOptions parser_options{
+      { "*.cpu.*.percent.* host.measurement.cpu.type.field" },
+      "time",
+      "."
+  };
   std::shared_ptr<Node> parse_graphite_node = std::make_shared<EvalNode>(
       "parse_graphite_node",
       std::make_shared<DataParser>(
-          std::make_shared<GraphiteParser>(template_strings)));
+          std::make_shared<GraphiteParser>(parser_options)));
 
   IPv4Endpoint parse_graphite_producer_endpoint{"127.0.0.1", 4200};
   std::shared_ptr<Producer> parse_graphite_producer =
@@ -126,7 +129,6 @@ int main(int argc, char** argv) {
          {AggregateHandler::AggregateFunctionEnumType::kMean, "wait.mean"}}}},
       {"host", "type"},
       "time",
-      true,
       {AggregateHandler::AggregateFunctionEnumType::kLast, "time"}};
   std::shared_ptr<Node> cputime_host_last_aggregate_node =
       std::make_shared<EvalNode>(
@@ -252,7 +254,6 @@ int main(int argc, char** argv) {
          {AggregateHandler::AggregateFunctionEnumType::kMean, "wait.mean"}}}},
       {"cpu", "host", "type"},
       "time",
-      true,
       {AggregateHandler::AggregateFunctionEnumType::kLast, "time"}};
 
   std::shared_ptr<Node> cputime_win_last_aggregate_node =
@@ -337,7 +338,7 @@ int main(int argc, char** argv) {
 
   for (auto& [pipeline_name, pipeline] : pipelines) {
     pipeline.start();
-    spdlog::info("{} pipeline was started");
+    spdlog::info("{} pipeline was started", pipeline_name);
   }
 
   loop->run();

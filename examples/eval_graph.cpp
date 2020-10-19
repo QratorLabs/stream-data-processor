@@ -10,7 +10,7 @@
 #include <zmq.hpp>
 
 #include "consumers/consumers.h"
-#include "data_handlers/data_handlers.h"
+#include "nodes/data_handlers/data_handlers.h"
 #include "node_pipeline/node_pipeline.h"
 #include "nodes/nodes.h"
 #include "producers/producers.h"
@@ -123,8 +123,7 @@ int main(int argc, char** argv) {
          {AggregateHandler::AggregateFunctionEnumType::kMin, "diff_min"},
          {AggregateHandler::AggregateFunctionEnumType::kMax, "diff_max"}}}},
       {"tag"},
-      "ts",
-      true};
+      "ts"};
   std::vector aggregate_consumers{aggregate_consumer};
   std::shared_ptr<Node> aggregate_node = std::make_shared<EvalNode>(
       "aggregate_node", std::move(aggregate_consumers),

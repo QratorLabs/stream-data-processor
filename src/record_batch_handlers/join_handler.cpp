@@ -105,10 +105,8 @@ arrow::Status JoinHandler::handle(
 
   auto result_record_batch = arrow::RecordBatch::Make(
       arrow::schema(fields), row_count, result_arrays);
-  if (!ts_column_name_.empty()) {
-    ARROW_RETURN_NOT_OK(ComputeUtils::sortByColumn(
-        ts_column_name_, result_record_batch, &result_record_batch));
-  }
+  ARROW_RETURN_NOT_OK(ComputeUtils::sortByColumn(
+      time_column_name_, result_record_batch, &result_record_batch));
 
   result->push_back(result_record_batch);
   return arrow::Status::OK();
@@ -130,17 +128,15 @@ arrow::Status JoinHandler::getJoinKey(
   }
 
   join_key->key_string = std::move(key_string_builder.str());
-  if (!ts_column_name_.empty()) {
-    auto get_scalar_result =
-        record_batch->GetColumnByName(ts_column_name_)->GetScalar(row_idx);
-    if (!get_scalar_result.ok()) {
-      return get_scalar_result.status();
-    }
-
-    join_key->time = std::static_pointer_cast<arrow::Int64Scalar>(
-                         get_scalar_result.ValueOrDie())
-                         ->value;
+  auto get_scalar_result =
+      record_batch->GetColumnByName(time_column_name_)->GetScalar(row_idx);
+  if (!get_scalar_result.ok()) {
+    return get_scalar_result.status();
   }
+
+  join_key->time = std::static_pointer_cast<arrow::Int64Scalar>(
+                       get_scalar_result.ValueOrDie())
+                       ->value;
 
   return arrow::Status::OK();
 }

@@ -4,10 +4,10 @@
 #include "graphite_parser.h"
 #include "utils/string_utils.h"
 
-GraphiteParser::GraphiteParser(
-    const std::vector<std::string>& template_strings, std::string separator)
-    : separator_(std::move(separator)) {
-  for (auto& template_string : template_strings) {
+GraphiteParser::GraphiteParser(const GraphiteParserOptions& parser_options)
+    : separator_(parser_options.separator)
+    , time_column_name_(parser_options.time_column_name) {
+  for (auto& template_string : parser_options.template_strings) {
     templates_.emplace_back(template_string);
   }
 }
