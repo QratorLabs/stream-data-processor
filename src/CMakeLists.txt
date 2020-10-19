@@ -20,6 +20,7 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_DEPENDENCIES"
   bprinter
   dependency_zmq
   protobuf::libprotobuf
+  yaml-cpp
   )
 add_arrow_dependency("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_DEPENDENCIES")
 add_gandiva_dependency("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_DEPENDENCIES")
