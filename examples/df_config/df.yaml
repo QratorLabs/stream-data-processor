@@ -36,17 +36,17 @@ pipeline:
   - flatten:
       name: df_input
       tolerance: 5s
-  - filter: !isPresent(free)
+  - filter: NOT isPresent(free)
   - log: "missing field 'free' in {__data__}"
 
   - filter:
       from: df_input
-      condition: !isPresent(used)
+      condition: NOT isPresent(used)
   - log: "missing field 'used' in {__data__}"
 
   - filter:
       from: df_input
-      condition: !isPresent(reserved)
+      condition: NOT isPresent(reserved)
   - log: "missing field 'reserved' in {__data__}"
 
   - filter:
@@ -64,13 +64,13 @@ pipeline:
 
   - filter:
       from: df_rate
-      condition: !isPresent(free) OR !isPresent(used) OR !isPresent(reserved)
+      condition: NOT isPresent(free) OR NOT isPresent(used) OR NOT isPresent(reserved)
   - log: "missing one of fields: 'free', 'used', 'reserved' in {__data__}"
 
   - eval:
       from: df_rate
       expressions:
-        - no_rate_synced = stateDuration(!isPresent(free.change_rate))
+        - no_rate_synced = stateDuration(NOT isPresent(free.change_rate))
   - filter: duration(no_rate_synced, 1s) > win_period + 60s
   - log: "missing union rate in {__data__}"
 
@@ -98,7 +98,7 @@ pipeline:
       tolerance: 2s
       on: metric
 
-  - filter: !isPresent(df_complex.free) OR !isPresent(df_complex.has_rate)
+  - filter: NOT isPresent(df_complex.free) OR NOT isPresent(df_complex.has_rate)
   - log: "missing inner data in {__data__}"
 
   - filter:
@@ -112,7 +112,7 @@ pipeline:
         - df_complex.free.print = humanBytes(df_complex.free)
         - df_complex.capacity.print = humanBytes(df_complex.free)
 
-  - filter: !isPresent(df_inodes.free.percent)
+  - filter: NOT isPresent(df_inodes.free.percent)
   - log: "missing inner data inodes in {__data__}"
 
   - filter:
@@ -163,7 +163,7 @@ pipeline:
 
   - filter:
       from: df_inodes
-      condition: !isPresent(df_inodes.has_rate)
+      condition: NOT isPresent(df_inodes.has_rate)
   - log: "lost has rate inodes in {__data__}"
 
   - filter:
@@ -236,7 +236,7 @@ pipeline:
 
   - filter:
       from: df_annotate
-      condition: !isPresent(df_complex.has_rate)
+      condition: NOT isPresent(df_complex.has_rate)
   - log: "lost has rate in {__data__}"
 
   - filter:
