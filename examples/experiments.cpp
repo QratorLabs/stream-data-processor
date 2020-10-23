@@ -22,10 +22,8 @@
 #include "producers/producers.h"
 #include "utils/parsers/graphite_parser.h"
 #include "utils/utils.h"
+#include "grouping.pb.h"
 
 int main(int argc, char** argv) {
-  auto loop = uvw::Loop::getDefault();
-  ChildProcessBasedUDFAgent agent(loop.get());
-
   return 0;
 }

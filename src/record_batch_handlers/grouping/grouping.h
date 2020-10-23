@@ -20,6 +20,12 @@ class RecordBatchGrouping {
   static RecordBatchGroup extractGroup(
       const std::shared_ptr<arrow::RecordBatch>& record_batch);
 
+  static std::vector<std::string> extractGroupingColumnsNames(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch);
+
+  static std::string getGroupingColumnsSetKey(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch);
+
  private:
   static const std::string METADATA_KEY;
 };

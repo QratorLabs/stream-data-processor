@@ -71,9 +71,8 @@ void TCPConsumer::sendData(const std::shared_ptr<arrow::Buffer>& data) {
 
 void TCPConsumer::start() {}
 
-void TCPConsumer::consume(const char* data, size_t length) {
-  data_buffers_.push(std::make_shared<arrow::Buffer>(
-      reinterpret_cast<const uint8_t*>(data), length));
+void TCPConsumer::consume(const std::shared_ptr<arrow::Buffer>& data) {
+  data_buffers_.push(data);
   if (connected_targets_ == targets_.size()) {
     flushBuffers();
   }

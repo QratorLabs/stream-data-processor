@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
       cputime_all_filter_node);
   pipelines[cputime_all_filter_node->getName()].subscribeTo(
       &pipelines[parse_graphite_node->getName()], loop.get(), zmq_context,
-      TransportUtils::ZMQTransportType::IPC);
+      TransportUtils::ZMQTransportType::INPROC);
 
   std::vector<std::string> cputime_all_grouping_columns{"host", "type"};
   std::shared_ptr<Node> cputime_all_group_by_node =
@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
       cputime_all_group_by_node);
   pipelines[cputime_all_group_by_node->getName()].subscribeTo(
       &pipelines[cputime_all_filter_node->getName()], loop.get(), zmq_context,
-      TransportUtils::ZMQTransportType::IPC);
+      TransportUtils::ZMQTransportType::INPROC);
 
   AggregateHandler::AggregateOptions cputime_host_last_options{
       {{"idle",
@@ -127,8 +127,7 @@ int main(int argc, char** argv) {
        {"wait",
         {{AggregateHandler::AggregateFunctionEnumType::kLast, "wait.last"},
          {AggregateHandler::AggregateFunctionEnumType::kMean, "wait.mean"}}}},
-      {"host", "type"},
-      "time",
+         "time",
       {AggregateHandler::AggregateFunctionEnumType::kLast, "time"}};
   std::shared_ptr<Node> cputime_host_last_aggregate_node =
       std::make_shared<EvalNode>(
@@ -142,7 +141,7 @@ int main(int argc, char** argv) {
       cputime_host_last_aggregate_node);
   pipelines[cputime_host_last_aggregate_node->getName()].subscribeTo(
       &pipelines[cputime_all_group_by_node->getName()], loop.get(),
-      zmq_context, TransportUtils::ZMQTransportType::IPC);
+      zmq_context, TransportUtils::ZMQTransportType::INPROC);
 
   DefaultHandler::DefaultHandlerOptions cputime_host_calc_options{
       {},
@@ -166,7 +165,7 @@ int main(int argc, char** argv) {
       cputime_host_calc_default_node);
   pipelines[cputime_host_calc_default_node->getName()].subscribeTo(
       &pipelines[cputime_host_last_aggregate_node->getName()], loop.get(),
-      zmq_context, TransportUtils::ZMQTransportType::IPC);
+      zmq_context, TransportUtils::ZMQTransportType::INPROC);
 
   std::shared_ptr<Consumer> cputime_host_calc_map_consumer =
       std::make_shared<FilePrintConsumer>(std::string(argv[0]) +
@@ -204,7 +203,7 @@ int main(int argc, char** argv) {
       cputime_host_calc_map_node);
   pipelines[cputime_host_calc_map_node->getName()].subscribeTo(
       &pipelines[cputime_host_calc_default_node->getName()], loop.get(),
-      zmq_context, TransportUtils::ZMQTransportType::IPC);
+      zmq_context, TransportUtils::ZMQTransportType::INPROC);
 
   std::shared_ptr<Node> cputime_all_win_window_node =
       std::make_shared<PeriodNode>(
@@ -221,7 +220,22 @@ int main(int argc, char** argv) {
       cputime_all_win_window_node);
   pipelines[cputime_all_win_window_node->getName()].subscribeTo(
       &pipelines[cputime_all_filter_node->getName()], loop.get(), zmq_context,
-      TransportUtils::ZMQTransportType::IPC);
+      TransportUtils::ZMQTransportType::INPROC);
+
+  std::vector<std::string> cputime_win_grouping_columns{"cpu", "host", "type"};
+  std::shared_ptr<Node> cputime_win_group_by_node =
+      std::make_shared<EvalNode>(
+          "cputime_win_group_by_node",
+          std::make_shared<SerializedRecordBatchHandler>(
+              std::make_shared<GroupHandler>(
+                  std::move(cputime_win_grouping_columns))));
+
+  pipelines[cputime_win_group_by_node->getName()] = NodePipeline();
+  pipelines[cputime_win_group_by_node->getName()].setNode(
+      cputime_win_group_by_node);
+  pipelines[cputime_win_group_by_node->getName()].subscribeTo(
+      &pipelines[cputime_all_win_window_node->getName()], loop.get(), zmq_context,
+      TransportUtils::ZMQTransportType::INPROC);
 
   AggregateHandler::AggregateOptions cputime_win_last_options{
       {{"idle",
@@ -252,7 +266,6 @@ int main(int argc, char** argv) {
        {"wait",
         {{AggregateHandler::AggregateFunctionEnumType::kLast, "wait.last"},
          {AggregateHandler::AggregateFunctionEnumType::kMean, "wait.mean"}}}},
-      {"cpu", "host", "type"},
       "time",
       {AggregateHandler::AggregateFunctionEnumType::kLast, "time"}};
 
@@ -267,8 +280,8 @@ int main(int argc, char** argv) {
   pipelines[cputime_win_last_aggregate_node->getName()].setNode(
       cputime_win_last_aggregate_node);
   pipelines[cputime_win_last_aggregate_node->getName()].subscribeTo(
-      &pipelines[cputime_all_win_window_node->getName()], loop.get(),
-      zmq_context, TransportUtils::ZMQTransportType::IPC);
+      &pipelines[cputime_win_group_by_node->getName()], loop.get(),
+      zmq_context, TransportUtils::ZMQTransportType::INPROC);
 
   DefaultHandler::DefaultHandlerOptions cputime_win_calc_options{
       {},
@@ -296,7 +309,7 @@ int main(int argc, char** argv) {
       cputime_win_calc_default_node);
   pipelines[cputime_win_calc_default_node->getName()].subscribeTo(
       &pipelines[cputime_win_last_aggregate_node->getName()], loop.get(),
-      zmq_context, TransportUtils::ZMQTransportType::IPC);
+      zmq_context, TransportUtils::ZMQTransportType::INPROC);
 
   std::shared_ptr<Consumer> cputime_win_calc_map_consumer =
       std::make_shared<FilePrintConsumer>(std::string(argv[0]) +
@@ -334,7 +347,7 @@ int main(int argc, char** argv) {
       cputime_win_calc_map_node);
   pipelines[cputime_win_calc_map_node->getName()].subscribeTo(
       &pipelines[cputime_win_calc_default_node->getName()], loop.get(),
-      zmq_context, TransportUtils::ZMQTransportType::IPC);
+      zmq_context, TransportUtils::ZMQTransportType::INPROC);
 
   for (auto& [pipeline_name, pipeline] : pipelines) {
     pipeline.start();

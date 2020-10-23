@@ -1,9 +1,12 @@
 #include <unordered_set>
 #include <utility>
 
+#include <spdlog/spdlog.h>
+
 #include "aggregate_handler.h"
 
 #include "aggregate_functions/aggregate_functions.h"
+#include "grouping/grouping.h"
 
 #include "utils/utils.h"
 
@@ -27,63 +30,74 @@ AggregateHandler::AggregateHandler(
 arrow::Status AggregateHandler::handle(
     const arrow::RecordBatchVector& record_batches,
     arrow::RecordBatchVector* result) {
-  // Concatenating record batches to the one batch
-  std::shared_ptr<arrow::RecordBatch> record_batch;
-  ARROW_RETURN_NOT_OK(
-      DataConverter::concatenateRecordBatches(record_batches, &record_batch));
-
-  // Trying to find timestamp field for time window or first/last aggregators
+  // Time column name should be provided
   if (options_.time_column_name.empty()) {
     return arrow::Status::Invalid(
         "Timestamp column is necessary for adding result time column");
   }
 
-  // Splitting into groups in sorted order
-  arrow::RecordBatchVector groups;
-  ARROW_RETURN_NOT_OK(ComputeUtils::groupSortingByColumns(
-      options_.grouping_columns, record_batch, &groups));
+  // Splitting by grouping columns set
+  auto splitted_record_batches = splitByGroupingColumnsSet(record_batches);
 
-  // Setting result schema
-  if (result_schema_ == nullptr) {
-    ARROW_RETURN_NOT_OK(fillResultSchema(record_batch));
-  }
-
-  auto pool = arrow::default_memory_pool();
-  arrow::ArrayVector result_arrays;
-
-  // Calculating "first" and "last" timestamps
-  ARROW_RETURN_NOT_OK(
-      aggregateTimeColumn(groups, kFirst, &result_arrays, pool));
-
-  // Adding unique group values of grouping columns to the result vector
-  ARROW_RETURN_NOT_OK(fillGroupingColumns(groups, &result_arrays));
-
-  // Calculating aggregators
-  for (auto& [column_name, aggregate_functions] :
-       options_.aggregate_columns) {
-    for (auto& aggregate_case : aggregate_functions) {
-      ARROW_RETURN_NOT_OK(aggregate(groups, column_name,
-                                    aggregate_case.aggregate_function,
-                                    &result_arrays, pool));
+  for ([[maybe_unused]] auto& [_, record_batches_pack] :
+          splitted_record_batches) {
+    if (record_batches_pack.empty()) {
+      return arrow::Status::ExecutionError("RecordBatchVector after splitting"
+                                           " by grouping columns must be "
+                                           "non-empty");
     }
+
+    auto pool = arrow::default_memory_pool();
+    arrow::ArrayVector result_arrays;
+
+    auto grouping_columns =
+        RecordBatchGrouping::extractGroupingColumnsNames(
+            record_batches_pack.front());
+
+    // Setting result schema
+    auto result_schema = fillResultSchema(record_batches, grouping_columns);
+
+    // Aggregating time column
+    ARROW_RETURN_NOT_OK(
+        aggregateTimeColumn(record_batches_pack, &result_arrays, pool));
+
+    // Adding unique group values of grouping columns to the result vector
+    ARROW_RETURN_NOT_OK(
+        fillGroupingColumns(record_batches_pack,
+                            &result_arrays,
+                            grouping_columns));
+
+    // Calculating aggregators
+    for (auto&[column_name, aggregate_functions] :
+        options_.aggregate_columns) {
+      for (auto& aggregate_case : aggregate_functions) {
+        ARROW_RETURN_NOT_OK(aggregate(record_batches_pack, column_name,
+                                      aggregate_case.aggregate_function,
+                                      &result_arrays, pool));
+      }
+    }
+
+    result->push_back(
+        arrow::RecordBatch::Make(result_schema,
+                                 record_batches_pack.size(),
+                                 result_arrays));
   }
 
-  result->push_back(
-      arrow::RecordBatch::Make(result_schema_, groups.size(), result_arrays));
   return arrow::Status::OK();
 }
 
-arrow::Status AggregateHandler::fillResultSchema(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch) {
+std::shared_ptr<arrow::Schema> AggregateHandler::fillResultSchema(
+    const arrow::RecordBatchVector& record_batches,
+    const std::vector<std::string>& grouping_columns
+    ) const {
   arrow::FieldVector result_fields;
-  auto ts_column_type =
-      record_batch->GetColumnByName(options_.time_column_name)->type();
   result_fields.push_back(
       arrow::field(options_.result_time_column_rule.result_column_name,
                    arrow::timestamp(arrow::TimeUnit::SECOND)));
 
-  for (auto& grouping_column_name : options_.grouping_columns) {
-    auto column = record_batch->GetColumnByName(grouping_column_name);
+  for (auto& grouping_column_name : grouping_columns) {
+    auto column = record_batches.front()->GetColumnByName(
+        grouping_column_name);
     if (column != nullptr) {
       result_fields.push_back(
           arrow::field(grouping_column_name, column->type()));
@@ -91,12 +105,13 @@ arrow::Status AggregateHandler::fillResultSchema(
   }
 
   for (auto& [column_name, aggregate_cases] : options_.aggregate_columns) {
-    auto column = record_batch->GetColumnByName(column_name);
-    std::shared_ptr<arrow::DataType> column_type;
-    if (column == nullptr) {
-      column_type = arrow::null();
-    } else {
-      column_type = column->type();
+    std::shared_ptr<arrow::DataType> column_type = arrow::null();
+    for (auto& record_batch : record_batches) {
+      auto column = record_batch->GetColumnByName(column_name);
+      if (column != nullptr) {
+        column_type = column->type();
+        break;
+      }
     }
 
     for (auto& aggregate_case : aggregate_cases) {
@@ -105,8 +120,7 @@ arrow::Status AggregateHandler::fillResultSchema(
     }
   }
 
-  result_schema_ = arrow::schema(result_fields);
-  return arrow::Status::OK();
+  return arrow::schema(result_fields);
 }
 
 arrow::Status AggregateHandler::aggregate(
@@ -143,11 +157,10 @@ arrow::Status AggregateHandler::aggregate(
 }
 
 arrow::Status AggregateHandler::aggregateTimeColumn(
-    const arrow::RecordBatchVector& groups,
-    const AggregateFunctionEnumType& aggregate_function,
+    const arrow::RecordBatchVector& record_batch_vector,
     arrow::ArrayVector* result_arrays, arrow::MemoryPool* pool) const {
   auto ts_column_type =
-      groups.front()->GetColumnByName(options_.time_column_name)->type();
+      record_batch_vector.front()->GetColumnByName(options_.time_column_name)->type();
   if (!ts_column_type->Equals(arrow::timestamp(arrow::TimeUnit::SECOND))) {
     return arrow::Status::NotImplemented(
         "Aggregation currently supports arrow::timestamp(SECOND) type for "
@@ -157,9 +170,11 @@ arrow::Status AggregateHandler::aggregateTimeColumn(
 
   arrow::NumericBuilder<arrow::TimestampType> ts_builder(ts_column_type,
                                                          pool);
-  for (auto& group : groups) {
+  for (auto& group : record_batch_vector) {
     std::shared_ptr<arrow::Scalar> ts;
-    ARROW_RETURN_NOT_OK(TYPES_TO_FUNCTIONS.at(aggregate_function)
+    ARROW_RETURN_NOT_OK(
+        TYPES_TO_FUNCTIONS.at(
+            options_.result_time_column_rule.aggregate_function)
                             ->aggregate(group, options_.time_column_name, &ts,
                                         options_.time_column_name));
     auto ts_cast_result = ts->CastTo(ts_column_type);
@@ -180,10 +195,12 @@ arrow::Status AggregateHandler::aggregateTimeColumn(
 
 arrow::Status AggregateHandler::fillGroupingColumns(
     const arrow::RecordBatchVector& groups,
-    arrow::ArrayVector* result_arrays) const {
-  std::unordered_set<std::string> grouping_columns;
-  for (auto& grouping_column : options_.grouping_columns) {
-    grouping_columns.insert(grouping_column);
+    arrow::ArrayVector* result_arrays,
+    const std::vector<std::string>& grouping_columns
+    ) {
+  std::unordered_set<std::string> grouping_columns_set;
+  for (auto& grouping_column : grouping_columns) {
+    grouping_columns_set.insert(grouping_column);
   }
 
   arrow::RecordBatchVector cropped_groups;
@@ -191,7 +208,7 @@ arrow::Status AggregateHandler::fillGroupingColumns(
     std::shared_ptr<arrow::RecordBatch> cropped_record_batch = group;
     int i = 0;
     for (auto& column_name : group->schema()->field_names()) {
-      if (grouping_columns.find(column_name) == grouping_columns.end()) {
+      if (grouping_columns_set.find(column_name) == grouping_columns_set.end()) {
         auto cropped_result = cropped_record_batch->RemoveColumn(i);
         if (!cropped_result.ok()) {
           return cropped_result.status();
@@ -216,4 +233,27 @@ arrow::Status AggregateHandler::fillGroupingColumns(
   }
 
   return arrow::Status();
+}
+
+std::unordered_map<std::string,
+                   arrow::RecordBatchVector>
+                   AggregateHandler::splitByGroupingColumnsSet(
+                       const arrow::RecordBatchVector& record_batches
+                       ) {
+  std::unordered_map<std::string, arrow::RecordBatchVector>
+      grouped_by_grouping_columns_set;
+  for (auto& record_batch : record_batches) {
+    auto grouping_columns_set_string =
+        RecordBatchGrouping::getGroupingColumnsSetKey(record_batch);
+    if (grouped_by_grouping_columns_set.find(grouping_columns_set_string) ==
+          grouped_by_grouping_columns_set.end()) {
+      grouped_by_grouping_columns_set[grouping_columns_set_string] =
+          arrow::RecordBatchVector();
+    }
+
+    grouped_by_grouping_columns_set[grouping_columns_set_string].push_back(
+        record_batch);
+  }
+
+  return grouped_by_grouping_columns_set;
 }

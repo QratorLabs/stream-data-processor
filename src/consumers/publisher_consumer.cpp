@@ -15,9 +15,8 @@ void PublisherConsumer::start() {
   connect_timer_->start(CONNECT_TIMEOUT, CONNECT_TIMEOUT);
 }
 
-void PublisherConsumer::consume(const char* data, size_t length) {
-  data_buffers_.push(std::make_shared<arrow::Buffer>(
-      reinterpret_cast<const uint8_t*>(data), length));
+void PublisherConsumer::consume(const std::shared_ptr<arrow::Buffer>& data) {
+  data_buffers_.push(data);
 }
 
 void PublisherConsumer::stop() {

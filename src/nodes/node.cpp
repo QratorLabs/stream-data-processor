@@ -6,8 +6,7 @@ void Node::passData(const std::shared_ptr<arrow::Buffer>& data) {
   spdlog::get(name_)->info("Passing data of size {}", data->size());
   for (auto& consumer : consumers_) {
     try {
-      consumer->consume(reinterpret_cast<const char*>(data->data()),
-                        data->size());
+      consumer->consume(data);
     } catch (const std::exception& e) { spdlog::get(name_)->error(e.what()); }
   }
 }

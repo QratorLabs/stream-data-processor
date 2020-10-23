@@ -1,5 +1,10 @@
 syntax = "proto3";
 
+message GroupColumnsNames {
+  repeated string columns_names = 1;
+}
+
 message RecordBatchGroup {
-  map<string, string> grouping_columns_values = 1;
+  GroupColumnsNames group_columns_names = 1;
+  repeated string group_columns_values = 2;
 }

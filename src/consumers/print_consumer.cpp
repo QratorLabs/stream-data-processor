@@ -9,12 +9,10 @@ PrintConsumer::PrintConsumer(std::ofstream& ostrm) : ostrm_(ostrm) {}
 
 void PrintConsumer::start() {}
 
-void PrintConsumer::consume(const char* data, size_t length) {
-  auto buffer = std::make_shared<arrow::Buffer>(
-      reinterpret_cast<const uint8_t*>(data), length);
+void PrintConsumer::consume(const std::shared_ptr<arrow::Buffer>& data) {
   arrow::RecordBatchVector record_batches;
   auto deserialize_status =
-      Serializer::deserializeRecordBatches(buffer, &record_batches);
+      Serializer::deserializeRecordBatches(data, &record_batches);
   if (!deserialize_status.ok()) {
     throw std::runtime_error(deserialize_status.message());
   }

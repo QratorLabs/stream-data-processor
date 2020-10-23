@@ -12,7 +12,7 @@ class PrintConsumer : public Consumer {
   explicit PrintConsumer(std::ofstream& ostrm);
 
   void start() override;
-  void consume(const char* data, size_t length) override;
+  void consume(const std::shared_ptr<arrow::Buffer>& data) override;
   void stop() override;
 
  private:
