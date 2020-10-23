@@ -32,7 +32,7 @@ RUN apt-get update \
     && wget -O "${CPPZMQ_DIR_NAME}.tar.gz" "https://github.com/zeromq/cppzmq/archive/v${CPPZMQ_VERSION}.tar.gz" \
     && echo "${ENV_CPPZMQ_SHA256} ${CPPZMQ_DIR_NAME}.tar.gz" | sha256sum -c \
     && tar -xvzf "${CPPZMQ_DIR_NAME}.tar.gz" \
-    && mkdir "${CPPZMQ_DIR_NAME}/build" && pushd "${CPPZMQ_DIR_NAME}/build" && cmake .. -G Ninja && ninja -l0 -v -d stats install && popd \
+    && mkdir "${CPPZMQ_DIR_NAME}/build" && pushd "${CPPZMQ_DIR_NAME}/build" && cmake .. -D"CPPZMQ_BUILD_TESTS"=OFF -G Ninja && ninja -l0 -v -d stats install && popd \
     \
     && if [ "${ENV_CATCH2_SHA256}" = "" ]; then echo "Catch2 sha256 hash sum environment variable is empty. Exiting..." ; exit 1 ; fi \
     && wget -O "${CATCH2_DIR_NAME}.tar.gz" "https://github.com/catchorg/Catch2/archive/v${CATCH2_VERSION}.tar.gz" \
