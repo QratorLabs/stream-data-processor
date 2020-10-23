@@ -2,7 +2,7 @@
 
 #include "aggregate_options_parser.h"
 #include "batch_aggregate_request_handler.h"
-#include "group_tags_parser.h"
+#include "kapacitor_udf/request_handlers/group_tags_parser.h"
 #include "record_batch_handlers/record_batch_handlers.h"
 
 const DataConverter::PointsToRecordBatchesConversionOptions

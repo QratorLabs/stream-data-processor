@@ -7,6 +7,7 @@
 
 #include <catch2/catch.hpp>
 
+#include "record_batch_handlers/grouping/grouping.h"
 #include "record_batch_handlers/record_batch_handlers.h"
 #include "test_help.h"
 #include "utils/serializer.h"
@@ -101,6 +102,14 @@ TEST_CASE ( "split one record batch to separate ones by grouping on column with 
                                           "field_name", 0);
   checkValue<int64_t, arrow::Int64Scalar>(1, result[1],
                                           "field_name", 0);
+
+  auto group_0 = RecordBatchGrouping::extractGroup(result[0]);
+  REQUIRE( group_0.grouping_columns_values_size() == 1 );
+  REQUIRE( group_0.grouping_columns_values().at("field_name") == array->GetScalar(0).ValueOrDie()->ToString() );
+
+  auto group_1 = RecordBatchGrouping::extractGroup(result[1]);
+  REQUIRE( group_1.grouping_columns_values_size() == 1 );
+  REQUIRE( group_1.grouping_columns_values().at("field_name") == array->GetScalar(1).ValueOrDie()->ToString() );
 }
 
 TEST_CASE( "add new columns to empty record batch with different schema", "[DefaultHandler]") {

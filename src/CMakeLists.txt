@@ -37,6 +37,7 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_SOURCES"
   record_batch_handlers/aggregate_handler.cpp
   record_batch_handlers/default_handler.cpp
   record_batch_handlers/filter_handler.cpp
+  record_batch_handlers/grouping/grouping.cpp
   record_batch_handlers/group_handler.cpp
   record_batch_handlers/map_handler.cpp
   record_batch_handlers/pipeline_handler.cpp
@@ -79,15 +80,16 @@ add_gandiva_dependency("${KAPACITOR_UDF_LIBRARY_NAME}_DEPENDENCIES")
 set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   $<TARGET_OBJECTS:protofiles_object_library>
   kapacitor_udf/udf_agent.cpp
-  kapacitor_udf/request_handlers/aggregate_options_parser.cpp
+  kapacitor_udf/request_handlers/aggregate_request_handlers/aggregate_options_parser.cpp
   kapacitor_udf/request_handlers/group_tags_parser.cpp
-  kapacitor_udf/request_handlers/batch_aggregate_request_handler.cpp
+  kapacitor_udf/request_handlers/aggregate_request_handlers/batch_aggregate_request_handler.cpp
   kapacitor_udf/request_handlers/record_batch_request_handler.cpp
   kapacitor_udf/request_handlers/batch_to_stream_request_handler.cpp
   kapacitor_udf/request_handlers/stream_to_stream_request_handler.cpp
   record_batch_handlers/aggregate_handler.cpp
   record_batch_handlers/default_handler.cpp
   record_batch_handlers/filter_handler.cpp
+  record_batch_handlers/grouping/grouping.cpp
   record_batch_handlers/group_handler.cpp
   record_batch_handlers/map_handler.cpp
   record_batch_handlers/pipeline_handler.cpp

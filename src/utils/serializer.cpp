@@ -9,7 +9,7 @@ arrow::Status Serializer::serializeRecordBatches(
     return output_stream_result.status();
   }
 
-  auto stream_writer_result = arrow::ipc::NewStreamWriter(
+  auto stream_writer_result = arrow::ipc::MakeStreamWriter(
       output_stream_result.ValueOrDie().get(), schema);
   if (!stream_writer_result.ok()) {
     return stream_writer_result.status();

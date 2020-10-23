@@ -3,7 +3,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "record_batch_request_handler.h"
+#include "kapacitor_udf/request_handlers/record_batch_request_handler.h"
 #include "utils/data_converter.h"
 
 #include "udf.pb.h"

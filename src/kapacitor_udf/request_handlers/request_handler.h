@@ -13,8 +13,13 @@ class RequestHandler {
   explicit RequestHandler(const std::shared_ptr<IUDFAgent>& agent)
       : agent_(agent) {}
 
+  ~RequestHandler() = default;
+
   RequestHandler(const RequestHandler&) = delete;
   RequestHandler& operator=(const RequestHandler&) = delete;
+
+  RequestHandler(RequestHandler&&) = delete;
+  RequestHandler& operator=(RequestHandler&&) = delete;
 
   [[nodiscard]] virtual agent::Response info() const = 0;
   [[nodiscard]] virtual agent::Response init(

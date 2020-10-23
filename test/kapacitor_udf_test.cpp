@@ -6,7 +6,7 @@
 #include <gmock/gmock.h>
 
 #include "kapacitor_udf/udf_agent.h"
-#include "kapacitor_udf/request_handlers/aggregate_options_parser.h"
+#include "kapacitor_udf/request_handlers/aggregate_request_handlers/aggregate_options_parser.h"
 #include "kapacitor_udf/request_handlers/batch_to_stream_request_handler.h"
 #include "record_batch_handlers/aggregate_handler.h"
 #include "record_batch_handlers/pipeline_handler.h"
