@@ -4,16 +4,17 @@
 #include "utils/utils.h"
 
 arrow::Status GroupHandler::handle(
-    const arrow::RecordBatchVector& record_batches,
+    const std::shared_ptr<arrow::RecordBatch>& record_batch,
     arrow::RecordBatchVector* result) {
-  for (auto& record_batch : record_batches) {
-    ARROW_RETURN_NOT_OK(ComputeUtils::groupSortingByColumns(
-        grouping_columns_, record_batch, result));
-  }
+  arrow::RecordBatchVector grouped_record_batches;
 
-  for (auto& record_batch : *result) {
+  ARROW_RETURN_NOT_OK(ComputeUtils::groupSortingByColumns(
+      grouping_columns_, record_batch, &grouped_record_batches));
+
+  for (auto& group : grouped_record_batches) {
     ARROW_RETURN_NOT_OK(RecordBatchGrouping::fillGroupMetadata(
-        &record_batch, grouping_columns_));
+        &group, grouping_columns_));
+    result->push_back(group);
   }
 
   return arrow::Status::OK();

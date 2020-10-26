@@ -16,6 +16,10 @@ class JoinHandler : public RecordBatchHandler {
         time_column_name_(std::move(time_column_name)),
         tolerance_(tolerance) {}
 
+  arrow::Status handle(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch,
+      arrow::RecordBatchVector* result) override;
+
   arrow::Status handle(const arrow::RecordBatchVector& record_batches,
                        arrow::RecordBatchVector* result) override;
 

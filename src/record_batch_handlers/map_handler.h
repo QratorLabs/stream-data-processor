@@ -15,12 +15,13 @@ class MapHandler : public RecordBatchHandler {
   explicit MapHandler(ExpressionVectorType&& expressions)
       : expressions_(std::forward<ExpressionVectorType>(expressions)) {}
 
-  arrow::Status handle(const arrow::RecordBatchVector& record_batches,
-                       arrow::RecordBatchVector* result) override;
+  arrow::Status handle(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch,
+      arrow::RecordBatchVector* result) override;
 
  private:
   static arrow::Status eval(
-      arrow::RecordBatchVector* record_batches,
+      std::shared_ptr<arrow::RecordBatch>* record_batch,
       const std::shared_ptr<gandiva::Projector>& projector,
       const std::shared_ptr<arrow::Schema>& result_schema);
 

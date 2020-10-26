@@ -10,16 +10,18 @@ arrow::Status RecordBatchGrouping::fillGroupMetadata(
     std::shared_ptr<arrow::RecordBatch>* record_batch,
     const std::vector<std::string>& grouping_columns) {
   std::map<std::string, std::string> group_columns_values;
-  for (auto& grouping_column : grouping_columns) {
-    auto column_value_result =
-        record_batch->get()->GetColumnByName(grouping_column)->GetScalar(0);
-    if (!column_value_result.ok()) {
-      return column_value_result.status();
-    }
 
-    group_columns_values[grouping_column] =
-        column_value_result.ValueOrDie()->ToString();
-  }
+  ARROW_RETURN_NOT_OK(fillGroupMap(
+      &group_columns_values,
+      *record_batch,
+      extractGroupingColumnsNames(*record_batch)
+      ));
+
+  ARROW_RETURN_NOT_OK(fillGroupMap(
+      &group_columns_values,
+      *record_batch,
+      grouping_columns
+      ));
 
   RecordBatchGroup group;
   for (auto& [column_name, column_string_value] : group_columns_values) {
@@ -28,7 +30,13 @@ arrow::Status RecordBatchGrouping::fillGroupMetadata(
     *new_value = column_string_value;
   }
 
-  auto arrow_metadata = std::make_shared<arrow::KeyValueMetadata>();
+  std::shared_ptr<arrow::KeyValueMetadata> arrow_metadata = nullptr;
+  if (record_batch->get()->schema()->HasMetadata()) {
+    arrow_metadata = record_batch->get()->schema()->metadata()->Copy();
+  } else {
+    arrow_metadata = std::make_shared<arrow::KeyValueMetadata>();
+  }
+
   ARROW_RETURN_NOT_OK(arrow_metadata->Set(
       METADATA_KEY, group.SerializeAsString()
   ));
@@ -77,4 +85,30 @@ std::string RecordBatchGrouping::getGroupingColumnsSetKey(
     const std::shared_ptr<arrow::RecordBatch>& record_batch) {
   auto group = extractGroup(record_batch);
   return group.group_columns_names().SerializeAsString();
+}
+
+arrow::Status RecordBatchGrouping::fillGroupMap(
+    std::map<std::string, std::string>* group_map,
+    const std::shared_ptr<arrow::RecordBatch>& record_batch,
+    const std::vector<std::string>& grouping_columns) {
+  for (auto& grouping_column_name : grouping_columns) {
+    if (group_map->find(grouping_column_name) != group_map->end()) {
+      continue;
+    }
+
+    auto column = record_batch->GetColumnByName(grouping_column_name);
+    if (column == nullptr) {
+      continue;
+    }
+
+    auto column_value_result = column->GetScalar(0);
+    if (!column_value_result.ok()) {
+      return column_value_result.status();
+    }
+
+    group_map->operator[](grouping_column_name) =
+        column_value_result.ValueOrDie()->ToString();
+  }
+
+  return arrow::Status::OK();
 }

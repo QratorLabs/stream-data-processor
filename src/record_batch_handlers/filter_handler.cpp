@@ -3,38 +3,39 @@
 #include <gandiva/tree_expr_builder.h>
 
 #include "filter_handler.h"
+#include "grouping/grouping.h"
 #include "utils/serializer.h"
 
 arrow::Status FilterHandler::handle(
-    const arrow::RecordBatchVector& record_batches,
+    const std::shared_ptr<arrow::RecordBatch>& record_batch,
     arrow::RecordBatchVector* result) {
   auto pool = arrow::default_memory_pool();
   std::shared_ptr<gandiva::Filter> filter;
 
   ARROW_RETURN_NOT_OK(
-      prepareFilter(record_batches.back()->schema(), &filter));
+      prepareFilter(record_batch->schema(), &filter));
 
-  for (auto& record_batch : record_batches) {
-    std::shared_ptr<gandiva::SelectionVector> selection;
+  std::shared_ptr<gandiva::SelectionVector> selection;
 
-    ARROW_RETURN_NOT_OK(gandiva::SelectionVector::MakeInt64(
-        record_batch->num_rows(), pool, &selection));
+  ARROW_RETURN_NOT_OK(gandiva::SelectionVector::MakeInt64(
+      record_batch->num_rows(), pool, &selection));
 
-    ARROW_RETURN_NOT_OK(filter->Evaluate(*record_batch, selection));
+  ARROW_RETURN_NOT_OK(filter->Evaluate(*record_batch, selection));
 
-    auto take_result =
-        arrow::compute::Take(record_batch, selection->ToArray());
+  auto take_result =
+      arrow::compute::Take(record_batch, selection->ToArray());
 
-    if (!take_result.ok()) {
-      return take_result.status();
-    }
-
-    result->push_back(take_result.ValueOrDie().record_batch());
-    if (record_batch->schema()->HasMetadata()) {
-      result->back() = result->back()->ReplaceSchemaMetadata(
-          record_batch->schema()->metadata());
-    }
+  if (!take_result.ok()) {
+    return take_result.status();
   }
+
+  auto result_record_batch = take_result.ValueOrDie().record_batch();
+  ARROW_RETURN_NOT_OK(RecordBatchGrouping::fillGroupMetadata(
+      &result_record_batch,
+      RecordBatchGrouping::extractGroupingColumnsNames(record_batch)
+      ));
+
+  result->push_back(result_record_batch);
 
   return arrow::Status::OK();
 }

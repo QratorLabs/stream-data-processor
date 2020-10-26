@@ -11,3 +11,10 @@ arrow::Status WindowHandler::handle(
   result->push_back(record_batch);
   return arrow::Status::OK();
 }
+
+arrow::Status WindowHandler::handle(
+    const std::shared_ptr<arrow::RecordBatch>& record_batch,
+    arrow::RecordBatchVector* result) {
+  result->push_back(record_batch);
+  return arrow::Status::OK();
+}

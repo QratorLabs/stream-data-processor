@@ -28,6 +28,24 @@ AggregateHandler::AggregateHandler(
     : options_(std::move(options)) {}
 
 arrow::Status AggregateHandler::handle(
+    const std::shared_ptr<arrow::RecordBatch>& record_batch,
+    arrow::RecordBatchVector* result) {
+  if (record_batch->num_rows() == 0) {
+    return arrow::Status::CapacityError("No data to handle");
+  }
+
+  arrow::RecordBatchVector result_vector;
+  ARROW_RETURN_NOT_OK(handle({record_batch}, &result_vector));
+  if (result_vector.size() != 1) {
+    return arrow::Status::ExecutionError("Aggregation of one record batch "
+                                         "should contain only one record");
+  }
+
+  result->push_back(result_vector.front());
+  return arrow::Status::OK();
+}
+
+arrow::Status AggregateHandler::handle(
     const arrow::RecordBatchVector& record_batches,
     arrow::RecordBatchVector* result) {
   // Time column name should be provided

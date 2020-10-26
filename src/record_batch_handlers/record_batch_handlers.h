@@ -10,4 +10,5 @@
 #include "join_handler.h"
 #include "window_handler.h"
 
+#include "group_dispatcher.h"
 #include "pipeline_handler.h"

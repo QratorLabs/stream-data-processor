@@ -13,8 +13,9 @@ class FilterHandler : public RecordBatchHandler {
   explicit FilterHandler(ConditionVectorType&& conditions)
       : conditions_(std::forward<ConditionVectorType>(conditions)) {}
 
-  arrow::Status handle(const arrow::RecordBatchVector& record_batches,
-                       arrow::RecordBatchVector* result) override;
+  arrow::Status handle(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch,
+      arrow::RecordBatchVector* result) override;
 
  private:
   arrow::Status prepareFilter(const std::shared_ptr<arrow::Schema>& schema,

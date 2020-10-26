@@ -26,21 +26,25 @@ class AggregateHandler : public RecordBatchHandler {
   explicit AggregateHandler(const AggregateOptions& options);
   explicit AggregateHandler(AggregateOptions&& options);
 
+  arrow::Status handle(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch,
+      arrow::RecordBatchVector* result) override;
+
   arrow::Status handle(const arrow::RecordBatchVector& record_batches,
                        arrow::RecordBatchVector* result) override;
 
  private:
   static std::unordered_map<std::string, arrow::RecordBatchVector>
-      splitByGroupingColumnsSet(
-          const arrow::RecordBatchVector& record_batches);
+  splitByGroupingColumnsSet(const arrow::RecordBatchVector& record_batches);
 
   std::shared_ptr<arrow::Schema> fillResultSchema(
       const arrow::RecordBatchVector& record_batches,
       const std::vector<std::string>& grouping_columns) const;
 
-  static arrow::Status fillGroupingColumns(const arrow::RecordBatchVector& groups,
-                                    arrow::ArrayVector* result_arrays,
-                                    const std::vector<std::string>& grouping_columns);
+  static arrow::Status fillGroupingColumns(
+      const arrow::RecordBatchVector& groups,
+      arrow::ArrayVector* result_arrays,
+      const std::vector<std::string>& grouping_columns);
 
   arrow::Status aggregate(
       const arrow::RecordBatchVector& groups,
@@ -57,7 +61,7 @@ class AggregateHandler : public RecordBatchHandler {
  private:
   static const std::unordered_map<AggregateFunctionEnumType,
                                   std::shared_ptr<AggregateFunction>>
-                                  TYPES_TO_FUNCTIONS;
+      TYPES_TO_FUNCTIONS;
 
   AggregateOptions options_;
 };

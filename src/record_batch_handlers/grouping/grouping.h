@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -25,6 +26,12 @@ class RecordBatchGrouping {
 
   static std::string getGroupingColumnsSetKey(
       const std::shared_ptr<arrow::RecordBatch>& record_batch);
+
+ private:
+  static arrow::Status fillGroupMap(
+      std::map<std::string, std::string>* group_map,
+      const std::shared_ptr<arrow::RecordBatch>& record_batch,
+      const std::vector<std::string>& grouping_columns);
 
  private:
   static const std::string METADATA_KEY;

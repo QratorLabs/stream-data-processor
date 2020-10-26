@@ -151,3 +151,10 @@ arrow::Status JoinHandler::getJoinKey(
 
   return arrow::Status::OK();
 }
+
+arrow::Status JoinHandler::handle(
+    const std::shared_ptr<arrow::RecordBatch>& record_batch,
+    arrow::RecordBatchVector* result) {
+  ARROW_RETURN_NOT_OK(handle({record_batch}, result));
+  return arrow::Status::OK();
+}

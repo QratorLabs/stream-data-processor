@@ -9,26 +9,23 @@ PipelineHandler::PipelineHandler(
     : pipeline_handlers_(std::move(pipeline_handlers)) {}
 
 arrow::Status PipelineHandler::handle(
+    const std::shared_ptr<arrow::RecordBatch>& record_batch,
+    arrow::RecordBatchVector* result) {
+  ARROW_RETURN_NOT_OK(handle({record_batch}, result));
+  return arrow::Status::OK();
+}
+
+arrow::Status PipelineHandler::handle(
     const arrow::RecordBatchVector& record_batches,
     arrow::RecordBatchVector* result) {
-  arrow::RecordBatchVector current_result;
-  for (auto& record_batch : record_batches) {
-    current_result.push_back(arrow::RecordBatch::Make(
-        record_batch->schema(), record_batch->num_rows(),
-        record_batch->columns()));
-
-    if (record_batch->schema()->HasMetadata()) {
-      current_result.back() = current_result.back()->ReplaceSchemaMetadata(
-          record_batch->schema()->metadata());
-    }
-  }
+  arrow::RecordBatchVector current_result(record_batches);
 
   for (auto& handler : pipeline_handlers_) {
-    ARROW_RETURN_NOT_OK(handler->handle(current_result, result));
-
-    current_result = *result;
+    arrow::RecordBatchVector tmp_result;
+    ARROW_RETURN_NOT_OK(handler->handle(current_result, &tmp_result));
+    current_result = std::move(tmp_result);
   }
 
-  *result = current_result;
+  *result = std::move(current_result);
   return arrow::Status::OK();
 }
