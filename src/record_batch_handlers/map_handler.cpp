@@ -11,6 +11,11 @@ arrow::Status MapHandler::handle(
     result->push_back(arrow::RecordBatch::Make(record_batch->schema(),
                                                record_batch->num_rows(),
                                                record_batch->columns()));
+
+    if (record_batch->schema()->HasMetadata()) {
+      result->back() = result->back()->ReplaceSchemaMetadata(
+          record_batch->schema()->metadata());
+    }
   }
 
   std::shared_ptr<gandiva::Projector> projector;
@@ -54,12 +59,15 @@ arrow::Status MapHandler::eval(
   auto pool = arrow::default_memory_pool();
   for (auto& record_batch : *record_batches) {
     arrow::ArrayVector result_arrays;
+
     ARROW_RETURN_NOT_OK(
         projector->Evaluate(*record_batch, pool, &result_arrays));
+
     for (int i = 0; i < result_arrays.size(); ++i) {
       auto add_column_result = record_batch->AddColumn(
           input_schema_size + i, result_schema->field(input_schema_size + i),
           result_arrays[i]);
+
       ARROW_RETURN_NOT_OK(add_column_result.status());
       record_batch = add_column_result.ValueOrDie();
     }

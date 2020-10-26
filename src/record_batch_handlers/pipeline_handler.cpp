@@ -16,6 +16,11 @@ arrow::Status PipelineHandler::handle(
     current_result.push_back(arrow::RecordBatch::Make(
         record_batch->schema(), record_batch->num_rows(),
         record_batch->columns()));
+
+    if (record_batch->schema()->HasMetadata()) {
+      current_result.back() = current_result.back()->ReplaceSchemaMetadata(
+          record_batch->schema()->metadata());
+    }
   }
 
   for (auto& handler : pipeline_handlers_) {

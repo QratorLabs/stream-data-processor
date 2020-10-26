@@ -129,6 +129,10 @@ arrow::Status DefaultHandler::handle(
     result->push_back(arrow::RecordBatch::Make(record_batch->schema(),
                                                record_batch->num_rows(),
                                                record_batch->columns()));
+    if (record_batch->schema()->HasMetadata()) {
+      result->back() = result->back()->ReplaceSchemaMetadata(
+          record_batch->schema()->metadata());
+    }
   }
 
   ARROW_RETURN_NOT_OK(

@@ -9,20 +9,26 @@ arrow::Status JoinHandler::handle(
     const arrow::RecordBatchVector& record_batches,
     arrow::RecordBatchVector* result) {
   auto pool = arrow::default_memory_pool();
+
   std::unordered_map<std::string, std::shared_ptr<arrow::DataType>>
       column_types;
+
   std::unordered_map<std::string, std::shared_ptr<arrow::ArrayBuilder>>
       column_builders;
+
   std::unordered_map<std::string, std::set<JoinValue, JoinValueCompare>>
       keys_to_rows;
+
   JoinKey join_key;
   for (size_t i = 0; i < record_batches.size(); ++i) {
     for (auto& field : record_batches[i]->schema()->fields()) {
       if (column_builders.find(field->name()) == column_builders.end()) {
         column_builders[field->name()] =
             std::shared_ptr<arrow::ArrayBuilder>();
+
         ARROW_RETURN_NOT_OK(ArrowUtils::makeArrayBuilder(
             field->type()->id(), &column_builders[field->name()], pool));
+
         column_types[field->name()] = field->type();
       }
     }
@@ -80,6 +86,7 @@ arrow::Status JoinHandler::handle(
         ARROW_RETURN_NOT_OK(ArrowUtils::appendToBuilder(
             get_scalar_result.ValueOrDie(), &column_builders[column_name],
             record_batch->schema()->field(i)->type()->id()));
+
         filled[column_name] = true;
       }
     }
@@ -105,6 +112,7 @@ arrow::Status JoinHandler::handle(
 
   auto result_record_batch = arrow::RecordBatch::Make(
       arrow::schema(fields), row_count, result_arrays);
+
   ARROW_RETURN_NOT_OK(ComputeUtils::sortByColumn(
       time_column_name_, result_record_batch, &result_record_batch));
 
@@ -119,6 +127,7 @@ arrow::Status JoinHandler::getJoinKey(
   for (auto& join_column_name : join_on_columns_) {
     auto get_scalar_result =
         record_batch->GetColumnByName(join_column_name)->GetScalar(row_idx);
+
     if (!get_scalar_result.ok()) {
       return get_scalar_result.status();
     }
@@ -128,8 +137,10 @@ arrow::Status JoinHandler::getJoinKey(
   }
 
   join_key->key_string = std::move(key_string_builder.str());
+
   auto get_scalar_result =
       record_batch->GetColumnByName(time_column_name_)->GetScalar(row_idx);
+
   if (!get_scalar_result.ok()) {
     return get_scalar_result.status();
   }
