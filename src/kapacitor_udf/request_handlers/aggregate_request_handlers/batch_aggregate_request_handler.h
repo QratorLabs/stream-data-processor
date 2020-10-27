@@ -4,7 +4,7 @@
 #include <unordered_map>
 
 #include "kapacitor_udf/request_handlers/record_batch_request_handler.h"
-#include "utils/data_converter.h"
+#include "kapacitor_udf/points_converter.h"
 
 #include "udf.pb.h"
 
@@ -24,9 +24,9 @@ class BatchAggregateRequestHandler : public RecordBatchRequestHandler {
   void endBatch(const agent::EndBatch& batch) override;
 
  private:
-  static const DataConverter::PointsToRecordBatchesConversionOptions
+  static const PointsConverter::PointsToRecordBatchesConversionOptions
       TO_RECORD_BATCHES_OPTIONS;
-  static const DataConverter::RecordBatchesToPointsConversionOptions
+  static const PointsConverter::RecordBatchesToPointsConversionOptions
       TO_POINTS_OPTIONS;
 
   bool in_batch_{false};

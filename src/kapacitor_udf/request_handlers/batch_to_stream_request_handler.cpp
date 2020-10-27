@@ -7,9 +7,9 @@
 
 BatchToStreamRequestHandler::BatchToStreamRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent,
-    const DataConverter::PointsToRecordBatchesConversionOptions&
+    const PointsConverter::PointsToRecordBatchesConversionOptions&
         to_record_batches_options,
-    const DataConverter::RecordBatchesToPointsConversionOptions&
+    const PointsConverter::RecordBatchesToPointsConversionOptions&
         to_points_options,
     const std::shared_ptr<RecordBatchHandler>& handler)
     : RecordBatchRequestHandler(agent, to_record_batches_options,

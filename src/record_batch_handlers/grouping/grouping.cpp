@@ -47,11 +47,16 @@ arrow::Status RecordBatchGrouping::fillGroupMetadata(
 
 std::string RecordBatchGrouping::extractGroupMetadata(
     const std::shared_ptr<arrow::RecordBatch>& record_batch) {
-  if (!record_batch->schema()->metadata()->Contains(METADATA_KEY)) {
+  if (!record_batch->schema()->HasMetadata()) {
     return "";
   }
 
-  return record_batch->schema()->metadata()->Get(METADATA_KEY).ValueOrDie();
+  auto metadata = record_batch->schema()->metadata();
+  if (!metadata->Contains(METADATA_KEY)) {
+    return "";
+  }
+
+  return metadata->Get(METADATA_KEY).ValueOrDie();
 }
 
 RecordBatchGroup RecordBatchGrouping::extractGroup(

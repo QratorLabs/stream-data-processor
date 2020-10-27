@@ -81,6 +81,7 @@ add_gandiva_dependency("${KAPACITOR_UDF_LIBRARY_NAME}_DEPENDENCIES")
 set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   $<TARGET_OBJECTS:protofiles_object_library>
   kapacitor_udf/udf_agent.cpp
+  kapacitor_udf/points_converter.cpp
   kapacitor_udf/request_handlers/aggregate_request_handlers/aggregate_options_parser.cpp
   kapacitor_udf/request_handlers/group_tags_parser.cpp
   kapacitor_udf/request_handlers/aggregate_request_handlers/batch_aggregate_request_handler.cpp

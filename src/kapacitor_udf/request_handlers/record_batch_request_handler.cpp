@@ -2,9 +2,9 @@
 
 RecordBatchRequestHandler::RecordBatchRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent,
-    DataConverter::PointsToRecordBatchesConversionOptions
+    PointsConverter::PointsToRecordBatchesConversionOptions
         to_record_batches_options,
-    DataConverter::RecordBatchesToPointsConversionOptions to_points_options,
+    PointsConverter::RecordBatchesToPointsConversionOptions to_points_options,
     const std::shared_ptr<RecordBatchHandler>& handler)
     : RequestHandler(agent),
       handler_(handler),
@@ -21,7 +21,7 @@ void RecordBatchRequestHandler::handleBatch() {
   }
 
   arrow::RecordBatchVector record_batches;
-  auto convert_result = DataConverter::convertToRecordBatches(
+  auto convert_result = PointsConverter::convertToRecordBatches(
       batch_points_, &record_batches, to_record_batches_options_);
   batch_points_.mutable_points()->Clear();
   if (!convert_result.ok()) {
@@ -41,7 +41,7 @@ void RecordBatchRequestHandler::handleBatch() {
   record_batches = std::move(result);
 
   agent::PointBatch response_points;
-  convert_result = DataConverter::convertToPoints(
+  convert_result = PointsConverter::convertToPoints(
       record_batches, &response_points, to_points_options_);
   if (!convert_result.ok()) {
     response.mutable_error()->set_error(convert_result.message());

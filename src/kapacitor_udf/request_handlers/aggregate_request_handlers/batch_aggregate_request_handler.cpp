@@ -5,10 +5,10 @@
 #include "kapacitor_udf/request_handlers/group_tags_parser.h"
 #include "record_batch_handlers/record_batch_handlers.h"
 
-const DataConverter::PointsToRecordBatchesConversionOptions
+const PointsConverter::PointsToRecordBatchesConversionOptions
     DEFAULT_TO_RECORD_BATCHES_OPTIONS{"time", "name"};
 
-const DataConverter::RecordBatchesToPointsConversionOptions
+const PointsConverter::RecordBatchesToPointsConversionOptions
     DEFAULT_TO_POINTS_OPTIONS{"time", "name"};
 
 BatchAggregateRequestHandler::BatchAggregateRequestHandler(

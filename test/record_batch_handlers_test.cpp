@@ -370,3 +370,115 @@ TEST_CASE( "join depending on tolerance", "[JoinHandler]" ) {
   checkValue<double, arrow::DoubleScalar>(3.14, result[0],
                                           "field_2", 0);
 }
+
+SCENARIO( "groups aggregation", "[AggregateHandler]" ) {
+  GIVEN( "RecordBatches with different groups" ) {
+    auto time_field =
+        arrow::field("time", arrow::timestamp(arrow::TimeUnit::SECOND));
+    auto tag_field = arrow::field("group_tag", arrow::utf8());
+    auto schema = arrow::schema({time_field, tag_field});
+
+    std::string group_1{"group_1"};
+    std::string group_2{"group_2"};
+
+    arrow::TimestampBuilder time_builder_0
+        (arrow::timestamp(arrow::TimeUnit::SECOND),
+         arrow::default_memory_pool());
+    arrowAssertNotOk(time_builder_0.Append(100));
+    std::shared_ptr<arrow::Array> time_array_0;
+    arrowAssertNotOk(time_builder_0.Finish(&time_array_0));
+
+    arrow::StringBuilder tag_builder_0;
+    arrowAssertNotOk(tag_builder_0.Append(group_1));
+    std::shared_ptr<arrow::Array> tag_array_0;
+    arrowAssertNotOk(tag_builder_0.Finish(&tag_array_0));
+
+    auto record_batch_0 =
+        arrow::RecordBatch::Make(schema, 1, {time_array_0, tag_array_0});
+    arrowAssertNotOk(RecordBatchGrouping::fillGroupMetadata(&record_batch_0,
+                                                            {tag_field->name()}));
+
+    arrow::TimestampBuilder time_builder_1
+        (arrow::timestamp(arrow::TimeUnit::SECOND),
+         arrow::default_memory_pool());
+    arrowAssertNotOk(time_builder_1.Append(101));
+    std::shared_ptr<arrow::Array> time_array_1;
+    arrowAssertNotOk(time_builder_1.Finish(&time_array_1));
+
+    arrow::StringBuilder tag_builder_1;
+    arrowAssertNotOk(tag_builder_1.Append(group_1));
+    std::shared_ptr<arrow::Array> tag_array_1;
+    arrowAssertNotOk(tag_builder_1.Finish(&tag_array_1));
+
+    auto record_batch_1 =
+        arrow::RecordBatch::Make(schema, 1, {time_array_1, tag_array_1});
+    arrowAssertNotOk(RecordBatchGrouping::fillGroupMetadata(&record_batch_1,
+                                                            {tag_field->name()}));
+
+    arrow::TimestampBuilder time_builder_2
+        (arrow::timestamp(arrow::TimeUnit::SECOND),
+         arrow::default_memory_pool());
+    arrowAssertNotOk(time_builder_2.Append(102));
+    std::shared_ptr<arrow::Array> time_array_2;
+    arrowAssertNotOk(time_builder_2.Finish(&time_array_2));
+
+    arrow::StringBuilder tag_builder_2;
+    arrowAssertNotOk(tag_builder_2.Append(group_2));
+    std::shared_ptr<arrow::Array> tag_array_2;
+    arrowAssertNotOk(tag_builder_2.Finish(&tag_array_2));
+
+    auto record_batch_2 =
+        arrow::RecordBatch::Make(schema, 1, {time_array_2, tag_array_2});
+    arrowAssertNotOk(RecordBatchGrouping::fillGroupMetadata(&record_batch_2,
+                                                            {tag_field->name()}));
+
+    AggregateHandler::AggregateOptions options{
+      {}, time_field->name(), {AggregateHandler::AggregateFunctionEnumType::kLast, "time"}
+    };
+    std::shared_ptr<RecordBatchHandler>
+        handler = std::make_shared<AggregateHandler>(options);
+
+    arrow::RecordBatchVector result;
+
+    WHEN( "applies aggregation to RecordBatches of the same group" ) {
+      arrow::RecordBatchVector record_batches{record_batch_0, record_batch_1};
+      arrowAssertNotOk(handler->handle(record_batches, &result));
+
+      THEN( "aggregation is applied to RecordBatches separately, but put result in the same RecordBatch" ) {
+        REQUIRE( result.size() == 1 );
+        checkSize(result[0], 2, 2);
+        checkColumnsArePresent(result[0], {time_field->name(), tag_field->name()});
+        checkValue<int64_t, arrow::Int64Scalar>(100, result[0], time_field->name(), 0);
+        checkValue<int64_t, arrow::Int64Scalar>(101, result[0], time_field->name(), 1);
+        checkValue<std::string, arrow::StringScalar>(group_1, result[0], tag_field->name(), 0);
+        checkValue<std::string, arrow::StringScalar>(group_1, result[0], tag_field->name(), 1);
+        REQUIRE( !RecordBatchGrouping::extractGroupMetadata(result[0]).empty() );
+      }
+    }
+
+    WHEN( "applies aggregation to RecordBatches of different groups" ) {
+      arrow::RecordBatchVector record_batches{record_batch_0, record_batch_2};
+      arrowAssertNotOk(handler->handle(record_batches, &result));
+
+      THEN( "aggregation is applied to RecordBatches separately and put result in different RecordBatches" ) {
+        REQUIRE( result.size() == 2 );
+
+        if (!equals<std::string, arrow::StringScalar>(group_1, result[0], tag_field->name(), 0)) {
+          std::swap(result[0], result[1]);
+        }
+
+        checkSize(result[0], 1, 2);
+        checkColumnsArePresent(result[0], {time_field->name(), tag_field->name()});
+        checkValue<int64_t, arrow::Int64Scalar>(100, result[0], time_field->name(), 0);
+        checkValue<std::string, arrow::StringScalar>(group_1, result[0], tag_field->name(), 0);
+        REQUIRE( !RecordBatchGrouping::extractGroupMetadata(result[0]).empty() );
+
+        checkSize(result[1], 1, 2);
+        checkColumnsArePresent(result[1], {time_field->name(), tag_field->name()});
+        checkValue<int64_t, arrow::Int64Scalar>(102, result[1], time_field->name(), 0);
+        checkValue<std::string, arrow::StringScalar>(group_2, result[1], tag_field->name(), 0);
+        REQUIRE( !RecordBatchGrouping::extractGroupMetadata(result[1]).empty() );
+      }
+    }
+  }
+}

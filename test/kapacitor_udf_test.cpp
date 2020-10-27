@@ -11,7 +11,7 @@
 #include "record_batch_handlers/aggregate_handler.h"
 #include "record_batch_handlers/pipeline_handler.h"
 #include "record_batch_handlers/record_batch_handler.h"
-#include "utils/data_converter.h"
+#include "kapacitor_udf/points_converter.h"
 
 #include "udf.pb.h"
 
@@ -26,11 +26,11 @@ SCENARIO( "UDFAgent with RequestHandler interaction", "[BatchToStreamRequestHand
   GIVEN( "UDFAgent and mirror Handler" ) {
     std::shared_ptr<MockUDFAgent> mock_agent = std::make_shared<MockUDFAgent>();
     std::vector<std::shared_ptr<RecordBatchHandler>> empty_handler_pipeline;
-    DataConverter::PointsToRecordBatchesConversionOptions to_record_batches_options{
+    PointsConverter::PointsToRecordBatchesConversionOptions to_record_batches_options{
       "time",
       "measurement"
     };
-    DataConverter::RecordBatchesToPointsConversionOptions to_points_options{
+    PointsConverter::RecordBatchesToPointsConversionOptions to_points_options{
         "time",
         "measurement"
     };

@@ -5,6 +5,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "record_batch_handlers/grouping/grouping.h"
+
 class GroupParserException : public std::exception {};
 
 class GroupTagsParser {

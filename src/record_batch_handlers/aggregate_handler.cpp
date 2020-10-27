@@ -55,14 +55,12 @@ arrow::Status AggregateHandler::handle(
   }
 
   // Splitting by grouping columns set
-  auto splitted_record_batches = splitByGroupingColumnsSet(record_batches);
+  auto grouped = splitByGroups(record_batches);
 
-  for ([[maybe_unused]] auto& [_, record_batches_pack] :
-          splitted_record_batches) {
-    if (record_batches_pack.empty()) {
+  for ([[maybe_unused]] auto& [_, record_batches_group] : grouped) {
+    if (record_batches_group.empty()) {
       return arrow::Status::ExecutionError("RecordBatchVector after splitting"
-                                           " by grouping columns must be "
-                                           "non-empty");
+                                           " by groups must be non-empty");
     }
 
     auto pool = arrow::default_memory_pool();
@@ -70,18 +68,18 @@ arrow::Status AggregateHandler::handle(
 
     auto grouping_columns =
         RecordBatchGrouping::extractGroupingColumnsNames(
-            record_batches_pack.front());
+            record_batches_group.front());
 
     // Setting result schema
     auto result_schema = fillResultSchema(record_batches, grouping_columns);
 
     // Aggregating time column
     ARROW_RETURN_NOT_OK(
-        aggregateTimeColumn(record_batches_pack, &result_arrays, pool));
+        aggregateTimeColumn(record_batches_group, &result_arrays, pool));
 
     // Adding unique group values of grouping columns to the result vector
     ARROW_RETURN_NOT_OK(
-        fillGroupingColumns(record_batches_pack,
+        fillGroupingColumns(record_batches_group,
                             &result_arrays,
                             grouping_columns));
 
@@ -89,7 +87,7 @@ arrow::Status AggregateHandler::handle(
     for (auto&[column_name, aggregate_functions] :
         options_.aggregate_columns) {
       for (auto& aggregate_case : aggregate_functions) {
-        ARROW_RETURN_NOT_OK(aggregate(record_batches_pack, column_name,
+        ARROW_RETURN_NOT_OK(aggregate(record_batches_group, column_name,
                                       aggregate_case.aggregate_function,
                                       &result_arrays, pool));
       }
@@ -97,8 +95,11 @@ arrow::Status AggregateHandler::handle(
 
     result->push_back(
         arrow::RecordBatch::Make(result_schema,
-                                 record_batches_pack.size(),
+                                 record_batches_group.size(),
                                  result_arrays));
+    ARROW_RETURN_NOT_OK(
+        RecordBatchGrouping::fillGroupMetadata(
+            &result->back(), grouping_columns));
   }
 
   return arrow::Status::OK();
@@ -212,7 +213,7 @@ arrow::Status AggregateHandler::aggregateTimeColumn(
 }
 
 arrow::Status AggregateHandler::fillGroupingColumns(
-    const arrow::RecordBatchVector& groups,
+    const arrow::RecordBatchVector& grouped,
     arrow::ArrayVector* result_arrays,
     const std::vector<std::string>& grouping_columns
     ) {
@@ -221,25 +222,30 @@ arrow::Status AggregateHandler::fillGroupingColumns(
     grouping_columns_set.insert(grouping_column);
   }
 
-  arrow::RecordBatchVector cropped_groups;
-  for (auto& group : groups) {
-    std::shared_ptr<arrow::RecordBatch> cropped_record_batch = group;
-    int i = 0;
-    for (auto& column_name : group->schema()->field_names()) {
-      if (grouping_columns_set.find(column_name) == grouping_columns_set.end()) {
-        auto cropped_result = cropped_record_batch->RemoveColumn(i);
-        if (!cropped_result.ok()) {
-          return cropped_result.status();
-        }
-
-        cropped_record_batch = cropped_result.ValueOrDie();
-        --i;
+  std::shared_ptr<arrow::RecordBatch> cropped_record_batch = grouped.front();
+  int i = 0;
+  for (auto& column_name : grouped.front()->schema()->field_names()) {
+    if (grouping_columns_set.find(column_name) == grouping_columns_set.end()) {
+      auto cropped_result = cropped_record_batch->RemoveColumn(i);
+      if (!cropped_result.ok()) {
+        return cropped_result.status();
       }
 
-      ++i;
+      cropped_record_batch = cropped_result.ValueOrDie();
+      --i;
     }
 
-    cropped_groups.push_back(cropped_record_batch->Slice(0, 1));
+    ++i;
+  }
+
+  arrow::RecordBatchVector cropped_groups;
+  cropped_record_batch = cropped_record_batch->Slice(0, 1);
+  for (int j = 0; j < grouped.size(); ++j) {
+    cropped_groups.push_back(arrow::RecordBatch::Make(
+        cropped_record_batch->schema(),
+        cropped_record_batch->num_rows(),
+        cropped_record_batch->columns()
+        ));
   }
 
   std::shared_ptr<arrow::RecordBatch> unique_record_batch;
@@ -255,23 +261,20 @@ arrow::Status AggregateHandler::fillGroupingColumns(
 
 std::unordered_map<std::string,
                    arrow::RecordBatchVector>
-                   AggregateHandler::splitByGroupingColumnsSet(
+                   AggregateHandler::splitByGroups(
                        const arrow::RecordBatchVector& record_batches
                        ) {
-  std::unordered_map<std::string, arrow::RecordBatchVector>
-      grouped_by_grouping_columns_set;
+  std::unordered_map<std::string, arrow::RecordBatchVector> grouped;
   for (auto& record_batch : record_batches) {
-    auto grouping_columns_set_string =
-        RecordBatchGrouping::getGroupingColumnsSetKey(record_batch);
-    if (grouped_by_grouping_columns_set.find(grouping_columns_set_string) ==
-          grouped_by_grouping_columns_set.end()) {
-      grouped_by_grouping_columns_set[grouping_columns_set_string] =
-          arrow::RecordBatchVector();
+    auto group_string =
+        RecordBatchGrouping::extractGroupMetadata(record_batch);
+
+    if (grouped.find(group_string) == grouped.end()) {
+      grouped[group_string] = arrow::RecordBatchVector();
     }
 
-    grouped_by_grouping_columns_set[grouping_columns_set_string].push_back(
-        record_batch);
+    grouped[group_string].push_back(record_batch);
   }
 
-  return grouped_by_grouping_columns_set;
+  return grouped;
 }

@@ -35,14 +35,14 @@ class AggregateHandler : public RecordBatchHandler {
 
  private:
   static std::unordered_map<std::string, arrow::RecordBatchVector>
-  splitByGroupingColumnsSet(const arrow::RecordBatchVector& record_batches);
+  splitByGroups(const arrow::RecordBatchVector& record_batches);
 
   std::shared_ptr<arrow::Schema> fillResultSchema(
       const arrow::RecordBatchVector& record_batches,
       const std::vector<std::string>& grouping_columns) const;
 
   static arrow::Status fillGroupingColumns(
-      const arrow::RecordBatchVector& groups,
+      const arrow::RecordBatchVector& grouped,
       arrow::ArrayVector* result_arrays,
       const std::vector<std::string>& grouping_columns);
 
