@@ -17,7 +17,7 @@ TEST_CASE( "parse sample metric with custom separator", "[GraphiteParser]") {
   std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(parser_options);
   auto metric_buffer = std::make_shared<arrow::Buffer>("cpu.usage.idle.percent.eu-east 100");
   arrow::RecordBatchVector record_batch_vector;
-  arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector));
+  arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, &record_batch_vector));
 
   REQUIRE( record_batch_vector.size() == 1 );
   checkSize(record_batch_vector[0], 1, 4);
@@ -44,7 +44,7 @@ TEST_CASE( "parse using template with multiple ending", "[GraphiteParser]" ) {
   std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(parser_options);
   auto metric_buffer = std::make_shared<arrow::Buffer>("us.cpu.load 100");
   arrow::RecordBatchVector record_batch_vector;
-  arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector));
+  arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, &record_batch_vector));
 
   REQUIRE( record_batch_vector.size() == 1 );
   checkSize(record_batch_vector[0], 1, 4);
@@ -73,7 +73,7 @@ TEST_CASE( "parse using multiple templates", "[GraphiteParser]" ) {
   auto metric_buffer = std::make_shared<arrow::Buffer>("cn.south.mem-usage 50\n"
                                                        "us.west.localhost.cpu 100");
   arrow::RecordBatchVector record_batch_vector;
-  arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector));
+  arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, &record_batch_vector));
 
   REQUIRE( record_batch_vector.size() == 1 );
   checkSize(record_batch_vector[0], 2, 5);
@@ -121,7 +121,7 @@ TEST_CASE ( "parse with filters", "[GraphiteParser]" ) {
   auto metric_buffer = std::make_shared<arrow::Buffer>("cpu.load.eu-east 100\n"
                                                        "mem.cached.localhost 256");
   arrow::RecordBatchVector record_batch_vector;
-  arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector));
+  arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, &record_batch_vector));
 
   REQUIRE( record_batch_vector.size() == 1 );
   checkSize(record_batch_vector[0], 2, 5);
@@ -166,7 +166,7 @@ TEST_CASE( "parse and add additional tags", "[GraphiteParser]" ) {
   std::shared_ptr<Parser> parser = std::make_shared<GraphiteParser>(parser_options);
   auto metric_buffer = std::make_shared<arrow::Buffer>("cpu.usage.idle.eu-east 100");
   arrow::RecordBatchVector record_batch_vector;
-  arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector));
+  arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, &record_batch_vector));
 
   REQUIRE( record_batch_vector.size() == 1 );
   checkSize(record_batch_vector[0], 1, 5);
@@ -199,7 +199,7 @@ TEST_CASE( "parse timestamp", "[GraphiteParser]" ) {
   metric_string_builder << "cpu.usage.idle.percent.eu-east 100 " << now;
   auto metric_buffer = arrow::Buffer::FromString(metric_string_builder.str());
   arrow::RecordBatchVector record_batch_vector;
-  arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector));
+  arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, &record_batch_vector));
 
   REQUIRE( record_batch_vector.size() == 1 );
   checkSize(record_batch_vector[0], 1, 4);
@@ -232,7 +232,7 @@ TEST_CASE( "merge two metrics with the same tag values set into the one record",
                         << "cpu.usage.cpu.value.eu-east 50 " << now;
   auto metric_buffer = arrow::Buffer::FromString(metric_string_builder.str());
   arrow::RecordBatchVector record_batch_vector;
-  arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, record_batch_vector));
+  arrowAssertNotOk(parser->parseRecordBatches(metric_buffer, &record_batch_vector));
 
   REQUIRE( record_batch_vector.size() == 1 );
   checkSize(record_batch_vector[0], 1, 5);

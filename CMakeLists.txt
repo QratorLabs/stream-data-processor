@@ -45,7 +45,7 @@ add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 
 protobuf_generate_cpp(ProtoSources ProtoHeaders
   "${CMAKE_CURRENT_SOURCE_DIR}/src/kapacitor_udf/udf.proto"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/record_batch_handlers/grouping/grouping.proto"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/metadata/metadata.proto"
   )
 add_library(protofiles_object_library OBJECT ${ProtoSources})
 set_target_properties(protofiles_object_library PROPERTIES CXX_CLANG_TIDY "")

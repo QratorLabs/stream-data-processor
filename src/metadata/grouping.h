@@ -7,7 +7,7 @@
 
 #include <arrow/api.h>
 
-#include "grouping.pb.h"
+#include "metadata.pb.h"
 
 class RecordBatchGrouping {
  public:
@@ -27,6 +27,13 @@ class RecordBatchGrouping {
   static std::string getGroupingColumnsSetKey(
       const std::shared_ptr<arrow::RecordBatch>& record_batch);
 
+  static RecordBatchGroup constructGroupFromOrderedMap(
+      const std::map<std::string, std::string>& group_map);
+
+  static arrow::Status setGroupMetadata(
+      std::shared_ptr<arrow::RecordBatch>* record_batch,
+      const RecordBatchGroup& group);
+
  private:
   static arrow::Status fillGroupMap(
       std::map<std::string, std::string>* group_map,
@@ -34,5 +41,5 @@ class RecordBatchGrouping {
       const std::vector<std::string>& grouping_columns);
 
  private:
-  static const std::string METADATA_KEY;
+  static const std::string GROUP_METADATA_KEY;
 };

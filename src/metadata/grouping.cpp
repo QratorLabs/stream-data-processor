@@ -4,7 +4,7 @@
 
 #include "grouping.h"
 
-const std::string RecordBatchGrouping::METADATA_KEY{"group"};
+const std::string RecordBatchGrouping::GROUP_METADATA_KEY{"group"};
 
 arrow::Status RecordBatchGrouping::fillGroupMetadata(
     std::shared_ptr<arrow::RecordBatch>* record_batch,
@@ -23,24 +23,8 @@ arrow::Status RecordBatchGrouping::fillGroupMetadata(
       grouping_columns
       ));
 
-  RecordBatchGroup group;
-  for (auto& [column_name, column_string_value] : group_columns_values) {
-    group.mutable_group_columns_names()->add_columns_names(column_name);
-    auto new_value = group.mutable_group_columns_values()->Add();
-    *new_value = column_string_value;
-  }
-
-  std::shared_ptr<arrow::KeyValueMetadata> arrow_metadata = nullptr;
-  if (record_batch->get()->schema()->HasMetadata()) {
-    arrow_metadata = record_batch->get()->schema()->metadata()->Copy();
-  } else {
-    arrow_metadata = std::make_shared<arrow::KeyValueMetadata>();
-  }
-
-  ARROW_RETURN_NOT_OK(arrow_metadata->Set(
-      METADATA_KEY, group.SerializeAsString()
-  ));
-  *record_batch = record_batch->get()->ReplaceSchemaMetadata(arrow_metadata);
+  auto group = constructGroupFromOrderedMap(group_columns_values);
+  ARROW_RETURN_NOT_OK(setGroupMetadata(record_batch, group));
 
   return arrow::Status::OK();
 }
@@ -52,11 +36,11 @@ std::string RecordBatchGrouping::extractGroupMetadata(
   }
 
   auto metadata = record_batch->schema()->metadata();
-  if (!metadata->Contains(METADATA_KEY)) {
+  if (!metadata->Contains(GROUP_METADATA_KEY)) {
     return "";
   }
 
-  return metadata->Get(METADATA_KEY).ValueOrDie();
+  return metadata->Get(GROUP_METADATA_KEY).ValueOrDie();
 }
 
 RecordBatchGroup RecordBatchGrouping::extractGroup(
@@ -67,11 +51,11 @@ RecordBatchGroup RecordBatchGrouping::extractGroup(
   }
 
   auto metadata = record_batch->schema()->metadata();
-  if (!metadata->Contains(METADATA_KEY)) {
+  if (!metadata->Contains(GROUP_METADATA_KEY)) {
     return group;
   }
 
-  group.ParseFromString(metadata->Get(METADATA_KEY).ValueOrDie());
+  group.ParseFromString(metadata->Get(GROUP_METADATA_KEY).ValueOrDie());
   return group;
 }
 
@@ -114,6 +98,35 @@ arrow::Status RecordBatchGrouping::fillGroupMap(
     group_map->operator[](grouping_column_name) =
         column_value_result.ValueOrDie()->ToString();
   }
+
+  return arrow::Status::OK();
+}
+
+RecordBatchGroup RecordBatchGrouping::constructGroupFromOrderedMap(
+    const std::map<std::string, std::string>& group_map) {
+  RecordBatchGroup group;
+  for (auto& [column_name, column_string_value] : group_map) {
+    group.mutable_group_columns_names()->add_columns_names(column_name);
+    auto new_value = group.mutable_group_columns_values()->Add();
+    *new_value = column_string_value;
+  }
+
+  return group;
+}
+arrow::Status RecordBatchGrouping::setGroupMetadata(
+    std::shared_ptr<arrow::RecordBatch>* record_batch,
+    const RecordBatchGroup& group) {
+  std::shared_ptr<arrow::KeyValueMetadata> arrow_metadata = nullptr;
+  if (record_batch->get()->schema()->HasMetadata()) {
+    arrow_metadata = record_batch->get()->schema()->metadata()->Copy();
+  } else {
+    arrow_metadata = std::make_shared<arrow::KeyValueMetadata>();
+  }
+
+  ARROW_RETURN_NOT_OK(arrow_metadata->Set(
+      GROUP_METADATA_KEY, group.SerializeAsString()
+  ));
+  *record_batch = record_batch->get()->ReplaceSchemaMetadata(arrow_metadata);
 
   return arrow::Status::OK();
 }

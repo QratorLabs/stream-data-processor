@@ -8,14 +8,25 @@
 
 #include "record_batch_handler.h"
 
+#include "metadata.pb.h"
+
 class DefaultHandler : public RecordBatchHandler {
  public:
+  template <typename ValueType>
+  struct DefaultCase {
+    ValueType default_value;
+    ColumnType default_column_type{UNKNOWN};
+  };
+
   struct DefaultHandlerOptions {
-    std::unordered_map<std::string, int64_t> int64_columns_default_values;
-    std::unordered_map<std::string, double> double_columns_default_values;
-    std::unordered_map<std::string, std::string>
-        string_columns_default_values;
-    std::unordered_map<std::string, bool> bool_columns_default_values;
+    std::unordered_map<std::string, DefaultCase<int64_t>> int64_default_cases;
+
+    std::unordered_map<std::string, DefaultCase<double>> double_default_cases;
+
+    std::unordered_map<std::string, DefaultCase<std::string>>
+        string_default_cases;
+
+    std::unordered_map<std::string, DefaultCase<bool>> bool_default_cases;
   };
 
   template <typename DefaultHandlerOptionsType>
@@ -29,7 +40,7 @@ class DefaultHandler : public RecordBatchHandler {
  private:
   template <typename T>
   arrow::Status addMissingColumn(
-      const std::unordered_map<std::string, T>& missing_columns,
+      const std::unordered_map<std::string, DefaultCase<T>>& default_cases,
       std::shared_ptr<arrow::RecordBatch>* record_batch) const;
 
  private:

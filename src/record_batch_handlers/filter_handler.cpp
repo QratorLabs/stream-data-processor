@@ -3,7 +3,7 @@
 #include <gandiva/tree_expr_builder.h>
 
 #include "filter_handler.h"
-#include "grouping/grouping.h"
+#include "metadata/grouping.h"
 #include "utils/serializer.h"
 
 arrow::Status FilterHandler::handle(
@@ -30,10 +30,8 @@ arrow::Status FilterHandler::handle(
   }
 
   auto result_record_batch = take_result.ValueOrDie().record_batch();
-  ARROW_RETURN_NOT_OK(RecordBatchGrouping::fillGroupMetadata(
-      &result_record_batch,
-      RecordBatchGrouping::extractGroupingColumnsNames(record_batch)
-      ));
+  copySchemaMetadata(record_batch, &result_record_batch);
+  ARROW_RETURN_NOT_OK(copyColumnTypes(record_batch, &result_record_batch));
 
   result->push_back(result_record_batch);
 

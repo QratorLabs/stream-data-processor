@@ -1,18 +1,24 @@
+#include <spdlog/spdlog.h>
+
 #include "first_aggregate_function.h"
 
+#include "metadata/column_typing.h"
 #include "utils/compute_utils.h"
 
 arrow::Status FirstAggregateFunction::aggregate(
     const std::shared_ptr<arrow::RecordBatch>& data,
-    const std::string& column_name, std::shared_ptr<arrow::Scalar>* result,
-    const std::string& ts_column_name) const {
-  if (ts_column_name.empty()) {
-    return arrow::Status::Invalid(
-        "There should be a valid timestamp field for \"first\" aggregate "
-        "function");
+    const std::string& column_name, std::shared_ptr<arrow::Scalar>* result
+    ) const {
+  std::string time_column_name;
+  ARROW_RETURN_NOT_OK(ColumnTyping::getTimeColumnNameMetadata(
+      data, &time_column_name));
+
+  auto ts_column = data->GetColumnByName(time_column_name);
+  if (ts_column == nullptr) {
+    return arrow::Status::Invalid(fmt::format(
+        "RecordBatch has not time column with name {}", time_column_name));
   }
 
-  auto ts_column = data->GetColumnByName(ts_column_name);
   std::pair<size_t, size_t> arg_min_max;
   ARROW_RETURN_NOT_OK(ComputeUtils::argMinMax(ts_column, &arg_min_max));
 

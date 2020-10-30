@@ -6,7 +6,8 @@
 #include "aggregate_handler.h"
 
 #include "aggregate_functions/aggregate_functions.h"
-#include "grouping/grouping.h"
+#include "metadata/column_typing.h"
+#include "metadata/grouping.h"
 
 #include "utils/utils.h"
 
@@ -31,7 +32,7 @@ arrow::Status AggregateHandler::handle(
     const std::shared_ptr<arrow::RecordBatch>& record_batch,
     arrow::RecordBatchVector* result) {
   if (record_batch->num_rows() == 0) {
-    return arrow::Status::CapacityError("No data to handle");
+    return arrow::Status::OK();
   }
 
   arrow::RecordBatchVector result_vector;
@@ -48,13 +49,13 @@ arrow::Status AggregateHandler::handle(
 arrow::Status AggregateHandler::handle(
     const arrow::RecordBatchVector& record_batches,
     arrow::RecordBatchVector* result) {
-  // Time column name should be provided
-  if (options_.time_column_name.empty()) {
-    return arrow::Status::Invalid(
-        "Timestamp column is necessary for adding result time column");
+  if (record_batches.empty()) {
+    return arrow::Status::OK();
   }
 
-  // Splitting by grouping columns set
+  ARROW_RETURN_NOT_OK(isValid(record_batches));
+
+  // Splitting by groups
   auto grouped = splitByGroups(record_batches);
 
   for ([[maybe_unused]] auto& [_, record_batches_group] : grouped) {
@@ -71,7 +72,9 @@ arrow::Status AggregateHandler::handle(
             record_batches_group.front());
 
     // Setting result schema
-    auto result_schema = fillResultSchema(record_batches, grouping_columns);
+    std::shared_ptr<arrow::Schema> result_schema = nullptr;
+    ARROW_RETURN_NOT_OK(
+        fillResultSchema(record_batches, grouping_columns, &result_schema));
 
     // Aggregating time column
     ARROW_RETURN_NOT_OK(
@@ -97,29 +100,46 @@ arrow::Status AggregateHandler::handle(
         arrow::RecordBatch::Make(result_schema,
                                  record_batches_group.size(),
                                  result_arrays));
-    ARROW_RETURN_NOT_OK(
-        RecordBatchGrouping::fillGroupMetadata(
-            &result->back(), grouping_columns));
+
+    ARROW_RETURN_NOT_OK(RecordBatchGrouping::fillGroupMetadata(
+        &result->back(),
+        grouping_columns
+        ));
+
+    ARROW_RETURN_NOT_OK(ColumnTyping::setTimeColumnNameMetadata(
+        &result->back(),
+        options_.result_time_column_rule.result_column_name));
   }
 
   return arrow::Status::OK();
 }
 
-std::shared_ptr<arrow::Schema> AggregateHandler::fillResultSchema(
+arrow::Status AggregateHandler::fillResultSchema(
     const arrow::RecordBatchVector& record_batches,
-    const std::vector<std::string>& grouping_columns
+    const std::vector<std::string>& grouping_columns,
+    std::shared_ptr<arrow::Schema>* result_schema
     ) const {
   arrow::FieldVector result_fields;
-  result_fields.push_back(
-      arrow::field(options_.result_time_column_rule.result_column_name,
-                   arrow::timestamp(arrow::TimeUnit::SECOND)));
+  result_fields.push_back(arrow::field(
+      options_.result_time_column_rule.result_column_name,
+      arrow::timestamp(arrow::TimeUnit::SECOND)
+      ));
+
+  ARROW_RETURN_NOT_OK(
+      ColumnTyping::setColumnTypeMetadata(
+          &result_fields.back(), ColumnType::TIME));
 
   for (auto& grouping_column_name : grouping_columns) {
-    auto column = record_batches.front()->GetColumnByName(
+    auto column_field = record_batches.front()->schema()->GetFieldByName(
         grouping_column_name);
-    if (column != nullptr) {
-      result_fields.push_back(
-          arrow::field(grouping_column_name, column->type()));
+
+    if (column_field != nullptr) {
+      result_fields.push_back(arrow::field(
+          grouping_column_name,
+          column_field->type(),
+          column_field->nullable(),
+          column_field->metadata()
+          ));
     }
   }
 
@@ -136,10 +156,16 @@ std::shared_ptr<arrow::Schema> AggregateHandler::fillResultSchema(
     for (auto& aggregate_case : aggregate_cases) {
       result_fields.push_back(
           arrow::field(aggregate_case.result_column_name, column_type));
+
+      ARROW_RETURN_NOT_OK(
+          ColumnTyping::setColumnTypeMetadata(
+              &result_fields.back(), aggregate_case.result_column_type));
     }
   }
 
-  return arrow::schema(result_fields);
+  *result_schema = arrow::schema(result_fields);
+
+  return arrow::Status::OK();
 }
 
 arrow::Status AggregateHandler::aggregate(
@@ -149,6 +175,7 @@ arrow::Status AggregateHandler::aggregate(
     arrow::ArrayVector* result_arrays, arrow::MemoryPool* pool) const {
   auto aggregate_column_field =
       groups.front()->schema()->GetFieldByName(aggregate_column_name);
+
   if (aggregate_column_field == nullptr) {
     arrow::NullBuilder null_builder;
     ARROW_RETURN_NOT_OK(null_builder.AppendNulls(groups.size()));
@@ -160,12 +187,13 @@ arrow::Status AggregateHandler::aggregate(
   std::shared_ptr<arrow::ArrayBuilder> builder;
   ARROW_RETURN_NOT_OK(ArrowUtils::makeArrayBuilder(
       aggregate_column_field->type()->id(), &builder, pool));
+
   for (auto& group : groups) {
     std::shared_ptr<arrow::Scalar> aggregated_value;
     ARROW_RETURN_NOT_OK(TYPES_TO_FUNCTIONS.at(aggregate_function)
                             ->aggregate(group, aggregate_column_name,
-                                        &aggregated_value,
-                                        options_.time_column_name));
+                                        &aggregated_value));
+
     ARROW_RETURN_NOT_OK(ArrowUtils::appendToBuilder(
         aggregated_value, &builder, aggregate_column_field->type()->id()));
   }
@@ -178,24 +206,24 @@ arrow::Status AggregateHandler::aggregate(
 arrow::Status AggregateHandler::aggregateTimeColumn(
     const arrow::RecordBatchVector& record_batch_vector,
     arrow::ArrayVector* result_arrays, arrow::MemoryPool* pool) const {
+  std::string time_column_name;
+  ARROW_RETURN_NOT_OK(ColumnTyping::getTimeColumnNameMetadata(
+      record_batch_vector.front(),
+      &time_column_name));
+
   auto ts_column_type =
-      record_batch_vector.front()->GetColumnByName(options_.time_column_name)->type();
-  if (!ts_column_type->Equals(arrow::timestamp(arrow::TimeUnit::SECOND))) {
-    return arrow::Status::NotImplemented(
-        "Aggregation currently supports arrow::timestamp(SECOND) type for "
-        "timestamp "
-        "field only");  // TODO: support any numeric type
-  }
+      record_batch_vector.front()->GetColumnByName(time_column_name)->type();
 
   arrow::NumericBuilder<arrow::TimestampType> ts_builder(ts_column_type,
                                                          pool);
   for (auto& group : record_batch_vector) {
     std::shared_ptr<arrow::Scalar> ts;
+
     ARROW_RETURN_NOT_OK(
         TYPES_TO_FUNCTIONS.at(
             options_.result_time_column_rule.aggregate_function)
-                            ->aggregate(group, options_.time_column_name, &ts,
-                                        options_.time_column_name));
+                            ->aggregate(group, time_column_name, &ts));
+
     auto ts_cast_result = ts->CastTo(ts_column_type);
     if (!ts_cast_result.ok()) {
       return ts_cast_result.status();
@@ -252,8 +280,8 @@ arrow::Status AggregateHandler::fillGroupingColumns(
   ARROW_RETURN_NOT_OK(DataConverter::concatenateRecordBatches(
       cropped_groups, &unique_record_batch));
 
-  for (auto& grouping_column : unique_record_batch->columns()) {
-    result_arrays->push_back(grouping_column);
+  for (auto& grouping_column : grouping_columns) {
+    result_arrays->push_back(unique_record_batch->GetColumnByName(grouping_column));
   }
 
   return arrow::Status();
@@ -277,4 +305,32 @@ std::unordered_map<std::string,
   }
 
   return grouped;
+}
+arrow::Status AggregateHandler::isValid(
+    const arrow::RecordBatchVector& record_batches) const {
+  std::string time_column_name{""};
+
+  for (auto& record_batch : record_batches) {
+    if (time_column_name.empty()) {
+      ARROW_RETURN_NOT_OK(ColumnTyping::getTimeColumnNameMetadata(
+          record_batch, &time_column_name));
+    }
+
+    auto time_column =
+        record_batch->GetColumnByName(time_column_name);
+
+    if (time_column == nullptr) {
+      return arrow::Status::Invalid(fmt::format(
+          "Time column with name {} should be presented", time_column_name));
+    }
+
+    if (time_column->type_id() != arrow::Type::TIMESTAMP) {
+      return arrow::Status::NotImplemented(
+          "Aggregation currently supports arrow::Type::TIMESTAMP type for "
+          "timestamp "
+          "field only");  // TODO: support any numeric type
+    }
+  }
+
+  return arrow::Status::OK();
 }

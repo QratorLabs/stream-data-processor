@@ -4,6 +4,10 @@
 
 std::vector<std::string> StringUtils::split(const std::string& str,
                                             const std::string& delimiter) {
+  if (str.empty()) {
+    return std::vector<std::string>();
+  }
+
   std::vector<std::string> parts;
   size_t last = 0;
   size_t next = 0;

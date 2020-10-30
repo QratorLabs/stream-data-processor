@@ -8,5 +8,5 @@ class PeriodHandler {
  public:
   virtual arrow::Status handle(
       const std::deque<std::shared_ptr<arrow::Buffer>>& period,
-      std::shared_ptr<arrow::Buffer>* target) = 0;
+      std::vector<std::shared_ptr<arrow::Buffer>>* target) = 0;
 };

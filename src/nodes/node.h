@@ -41,7 +41,7 @@ class Node {
   void addConsumer(const std::shared_ptr<Consumer>& consumer);
 
  protected:
-  void passData(const std::shared_ptr<arrow::Buffer>& data);
+  void passData(const std::vector<std::shared_ptr<arrow::Buffer>>& data);
 
  protected:
   std::string name_;

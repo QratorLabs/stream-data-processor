@@ -24,7 +24,7 @@ arrow::Status ArrowUtils::makeArrayBuilder(
       return arrow::Status::NotImplemented(
           "Step-by-step array building currently supports one of "
           "{arrow::int64, arrow::float64, arrow::utf8, arrow::boolean, "
-          "arrow::timestamp(SECOND)} types fields "
+          "arrow::Type::TIMESTAMP} types fields "
           "only");  // TODO: support any type
   }
 }
@@ -64,7 +64,7 @@ arrow::Status ArrowUtils::appendToBuilder(
       return arrow::Status::NotImplemented(
           "Expected one of {arrow::int64, arrow::float64, arrow::utf8, "
           "arrow::boolean, "
-          "arrow::timestamp(SECOND)} "
+          "arrow::Type::TIMESTAMP} "
           "types");  // TODO: support any type
   }
 }

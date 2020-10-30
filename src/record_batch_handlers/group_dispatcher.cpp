@@ -1,5 +1,5 @@
 #include "group_dispatcher.h"
-#include "grouping/grouping.h"
+#include "metadata/grouping.h"
 
 GroupDispatcher::GroupDispatcher(
     std::shared_ptr<StatefulHandler> initial_state)

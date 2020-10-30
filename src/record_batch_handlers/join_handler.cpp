@@ -3,21 +3,30 @@
 #include <unordered_map>
 
 #include "join_handler.h"
+#include "metadata/column_typing.h"
 #include "utils/utils.h"
 
 arrow::Status JoinHandler::handle(
     const arrow::RecordBatchVector& record_batches,
     arrow::RecordBatchVector* result) {
+  if (record_batches.empty()) {
+    return arrow::Status::OK();
+  }
+
   auto pool = arrow::default_memory_pool();
 
   std::unordered_map<std::string, std::shared_ptr<arrow::DataType>>
       column_types;
 
-  std::unordered_map<std::string, std::shared_ptr<arrow::ArrayBuilder>>
+  std::unordered_map<std::string, std::shared_ptr<arrow::ArrayBuilder>>       // TODO: check fields on quality
       column_builders;
 
   std::unordered_map<std::string, std::set<JoinValue, JoinValueCompare>>
       keys_to_rows;
+
+  std::string time_column_name;
+  ARROW_RETURN_NOT_OK(ColumnTyping::getTimeColumnNameMetadata(
+      record_batches.front(), &time_column_name));
 
   JoinKey join_key;
   for (size_t i = 0; i < record_batches.size(); ++i) {
@@ -34,7 +43,8 @@ arrow::Status JoinHandler::handle(
     }
 
     for (size_t j = 0; j < record_batches[i]->num_rows(); ++j) {
-      ARROW_RETURN_NOT_OK(getJoinKey(record_batches[i], j, &join_key));
+      ARROW_RETURN_NOT_OK(getJoinKey(
+          record_batches[i], j, &join_key, time_column_name));
       if (keys_to_rows.find(join_key.key_string) == keys_to_rows.end()) {
         keys_to_rows[join_key.key_string] =
             std::set<JoinValue, JoinValueCompare>();
@@ -114,15 +124,18 @@ arrow::Status JoinHandler::handle(
       arrow::schema(fields), row_count, result_arrays);
 
   ARROW_RETURN_NOT_OK(ComputeUtils::sortByColumn(
-      time_column_name_, result_record_batch, &result_record_batch));
+      time_column_name, result_record_batch, &result_record_batch));
 
-  result->push_back(result_record_batch);
+  ARROW_RETURN_NOT_OK(ColumnTyping::setTimeColumnNameMetadata(
+      &result_record_batch, time_column_name));
+
+  result->push_back(result_record_batch);                                     // TODO: copy column types
   return arrow::Status::OK();
 }
 
 arrow::Status JoinHandler::getJoinKey(
     const std::shared_ptr<arrow::RecordBatch>& record_batch, size_t row_idx,
-    JoinHandler::JoinKey* join_key) const {
+    JoinHandler::JoinKey* join_key, std::string time_column_name) const {
   std::stringstream key_string_builder;
   for (auto& join_column_name : join_on_columns_) {
     auto get_scalar_result =
@@ -138,8 +151,13 @@ arrow::Status JoinHandler::getJoinKey(
 
   join_key->key_string = std::move(key_string_builder.str());
 
-  auto get_scalar_result =
-      record_batch->GetColumnByName(time_column_name_)->GetScalar(row_idx);
+  auto time_column = record_batch->GetColumnByName(time_column_name);
+  if (time_column == nullptr) {
+    return arrow::Status::Invalid(fmt::format(
+        "Time column with name {} should be presented", time_column_name));
+  }
+
+  auto get_scalar_result = time_column->GetScalar(row_idx);
 
   if (!get_scalar_result.ok()) {
     return get_scalar_result.status();

@@ -4,6 +4,13 @@
 
 #include "utils/serializer.h"
 
+MapHandler::MapHandler(const std::vector<MapCase>& map_cases) {
+  for (auto& map_case : map_cases) {
+    expressions_.push_back(map_case.expression);
+    column_types_.push_back(map_case.result_column_type);
+  }
+}
+
 arrow::Status MapHandler::handle(
     const std::shared_ptr<arrow::RecordBatch>& record_batch,
     arrow::RecordBatchVector* result) {
@@ -15,10 +22,14 @@ arrow::Status MapHandler::handle(
 
   std::shared_ptr<gandiva::Projector> projector;
   ARROW_RETURN_NOT_OK(prepareProjector(result_record_batch->schema(), &projector));
-  auto result_schema = prepareResultSchema(result_record_batch->schema());
+  std::shared_ptr<arrow::Schema> result_schema = nullptr;
+
+  ARROW_RETURN_NOT_OK(prepareResultSchema(
+      result_record_batch->schema(), &result_schema));
+
   ARROW_RETURN_NOT_OK(eval(&result_record_batch, projector, result_schema));
 
-  copyMetadata(record_batch, &result_record_batch);
+  copySchemaMetadata(record_batch, &result_record_batch);
   result->push_back(result_record_batch);
 
   return arrow::Status::OK();
@@ -32,18 +43,22 @@ arrow::Status MapHandler::prepareProjector(
   return arrow::Status::OK();
 }
 
-std::shared_ptr<arrow::Schema> MapHandler::prepareResultSchema(
-    const std::shared_ptr<arrow::Schema>& input_schema) const {
+arrow::Status MapHandler::prepareResultSchema(
+    const std::shared_ptr<arrow::Schema>& input_schema,
+    std::shared_ptr<arrow::Schema>* result_schema) const {
   arrow::FieldVector result_fields;
   for (auto& input_field : input_schema->fields()) {
     result_fields.push_back(input_field);
   }
 
-  for (auto& expression : expressions_) {
-    result_fields.push_back(expression->result());
+  for (size_t i = 0; i < expressions_.size(); ++i) {
+    result_fields.push_back(expressions_[i]->result());
+    ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
+        &result_fields.back(), column_types_[i]));
   }
 
-  return arrow::schema(result_fields);
+  *result_schema = arrow::schema(result_fields);
+  return arrow::Status::OK();
 }
 
 arrow::Status MapHandler::eval(

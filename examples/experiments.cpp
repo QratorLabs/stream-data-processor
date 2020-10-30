@@ -22,8 +22,27 @@
 #include "producers/producers.h"
 #include "utils/parsers/graphite_parser.h"
 #include "utils/utils.h"
-#include "grouping.pb.h"
+#include "metadata.pb.h"
+#include "udf.pb.h"
+#include "metadata/column_typing.h"
 
 int main(int argc, char** argv) {
+  spdlog::set_level(spdlog::level::debug);
+
+  auto field = arrow::field("field_name", arrow::int64());
+  auto schema = arrow::schema({field});
+
+  arrow::Int64Builder array_builder;
+  array_builder.Append(0);
+  array_builder.Append(2);
+  std::shared_ptr<arrow::Array> array;
+  array_builder.Finish(&array);
+  auto record_batch = arrow::RecordBatch::Make(schema, 2, {array});
+
+  field = record_batch->schema()->field(0);
+  ColumnTyping::setColumnTypeMetadata(&field, TAG);
+
+  spdlog::debug(record_batch->schema()->field(0)->metadata()->Get("column_type").ValueOrDie());
+
   return 0;
 }

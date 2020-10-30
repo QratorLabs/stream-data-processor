@@ -2,6 +2,7 @@
 #include <sstream>
 
 #include "graphite_parser.h"
+#include "metadata/column_typing.h"
 #include "utils/string_utils.h"
 
 GraphiteParser::GraphiteParser(const GraphiteParserOptions& parser_options)
@@ -14,8 +15,12 @@ GraphiteParser::GraphiteParser(const GraphiteParserOptions& parser_options)
 
 arrow::Status GraphiteParser::parseRecordBatches(
     const std::shared_ptr<arrow::Buffer>& buffer,
-    std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches) {
+    std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches) {
   auto metric_strings = StringUtils::split(buffer->ToString(), "\n");
+  if (metric_strings.empty()) {
+    return arrow::Status::OK();
+  }
+
   parseMetricStrings(metric_strings);
 
   auto pool = arrow::default_memory_pool();
@@ -58,7 +63,7 @@ arrow::Status GraphiteParser::parseRecordBatches(
         field_builders[field.first] =
             std::make_shared<arrow::StringBuilder>();
         break;
-      default: return arrow::Status::RError("Unexpected field type");
+      default: return arrow::Status::ExecutionError("Unexpected field type");
     }
   }
 
@@ -108,7 +113,7 @@ arrow::Status GraphiteParser::parseRecordBatches(
                 std::static_pointer_cast<arrow::StringBuilder>(field.second)
                     ->Append(field_value));
             break;
-          default: return arrow::Status::RError("Unexpected field type");
+          default: return arrow::Status::ExecutionError("Unexpected field type");
         }
       } else {
         ARROW_RETURN_NOT_OK(field.second->AppendNull());
@@ -122,15 +127,24 @@ arrow::Status GraphiteParser::parseRecordBatches(
   // Creating schema and finishing builders
   column_arrays.emplace_back();
   ARROW_RETURN_NOT_OK(timestamp_builder.Finish(&column_arrays.back()));
-  fields.push_back(
-      arrow::field("time", arrow::timestamp(arrow::TimeUnit::SECOND)));
+
+  fields.push_back(arrow::field(time_column_name_, arrow::timestamp(arrow::TimeUnit::SECOND)));
+
+  ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
+      &fields.back(), TIME));
 
   fields.push_back(arrow::field("measurement", arrow::utf8()));
+  ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
+      &fields.back(), MEASUREMENT));
+
   column_arrays.emplace_back();
   ARROW_RETURN_NOT_OK(measurement_name_builder.Finish(&column_arrays.back()));
 
   for (auto& tag : tags_id_to_builders) {
     fields.push_back(arrow::field(tag.first, arrow::utf8()));
+    ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
+        &fields.back(), TAG));
+
     column_arrays.emplace_back();
     ARROW_RETURN_NOT_OK(tag.second.Finish(&column_arrays.back()));
   }
@@ -148,12 +162,20 @@ arrow::Status GraphiteParser::parseRecordBatches(
       case arrow::Type::STRING:
         fields.push_back(arrow::field(field.first, arrow::utf8()));
         break;
-      default: return arrow::Status::RError("Unexpected field type");
+      default: return arrow::Status::ExecutionError("Unexpected field type");
     }
+
+    ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
+        &fields.back(), FIELD));
   }
 
-  record_batches.push_back(arrow::RecordBatch::Make(
+  record_batches->push_back(arrow::RecordBatch::Make(
       arrow::schema(fields), parsed_metrics_.size(), column_arrays));
+
+  ARROW_RETURN_NOT_OK(ColumnTyping::setTimeColumnNameMetadata(
+      &record_batches->back(), time_column_name_
+      ));
+
   parsed_metrics_.clear();
   return arrow::Status::OK();
 }
@@ -234,6 +256,10 @@ void GraphiteParser::Metric::mergeWith(const Metric& other) {
 GraphiteParser::MetricTemplate::MetricTemplate(
     const std::string& template_string) {
   auto template_string_parts = StringUtils::split(template_string, " ");
+  if (template_string_parts.empty()) {
+    return;
+  }
+
   size_t part_idx = 0;
 
   if (template_string_parts.size() == 3 ||
@@ -277,6 +303,10 @@ void GraphiteParser::MetricTemplate::prepareTemplateParts(
   }
 
   auto template_string_parts = StringUtils::split(template_string, ".");
+  if (template_string_parts.empty()) {
+    throw GraphiteParserException();
+  }
+
   for (int i = 0; i < template_string_parts.size() - 1; ++i) {
     addTemplatePart(template_string_parts[i]);
   }
@@ -310,6 +340,10 @@ void GraphiteParser::MetricTemplate::prepareAdditionalTags(
       StringUtils::split(additional_tags_string, ",");
   for (auto& part : additional_tags_parts) {
     auto tag = StringUtils::split(part, "=");
+    if (tag.size() != 2) {
+      throw GraphiteParserException();
+    }
+
     additional_tags_[tag[0]] = tag[1];
   }
 }
@@ -339,7 +373,15 @@ GraphiteParser::MetricTemplate::buildMetric(
   }
 
   auto metric_parts = StringUtils::split(metric_string, " ");
+  if (metric_parts.empty()) {
+    throw GraphiteParserException();
+  }
+
   auto metric_description_parts = StringUtils::split(metric_parts[0], ".");
+  if (metric_description_parts.size() < parts_.size()) {
+    throw GraphiteParserException();
+  }
+
   std::vector<std::string> measurement_name_parts;
   std::unordered_map<std::string, std::vector<std::string>> tags_parts;
   std::vector<std::string> field_parts;

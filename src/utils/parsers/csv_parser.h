@@ -8,8 +8,11 @@ class CSVParser : public Parser {
 
   arrow::Status parseRecordBatches(
       const std::shared_ptr<arrow::Buffer>& buffer,
-      std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches)
+      std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches)
       override;
+
+ private:
+  arrow::Status tryFindTimeColumn();
 
  private:
   std::shared_ptr<arrow::Schema> record_batches_schema_;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ctime>
+#include <exception>
 #include <map>
 #include <memory>
 #include <regex>
@@ -12,6 +13,8 @@
 #include <arrow/stl_allocator.h>
 
 #include "parser.h"
+
+class GraphiteParserException : public std::exception {};
 
 class GraphiteParser : public Parser {
  public:
@@ -25,7 +28,7 @@ class GraphiteParser : public Parser {
 
   arrow::Status parseRecordBatches(
       const std::shared_ptr<arrow::Buffer>& buffer,
-      std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches)
+      std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches)
       override;
 
  private:

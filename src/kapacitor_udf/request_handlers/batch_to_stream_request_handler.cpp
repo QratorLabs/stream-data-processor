@@ -2,18 +2,15 @@
 
 #include "batch_to_stream_request_handler.h"
 
-#include "utils/data_converter.h"
 #include "utils/serializer.h"
 
 BatchToStreamRequestHandler::BatchToStreamRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent,
     const PointsConverter::PointsToRecordBatchesConversionOptions&
         to_record_batches_options,
-    const PointsConverter::RecordBatchesToPointsConversionOptions&
-        to_points_options,
     const std::shared_ptr<RecordBatchHandler>& handler)
     : RecordBatchRequestHandler(agent, to_record_batches_options,
-                                to_points_options, handler) {}
+                                handler) {}
 
 agent::Response BatchToStreamRequestHandler::info() const {
   agent::Response response;

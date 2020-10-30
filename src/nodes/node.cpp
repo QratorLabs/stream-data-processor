@@ -2,12 +2,14 @@
 
 #include "node.h"
 
-void Node::passData(const std::shared_ptr<arrow::Buffer>& data) {
-  spdlog::get(name_)->info("Passing data of size {}", data->size());
-  for (auto& consumer : consumers_) {
-    try {
-      consumer->consume(data);
-    } catch (const std::exception& e) { spdlog::get(name_)->error(e.what()); }
+void Node::passData(const std::vector<std::shared_ptr<arrow::Buffer>>& data) {
+  for (auto& buffer : data) {
+    spdlog::get(name_)->info("Passing data of size {}", buffer->size());
+    for (auto& consumer : consumers_) {
+      try {
+        consumer->consume(buffer);
+      } catch (const std::exception& e) { spdlog::get(name_)->error(e.what()); }
+    }
   }
 }
 

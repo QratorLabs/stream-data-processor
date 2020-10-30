@@ -57,9 +57,14 @@ arrow::Status PeriodNode::appendData(const char* data, size_t length) {
 
     if (divide_index > 0) {
       auto current_slice = record_batch->Slice(0, divide_index);
-      data_buffers_.emplace_back();
+      std::vector<std::shared_ptr<arrow::Buffer>> buffers;
+
       ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(
-          record_batch->schema(), {current_slice}, &data_buffers_.back()));
+          {current_slice}, &buffers));
+
+      for (auto& buffer : buffers) {
+        data_buffers_.push_back(buffer);
+      }
     }
 
     pass();
@@ -76,9 +81,15 @@ arrow::Status PeriodNode::appendData(const char* data, size_t length) {
     record_batch = record_batch->Slice(divide_index);
   }
 
-  data_buffers_.emplace_back();
+  std::vector<std::shared_ptr<arrow::Buffer>> buffers;
+
   ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(
-      record_batch->schema(), {record_batch}, &data_buffers_.back()));
+      {record_batch}, &buffers));
+
+  for (auto& buffer : buffers) {
+    data_buffers_.push_back(buffer);
+  }
+
   return arrow::Status::OK();
 }
 
@@ -124,7 +135,7 @@ arrow::Status PeriodNode::tsLowerBound(
 }
 
 void PeriodNode::pass() {
-  std::shared_ptr<arrow::Buffer> period_data;
+  std::vector<std::shared_ptr<arrow::Buffer>> period_data;
   auto handle_status = period_handler_->handle(data_buffers_, &period_data);
   if (!handle_status.ok()) {
     spdlog::get(name_)->debug(handle_status.ToString());

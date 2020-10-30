@@ -7,6 +7,8 @@
 #include "aggregate_functions/aggregate_function.h"
 #include "record_batch_handler.h"
 
+#include "metadata.pb.h"
+
 class AggregateHandler : public RecordBatchHandler {
  public:
   enum AggregateFunctionEnumType { kFirst, kLast, kMax, kMin, kMean };
@@ -14,13 +16,13 @@ class AggregateHandler : public RecordBatchHandler {
   struct AggregateCase {
     AggregateFunctionEnumType aggregate_function;
     std::string result_column_name;
+    ColumnType result_column_type{FIELD};
   };
 
   struct AggregateOptions {
     std::unordered_map<std::string, std::vector<AggregateCase>>
         aggregate_columns;
-    std::string time_column_name;
-    AggregateCase result_time_column_rule{kLast, "time"};
+    AggregateCase result_time_column_rule{kLast, "time", TIME};
   };
 
   explicit AggregateHandler(const AggregateOptions& options);
@@ -37,9 +39,12 @@ class AggregateHandler : public RecordBatchHandler {
   static std::unordered_map<std::string, arrow::RecordBatchVector>
   splitByGroups(const arrow::RecordBatchVector& record_batches);
 
-  std::shared_ptr<arrow::Schema> fillResultSchema(
+  arrow::Status isValid(const arrow::RecordBatchVector& record_batches) const;
+
+  arrow::Status fillResultSchema(
       const arrow::RecordBatchVector& record_batches,
-      const std::vector<std::string>& grouping_columns) const;
+      const std::vector<std::string>& grouping_columns,
+      std::shared_ptr<arrow::Schema>* result_schema) const;
 
   static arrow::Status fillGroupingColumns(
       const arrow::RecordBatchVector& grouped,

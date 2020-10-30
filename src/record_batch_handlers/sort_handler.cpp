@@ -15,7 +15,8 @@ arrow::Status SortHandler::handle(
   ARROW_RETURN_NOT_OK(DataConverter::concatenateRecordBatches(
       sorted_record_batches, &sorted_record_batch));
 
-  copyMetadata(record_batch, &sorted_record_batch);
+  copySchemaMetadata(record_batch, &sorted_record_batch);
+  ARROW_RETURN_NOT_OK(copyColumnTypes(record_batch, &sorted_record_batch));
   result->push_back(sorted_record_batch);
 
   return arrow::Status::OK();

@@ -1,9 +1,11 @@
 #include <ctime>
 #include <memory>
+#include <sstream>
 #include <vector>
 
 #include <catch2/catch.hpp>
 #include <gmock/gmock.h>
+#include <spdlog/spdlog.h>
 
 #include "kapacitor_udf/udf_agent.h"
 #include "kapacitor_udf/request_handlers/aggregate_request_handlers/aggregate_options_parser.h"
@@ -11,7 +13,9 @@
 #include "record_batch_handlers/aggregate_handler.h"
 #include "record_batch_handlers/pipeline_handler.h"
 #include "record_batch_handlers/record_batch_handler.h"
+#include "kapacitor_udf/group_parser.h"
 #include "kapacitor_udf/points_converter.h"
+#include "test_help.h"
 
 #include "udf.pb.h"
 
@@ -30,14 +34,9 @@ SCENARIO( "UDFAgent with RequestHandler interaction", "[BatchToStreamRequestHand
       "time",
       "measurement"
     };
-    PointsConverter::RecordBatchesToPointsConversionOptions to_points_options{
-        "time",
-        "measurement"
-    };
     std::shared_ptr<RequestHandler> handler = std::make_shared<BatchToStreamRequestHandler>(
         mock_agent,
         to_record_batches_options,
-        to_points_options,
         std::make_shared<PipelineHandler>(std::move(empty_handler_pipeline))
         );
 
@@ -46,6 +45,7 @@ SCENARIO( "UDFAgent with RequestHandler interaction", "[BatchToStreamRequestHand
       int64_t now = std::time(nullptr);
       point.set_time(now);
       point.set_name("name");
+      point.set_group("");
 
       THEN( "UDFAgent's writeResponse method is called with same points" ) {
         auto serialized_point = point.SerializeAsString();
@@ -69,6 +69,7 @@ SCENARIO( "UDFAgent with RequestHandler interaction", "[BatchToStreamRequestHand
       int64_t now = std::time(nullptr);
       point.set_time(now);
       point.set_name("name");
+      point.set_group("");
 
       THEN( "mirror Handler sends same data" ) {
         auto serialized_point = point.SerializeAsString();
@@ -125,6 +126,78 @@ SCENARIO( "AggregateOptionsParser behavior", "[AggregateOptionsParser]" ) {
 
         REQUIRE( aggregate_options.result_time_column_rule.aggregate_function == AggregateHandler::kLast );
       }
+    }
+  }
+}
+
+TEST_CASE( "parsing group with measurement", "[GroupParser]" ) {
+  std::string measurement_column_name = "name";
+  std::string measurement_value = "cpu";
+  std::string tag_name_0 = "cpu";
+  std::string tag_value_0 = "0";
+  std::string tag_name_1 = "host";
+  std::string tag_value_1 = "localhost";
+  std::stringstream group_string_builder;
+  group_string_builder << measurement_value << '\n'
+                       << tag_name_0 << '=' << tag_value_0 << ','
+                       << tag_name_1 << '=' << tag_value_1;
+  
+  auto group =
+      GroupParser::parse(group_string_builder.str(), measurement_column_name);
+  
+  REQUIRE( group.group_columns_values_size() == 3 );
+  REQUIRE( group.group_columns_names().columns_names_size() == 3 );
+  for (size_t i = 0; i < group.group_columns_values_size(); ++i) {
+    const auto& column_name = group.group_columns_names().columns_names(i);
+    const auto& column_value = group.group_columns_values(i);
+    
+    if (column_name == measurement_column_name) {
+      REQUIRE( column_value == measurement_value );
+    } else if (column_name == tag_name_0) {
+      REQUIRE( column_value == tag_value_0 );
+    } else if (column_name == tag_name_1) {
+      REQUIRE( column_value == tag_value_1 );
+    } else {
+      INFO( fmt::format("Unexpected column name: {}", column_name) );
+      REQUIRE( false );
+    }
+  }
+}
+
+TEST_CASE( "group string encoding", "[GroupParser]") {
+  std::string measurement_column_name = "name";
+  std::string measurement_value = "cpu";
+  std::string tag_name_0 = "cpu";
+  std::string tag_value_0 = "0";
+  std::string tag_name_1 = "host";
+  std::string tag_value_1 = "localhost";
+  std::stringstream group_string_builder;
+  group_string_builder << measurement_value << '\n'
+                       << tag_name_0 << '=' << tag_value_0 << ','
+                       << tag_name_1 << '=' << tag_value_1;
+
+  auto group =
+      GroupParser::parse(group_string_builder.str(), measurement_column_name);
+  
+  auto encoded_string = GroupParser::encode(group, measurement_column_name);
+  auto redecoded_group =
+      GroupParser::parse(encoded_string, measurement_column_name);
+
+  REQUIRE( redecoded_group.group_columns_values_size() == 3 );
+  REQUIRE( redecoded_group.group_columns_names().columns_names_size() == 3 );
+  for (size_t i = 0; i < redecoded_group.group_columns_values_size(); ++i) {
+    const auto& column_name = redecoded_group.group_columns_names().columns_names(i);
+    const auto& column_value = redecoded_group.group_columns_values(i);
+
+    if (column_name == measurement_column_name) {
+      REQUIRE( column_value == measurement_value );
+    } else if (column_name == tag_name_0) {
+      REQUIRE( column_value == tag_value_0 );
+    } else if (column_name == tag_name_1) {
+      REQUIRE( column_value == tag_value_1 );
+    } else {
+      INFO( fmt::format("Unexpected column name: {}", column_name) );
+      REQUIRE( false );
     }
   }
 }

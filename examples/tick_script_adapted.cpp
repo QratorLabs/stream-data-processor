@@ -28,13 +28,13 @@ int main(int argc, char** argv) {
   std::chrono::minutes win_period(7);
   std::chrono::minutes win_every(2);
 
-  int64_t info_core_level = 100;
-  int64_t warn_core_level = 90;
-  int64_t crit_core_level = 85;
+  double info_core_level = 100;
+  double warn_core_level = 90;
+  double crit_core_level = 85;
 
-  int64_t info_host_level = 100;
-  int64_t warn_host_level = 90;
-  int64_t crit_host_level = 85;
+  double info_host_level = 100;
+  double warn_host_level = 90;
+  double crit_host_level = 85;
 
   auto loop = uvw::Loop::getDefault();
   auto zmq_context = std::make_shared<zmq::context_t>(1);
@@ -127,7 +127,6 @@ int main(int argc, char** argv) {
        {"wait",
         {{AggregateHandler::AggregateFunctionEnumType::kLast, "wait.last"},
          {AggregateHandler::AggregateFunctionEnumType::kMean, "wait.mean"}}}},
-         "time",
       {AggregateHandler::AggregateFunctionEnumType::kLast, "time"}};
   std::shared_ptr<Node> cputime_host_last_aggregate_node =
       std::make_shared<EvalNode>(
@@ -145,14 +144,14 @@ int main(int argc, char** argv) {
 
   DefaultHandler::DefaultHandlerOptions cputime_host_calc_options{
       {},
-      {{"info_host_level", info_host_level},
-       {"warn_host_level", warn_host_level},
-       {"crit_host_level", crit_host_level}},
-      {{"alert-author", "@kv:qrator.net"},
-       {"incident-owners", "nobody"},
-       {"incident-comment", ""},
-       {"alert-on", "cpu-idle-time-mean-host"}},
-      {{"incident-is-expected", false}}};
+      {{"info_host_level", {info_host_level}},
+       {"warn_host_level", {warn_host_level}},
+       {"crit_host_level", {crit_host_level}}},
+      {{"alert-author", {"@kv:qrator.net"}},
+       {"incident-owners", {"nobody"}},
+       {"incident-comment", {""}},
+       {"alert-on", {"cpu-idle-time-mean-host"}}},
+      {{"incident-is-expected", {false}}}};
   std::shared_ptr<Node> cputime_host_calc_default_node =
       std::make_shared<EvalNode>(
           "cputime_host_calc_default_node",
@@ -171,30 +170,29 @@ int main(int argc, char** argv) {
       std::make_shared<FilePrintConsumer>(std::string(argv[0]) +
                                           "_result_42.txt");
 
-  gandiva::ExpressionVector cputime_host_calc_expressions{
-      gandiva::TreeExprBuilder::MakeExpression(
+  std::vector<MapHandler::MapCase> cputime_host_calc_map_cases{
+      { gandiva::TreeExprBuilder::MakeExpression(
           "less_than",
           {arrow::field("idle.mean", arrow::float64()),
            arrow::field("info_host_level", arrow::float64())},
-          arrow::field("alert_info", arrow::boolean())),
-      gandiva::TreeExprBuilder::MakeExpression(
+          arrow::field("alert_info", arrow::boolean())) },
+      { gandiva::TreeExprBuilder::MakeExpression(
           "less_than",
           {arrow::field("idle.mean", arrow::float64()),
            arrow::field("warn_host_level", arrow::float64())},
-          arrow::field("alert_warn", arrow::boolean())),
-      gandiva::TreeExprBuilder::MakeExpression(
+          arrow::field("alert_warn", arrow::boolean())) },
+      { gandiva::TreeExprBuilder::MakeExpression(
           "less_than",
           {arrow::field("idle.mean", arrow::float64()),
            arrow::field("crit_host_level", arrow::float64())},
-          arrow::field("alert_crit", arrow::boolean()))};
+          arrow::field("alert_crit", arrow::boolean())) }};
   std::vector cputime_host_calc_map_consumers{cputime_host_calc_map_consumer};
   std::shared_ptr<Node> cputime_host_calc_map_node =
       std::make_shared<EvalNode>(
           "cputime_host_calc_map_node",
           std::move(cputime_host_calc_map_consumers),
           std::make_shared<SerializedRecordBatchHandler>(
-              std::make_shared<MapHandler>(
-                  std::move(cputime_host_calc_expressions))));
+              std::make_shared<MapHandler>(cputime_host_calc_map_cases)));
 
   pipelines[cputime_host_calc_map_node->getName()] = NodePipeline();
   pipelines[cputime_host_calc_map_node->getName()].addConsumer(
@@ -266,7 +264,6 @@ int main(int argc, char** argv) {
        {"wait",
         {{AggregateHandler::AggregateFunctionEnumType::kLast, "wait.last"},
          {AggregateHandler::AggregateFunctionEnumType::kMean, "wait.mean"}}}},
-      "time",
       {AggregateHandler::AggregateFunctionEnumType::kLast, "time"}};
 
   std::shared_ptr<Node> cputime_win_last_aggregate_node =
@@ -285,18 +282,18 @@ int main(int argc, char** argv) {
 
   DefaultHandler::DefaultHandlerOptions cputime_win_calc_options{
       {},
-      {{"info_core_level", info_core_level},
-       {"warn_core_level", warn_core_level},
-       {"crit_core_level", crit_core_level},
+      {{"info_core_level", {info_core_level}},
+       {"warn_core_level", {warn_core_level}},
+       {"crit_core_level", {crit_core_level}},
        {"win-period",
-        std::chrono::duration_cast<std::chrono::seconds>(win_period).count()},
+        {static_cast<double>(std::chrono::duration_cast<std::chrono::seconds>(win_period).count())}},
        {"win-every",
-        std::chrono::duration_cast<std::chrono::seconds>(win_every).count()}},
-      {{"alert-author", "@kv:qrator.net"},
-       {"incident-owners", "nobody"},
-       {"incident-comment", ""},
-       {"alert-on", "cpu-idle-time-per-core"}},
-      {{"incident-is-expected", false}}};
+        {static_cast<double>(std::chrono::duration_cast<std::chrono::seconds>(win_every).count())}}},
+      {{"alert-author", {"@kv:qrator.net"}},
+       {"incident-owners", {"nobody"}},
+       {"incident-comment", {""}},
+       {"alert-on", {"cpu-idle-time-per-core"}}},
+      {{"incident-is-expected", {false}}}};
   std::shared_ptr<Node> cputime_win_calc_default_node =
       std::make_shared<EvalNode>(
           "cputime_win_calc_default_node",
@@ -315,30 +312,29 @@ int main(int argc, char** argv) {
       std::make_shared<FilePrintConsumer>(std::string(argv[0]) +
                                           "_result_43.txt");
 
-  gandiva::ExpressionVector cputime_win_calc_expressions{
-      gandiva::TreeExprBuilder::MakeExpression(
+  std::vector<MapHandler::MapCase> cputime_win_calc_map_cases{
+      { gandiva::TreeExprBuilder::MakeExpression(
           "less_than",
           {arrow::field("idle.mean", arrow::float64()),
            arrow::field("info_core_level", arrow::float64())},
-          arrow::field("alert_info", arrow::boolean())),
-      gandiva::TreeExprBuilder::MakeExpression(
+          arrow::field("alert_info", arrow::boolean())) },
+      { gandiva::TreeExprBuilder::MakeExpression(
           "less_than",
           {arrow::field("idle.mean", arrow::float64()),
            arrow::field("warn_core_level", arrow::float64())},
-          arrow::field("alert_warn", arrow::boolean())),
-      gandiva::TreeExprBuilder::MakeExpression(
+          arrow::field("alert_warn", arrow::boolean())) },
+      { gandiva::TreeExprBuilder::MakeExpression(
           "less_than",
           {arrow::field("idle.mean", arrow::float64()),
            arrow::field("crit_core_level", arrow::float64())},
-          arrow::field("alert_crit", arrow::boolean()))};
+          arrow::field("alert_crit", arrow::boolean())) }};
   std::vector cputime_win_calc_map_consumers{cputime_win_calc_map_consumer};
   std::shared_ptr<Node> cputime_win_calc_map_node =
       std::make_shared<EvalNode>(
           "cputime_win_calc_map_node",
           std::move(cputime_win_calc_map_consumers),
           std::make_shared<SerializedRecordBatchHandler>(
-              std::make_shared<MapHandler>(
-                  std::move(cputime_win_calc_expressions))));
+              std::make_shared<MapHandler>(cputime_win_calc_map_cases)));
 
   pipelines[cputime_win_calc_map_node->getName()] = NodePipeline();
   pipelines[cputime_win_calc_map_node->getName()].addConsumer(

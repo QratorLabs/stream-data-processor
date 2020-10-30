@@ -11,9 +11,8 @@ class JoinHandler : public RecordBatchHandler {
  public:
   template <typename StringVectorType>
   explicit JoinHandler(StringVectorType&& join_on_columns,
-                       std::string time_column_name, int64_t tolerance = 0)
+                       int64_t tolerance = 0)
       : join_on_columns_(std::forward<StringVectorType>(join_on_columns)),
-        time_column_name_(std::move(time_column_name)),
         tolerance_(tolerance) {}
 
   arrow::Status handle(
@@ -53,10 +52,9 @@ class JoinHandler : public RecordBatchHandler {
  private:
   arrow::Status getJoinKey(
       const std::shared_ptr<arrow::RecordBatch>& record_batch, size_t row_idx,
-      JoinKey* join_key) const;
+      JoinKey* join_key, std::string time_column_name) const;
 
  private:
   std::vector<std::string> join_on_columns_;
-  std::string time_column_name_;
   int64_t tolerance_;
 };
