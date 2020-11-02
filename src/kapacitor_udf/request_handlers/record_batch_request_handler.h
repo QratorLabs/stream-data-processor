@@ -27,3 +27,15 @@ class RecordBatchRequestHandler : public RequestHandler {
       to_record_batches_options_;
   agent::PointBatch batch_points_;
 };
+
+class StreamRecordBatchRequestHandlerBase : public RecordBatchRequestHandler {
+ public:
+  StreamRecordBatchRequestHandlerBase(
+      const std::shared_ptr<IUDFAgent>& agent,
+      PointsConverter::PointsToRecordBatchesConversionOptions
+          to_record_batches_options,
+      const std::shared_ptr<RecordBatchHandler>& handler = nullptr);
+
+  void beginBatch(const agent::BeginBatch& batch) override;
+  void endBatch(const agent::EndBatch& batch) override;
+};

@@ -3,9 +3,12 @@
 #include "aggregate_options_parser.h"
 #include "batch_aggregate_request_handler.h"
 #include "record_batch_handlers/record_batch_handlers.h"
+#include "kapacitor_udf/request_handlers/invalid_option_exception.h"
 
 const PointsConverter::PointsToRecordBatchesConversionOptions
-    DEFAULT_TO_RECORD_BATCHES_OPTIONS{"time", "name"};
+  BatchAggregateRequestHandler::DEFAULT_TO_RECORD_BATCHES_OPTIONS{
+  "time", "name"
+};
 
 BatchAggregateRequestHandler::BatchAggregateRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent)

@@ -1,6 +1,7 @@
 #include <spdlog/spdlog.h>
 
 #include "aggregate_options_parser.h"
+#include "kapacitor_udf/request_handlers/invalid_option_exception.h"
 
 const std::unordered_map<std::string,
                          AggregateHandler::AggregateFunctionEnumType>
@@ -38,9 +39,6 @@ AggregateHandler::AggregateOptions AggregateOptionsParser::parseOptions(
       parseAggregates(request_option, &aggregate_options);
     } else if (request_option.name() == TIME_AGGREGATE_RULE_OPTION_NAME) {
       parseTimeAggregateRule(request_option, &aggregate_options);
-    } else {
-      throw InvalidOptionException(
-          fmt::format("Unknown option name: {}", request_option.name()));
     }
   }
 

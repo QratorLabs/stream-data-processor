@@ -58,3 +58,28 @@ void RecordBatchRequestHandler::handleBatch() {
     agent_.lock()->writeResponse(response);
   }
 }
+
+StreamRecordBatchRequestHandlerBase::StreamRecordBatchRequestHandlerBase(
+    const std::shared_ptr<IUDFAgent>& agent,
+    PointsConverter::PointsToRecordBatchesConversionOptions
+        to_record_batches_options,
+    const std::shared_ptr<RecordBatchHandler>& handler)
+    : RecordBatchRequestHandler(agent, to_record_batches_options, handler) {
+
+}
+
+void StreamRecordBatchRequestHandlerBase::beginBatch(
+    const agent::BeginBatch& batch) {
+  agent::Response response;
+  response.mutable_error()->set_error(
+      "Invalid BeginBatch request, UDF wants stream data");
+  agent_.lock()->writeResponse(response);
+}
+
+void StreamRecordBatchRequestHandlerBase::endBatch(
+    const agent::EndBatch& batch) {
+  agent::Response response;
+  response.mutable_error()->set_error(
+      "Invalid EndBatch request, UDF wants stream data");
+  agent_.lock()->writeResponse(response);
+}

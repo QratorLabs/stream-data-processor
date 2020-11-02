@@ -6,7 +6,7 @@ StreamToStreamRequestHandler::StreamToStreamRequestHandler(
         to_record_batches_options,
     const std::shared_ptr<RecordBatchHandler>& handlers_pipeline,
     uvw::Loop* loop, const std::chrono::duration<uint64_t>& batch_interval)
-    : RecordBatchRequestHandler(agent, to_record_batches_options,
+    : StreamRecordBatchRequestHandlerBase(agent, to_record_batches_options,
                                 handlers_pipeline),
       batch_timer_(loop->resource<uvw::TimerHandle>()),
       batch_interval_(batch_interval) {
@@ -46,27 +46,12 @@ agent::Response StreamToStreamRequestHandler::restore(
   return response;
 }
 
-void StreamToStreamRequestHandler::beginBatch(
-    const agent::BeginBatch& batch) {
-  agent::Response response;
-  response.mutable_error()->set_error(
-      "Invalid BeginBatch request, UDF wants stream data");
-  agent_.lock()->writeResponse(response);
-}
-
 void StreamToStreamRequestHandler::point(const agent::Point& point) {
   auto new_point = batch_points_.mutable_points()->Add();
   new_point->CopyFrom(point);
   if (!batch_timer_->active()) {
     batch_timer_->start(batch_interval_, batch_interval_);
   }
-}
-
-void StreamToStreamRequestHandler::endBatch(const agent::EndBatch& batch) {
-  agent::Response response;
-  response.mutable_error()->set_error(
-      "Invalid EndBatch request, UDF wants stream data");
-  agent_.lock()->writeResponse(response);
 }
 
 void StreamToStreamRequestHandler::stop() {

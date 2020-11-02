@@ -1,15 +1,17 @@
 #pragma once
 
+#include <chrono>
 #include <memory>
+#include <string>
 
 #include "kapacitor_udf/points_converter.h"
 #include "kapacitor_udf/request_handlers/record_batch_request_handler.h"
 
 #include "udf.pb.h"
 
-class BatchAggregateRequestHandler : public RecordBatchRequestHandler {
+class StreamAggregateRequestHandler : public StreamRecordBatchRequestHandlerBase {
  public:
-  explicit BatchAggregateRequestHandler(
+  explicit StreamAggregateRequestHandler(
       const std::shared_ptr<IUDFAgent>& agent);
 
   [[nodiscard]] agent::Response info() const override;
@@ -18,13 +20,20 @@ class BatchAggregateRequestHandler : public RecordBatchRequestHandler {
   [[nodiscard]] agent::Response snapshot() const override;
   [[nodiscard]] agent::Response restore(
       const agent::RestoreRequest& restore_request) override;
-  void beginBatch(const agent::BeginBatch& batch) override;
   void point(const agent::Point& point) override;
-  void endBatch(const agent::EndBatch& batch) override;
+
+ private:
+  void parseToleranceOption(
+      const google::protobuf::RepeatedPtrField<agent::Option>&
+          request_options);
+
+  bool needHandleBefore(const agent::Point& point) const;
 
  private:
   static const PointsConverter::PointsToRecordBatchesConversionOptions
       DEFAULT_TO_RECORD_BATCHES_OPTIONS;
 
-  bool in_batch_{false};
+  static const std::string TOLERANCE_OPTION_NAME;
+
+  std::chrono::nanoseconds tolerance_{0};
 };
