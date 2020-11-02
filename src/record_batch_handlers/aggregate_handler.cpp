@@ -55,7 +55,6 @@ arrow::Status AggregateHandler::handle(
 
   ARROW_RETURN_NOT_OK(isValid(record_batches));
 
-  // Splitting by groups
   auto grouped = splitByGroups(record_batches);
 
   for ([[maybe_unused]] auto& [_, record_batches_group] : grouped) {
@@ -71,22 +70,42 @@ arrow::Status AggregateHandler::handle(
         RecordBatchGrouping::extractGroupingColumnsNames(
             record_batches_group.front());
 
-    // Setting result schema
+    bool explicitly_add_measurement_field = true;
+    bool has_measurement = false;
+    std::string measurement_column_name;
+    if (!ColumnTyping::getMeasurementColumnNameMetadata(
+        record_batches.front(), &measurement_column_name
+    ).ok()) {
+      explicitly_add_measurement_field = false;
+    } else {
+      has_measurement = true;
+      for (auto& grouping_column : grouping_columns) {
+        if (grouping_column == measurement_column_name) {
+          explicitly_add_measurement_field = false;
+        }
+      }
+    }
+
     std::shared_ptr<arrow::Schema> result_schema = nullptr;
     ARROW_RETURN_NOT_OK(
-        fillResultSchema(record_batches, grouping_columns, &result_schema));
+        fillResultSchema(record_batches, grouping_columns, &result_schema,
+                         explicitly_add_measurement_field,
+                         measurement_column_name));
 
-    // Aggregating time column
     ARROW_RETURN_NOT_OK(
         aggregateTimeColumn(record_batches_group, &result_arrays, pool));
 
-    // Adding unique group values of grouping columns to the result vector
+    if (explicitly_add_measurement_field) {
+      ARROW_RETURN_NOT_OK(fillMeasurementColumn(
+          record_batches_group, &result_arrays, measurement_column_name
+          ));
+    }
+
     ARROW_RETURN_NOT_OK(
         fillGroupingColumns(record_batches_group,
                             &result_arrays,
                             grouping_columns));
 
-    // Calculating aggregators
     for (auto&[column_name, aggregate_functions] :
         options_.aggregate_columns) {
       for (auto& aggregate_case : aggregate_functions) {
@@ -109,6 +128,11 @@ arrow::Status AggregateHandler::handle(
     ARROW_RETURN_NOT_OK(ColumnTyping::setTimeColumnNameMetadata(
         &result->back(),
         options_.result_time_column_rule.result_column_name));
+
+    if (has_measurement) {
+      ARROW_RETURN_NOT_OK(ColumnTyping::setMeasurementColumnNameMetadata(
+          &result->back(), measurement_column_name));
+    }
   }
 
   return arrow::Status::OK();
@@ -117,7 +141,9 @@ arrow::Status AggregateHandler::handle(
 arrow::Status AggregateHandler::fillResultSchema(
     const arrow::RecordBatchVector& record_batches,
     const std::vector<std::string>& grouping_columns,
-    std::shared_ptr<arrow::Schema>* result_schema
+    std::shared_ptr<arrow::Schema>* result_schema,
+    bool explicitly_add_measurement,
+    const std::string& measurement_column_name
     ) const {
   arrow::FieldVector result_fields;
   result_fields.push_back(arrow::field(
@@ -128,6 +154,17 @@ arrow::Status AggregateHandler::fillResultSchema(
   ARROW_RETURN_NOT_OK(
       ColumnTyping::setColumnTypeMetadata(
           &result_fields.back(), ColumnType::TIME));
+
+  if (explicitly_add_measurement) {
+    result_fields.push_back(arrow::field(
+        measurement_column_name,
+        arrow::utf8()
+    ));
+
+    ARROW_RETURN_NOT_OK(
+        ColumnTyping::setColumnTypeMetadata(
+            &result_fields.back(), ColumnType::MEASUREMENT));
+  }
 
   for (auto& grouping_column_name : grouping_columns) {
     auto column_field = record_batches.front()->schema()->GetFieldByName(
@@ -331,6 +368,34 @@ arrow::Status AggregateHandler::isValid(
           "field only");  // TODO: support any numeric type
     }
   }
+
+  return arrow::Status::OK();
+}
+arrow::Status AggregateHandler::fillMeasurementColumn(
+    const arrow::RecordBatchVector& grouped,
+    arrow::ArrayVector* result_arrays,
+    const std::string& measurement_column_name) {
+  arrow::StringBuilder measurement_column_builder;
+  for (auto& record_batch : grouped) {
+    auto measurement_column =
+        record_batch->GetColumnByName(measurement_column_name);
+
+    if (measurement_column == nullptr) {
+      return arrow::Status::Invalid(fmt::format(
+          "Measurement column {} is not present", measurement_column_name));
+    }
+
+    auto measurement_value_result = measurement_column->GetScalar(0);
+    ARROW_RETURN_NOT_OK(measurement_value_result.status());
+
+    ARROW_RETURN_NOT_OK(measurement_column_builder.Append(
+        measurement_value_result.ValueOrDie()->ToString()));
+  }
+
+  result_arrays->emplace_back();
+
+  ARROW_RETURN_NOT_OK(
+      measurement_column_builder.Finish(&result_arrays->back()));
 
   return arrow::Status::OK();
 }

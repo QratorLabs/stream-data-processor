@@ -127,7 +127,7 @@ arrow::Status JoinHandler::handle(
       time_column_name, result_record_batch, &result_record_batch));
 
   ARROW_RETURN_NOT_OK(ColumnTyping::setTimeColumnNameMetadata(
-      &result_record_batch, time_column_name));
+      &result_record_batch, time_column_name));                               // TODO: set measurement column name metadata
 
   result->push_back(result_record_batch);                                     // TODO: copy column types
   return arrow::Status::OK();

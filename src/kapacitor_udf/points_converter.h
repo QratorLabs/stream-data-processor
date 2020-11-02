@@ -51,8 +51,4 @@ class PointsConverter {
       std::map<std::string, BuilderType>* builders,
       const std::shared_ptr<arrow::DataType>& data_type,
       ColumnType column_type);
-
-  static arrow::Status extractMeasurementColumnName(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch,
-      std::string* measurement_column_name);
 };

@@ -36,12 +36,6 @@ UDFAgent<UVWHandleType, LibuvHandleType>::UDFAgent(
         }
       });
 
-  out_->template on<uvw::WriteEvent>(
-      [](const uvw::WriteEvent& event,
-         uvw::StreamHandle<UVWHandleType, LibuvHandleType>& handle) {
-        spdlog::debug("Data has been written");
-      });
-
   in_->template once<uvw::EndEvent>(
       [this](const uvw::EndEvent& event,
              uvw::StreamHandle<UVWHandleType, LibuvHandleType>& handle) {

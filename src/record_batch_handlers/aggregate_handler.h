@@ -44,7 +44,9 @@ class AggregateHandler : public RecordBatchHandler {
   arrow::Status fillResultSchema(
       const arrow::RecordBatchVector& record_batches,
       const std::vector<std::string>& grouping_columns,
-      std::shared_ptr<arrow::Schema>* result_schema) const;
+      std::shared_ptr<arrow::Schema>* result_schema,
+      bool explicitly_add_measurement,
+      const std::string& measurement_column_name) const;
 
   static arrow::Status fillGroupingColumns(
       const arrow::RecordBatchVector& grouped,
@@ -62,6 +64,12 @@ class AggregateHandler : public RecordBatchHandler {
       const arrow::RecordBatchVector& record_batch_vector,
       arrow::ArrayVector* result_arrays,
       arrow::MemoryPool* pool = arrow::default_memory_pool()) const;
+
+  static arrow::Status fillMeasurementColumn(
+      const arrow::RecordBatchVector& grouped,
+      arrow::ArrayVector* result_arrays,
+      const std::string& measurement_column_name
+      );
 
  private:
   static const std::unordered_map<AggregateFunctionEnumType,

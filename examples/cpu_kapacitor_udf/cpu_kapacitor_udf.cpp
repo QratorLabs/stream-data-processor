@@ -41,7 +41,6 @@ class StreamAggregateUDFAgentClientFactory : public UnixSocketClientFactory {
 };
 
 int main(int argc, char** argv) {
-  spdlog::set_level(spdlog::level::debug);
   spdlog::flush_every(std::chrono::seconds(5));
 
   if (argc < 3) {

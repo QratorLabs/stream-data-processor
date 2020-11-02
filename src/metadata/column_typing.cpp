@@ -4,6 +4,7 @@
 
 const std::string ColumnTyping::COLUMN_TYPE_METADATA_KEY{"column_type"};
 const std::string ColumnTyping::TIME_COLUMN_NAME_METADATA_KEY{"time_column_name"};
+const std::string ColumnTyping::MEASUREMENT_COLUMN_NAME_METADATA_KEY{"measurement_column_name"};
 
 arrow::Status ColumnTyping::setColumnTypeMetadata(
     std::shared_ptr<arrow::Field>* column_field,
@@ -71,19 +72,93 @@ ColumnType ColumnTyping::getColumnType(
 arrow::Status ColumnTyping::setTimeColumnNameMetadata(
     std::shared_ptr<arrow::RecordBatch>* record_batch,
     const std::string& time_column_name) {
-  auto time_column = record_batch->get()->GetColumnByName(time_column_name);
-  if (time_column == nullptr) {
-    return arrow::Status::KeyError(fmt::format(
-        "No such column : {}", time_column_name));
+  ARROW_RETURN_NOT_OK(setColumnNameMetadata(
+      record_batch,
+      time_column_name,
+      TIME_COLUMN_NAME_METADATA_KEY,
+      arrow::Type::TIMESTAMP,
+      TIME
+  ));
+
+  return arrow::Status::OK();
+}
+
+arrow::Status ColumnTyping::getTimeColumnNameMetadata(
+    const std::shared_ptr<arrow::RecordBatch>& record_batch,
+    std::string* time_column_name) {
+  ARROW_RETURN_NOT_OK(getColumnNameMetadata(
+      record_batch,
+      TIME_COLUMN_NAME_METADATA_KEY,
+      time_column_name
+  ));
+
+  return arrow::Status::OK();
+}
+
+arrow::Status ColumnTyping::setMeasurementColumnNameMetadata(
+    std::shared_ptr<arrow::RecordBatch>* record_batch,
+    const std::string& measurement_column_name) {
+  ARROW_RETURN_NOT_OK(setColumnNameMetadata(
+      record_batch,
+      measurement_column_name,
+      MEASUREMENT_COLUMN_NAME_METADATA_KEY,
+      arrow::Type::STRING,
+      MEASUREMENT
+      ));
+
+  return arrow::Status::OK();
+}
+
+arrow::Status ColumnTyping::getMeasurementColumnNameMetadata(
+    const std::shared_ptr<arrow::RecordBatch>& record_batch,
+    std::string* measurement_column_name) {
+  ARROW_RETURN_NOT_OK(getColumnNameMetadata(
+      record_batch,
+      MEASUREMENT_COLUMN_NAME_METADATA_KEY,
+      measurement_column_name
+      ));
+
+  return arrow::Status::OK();
+}
+
+arrow::Status ColumnTyping::getColumnNameMetadata(
+    const std::shared_ptr<arrow::RecordBatch>& record_batch,
+    const std::string& metadata_key,
+    std::string* column_name) {
+  auto metadata = record_batch->schema()->metadata();
+  if (metadata == nullptr) {
+    return arrow::Status::Invalid(
+        "RecordBatch has no metadata to extract corresponded column name");
   }
 
-  if (time_column->type_id() != arrow::Type::TIMESTAMP) {
+  if (!metadata->Contains(metadata_key)) {
+    return arrow::Status::KeyError(fmt::format(
+        "RecordBatch's metadata has no key {} to extract "
+        "corresponded column name", metadata_key));
+  }
+
+  *column_name = metadata->Get(metadata_key).ValueOrDie();
+  return arrow::Status::OK();
+}
+arrow::Status ColumnTyping::setColumnNameMetadata(
+    std::shared_ptr<arrow::RecordBatch>* record_batch,
+    const std::string& column_name,
+    const std::string& metadata_key,
+    arrow::Type::type arrow_column_type,
+    ColumnType column_type) {
+  auto column = record_batch->get()->GetColumnByName(column_name);
+  if (column == nullptr) {
+    return arrow::Status::KeyError(fmt::format(
+        "No such column to set {} metadata: {}", metadata_key, column_name));
+  }
+
+  if (column->type_id() != arrow_column_type) {
     return arrow::Status::Invalid(fmt::format(
-        "Time column {} must have TIMESTAMP arrow type", time_column_name));
+        "Column {} must have {} arrow type", column_name, arrow_column_type));
   }
 
   ARROW_RETURN_NOT_OK(
-      setColumnTypeMetadata(record_batch, time_column_name, TIME));
+      setColumnTypeMetadata(record_batch, column_name, column_type));
 
   std::shared_ptr<arrow::KeyValueMetadata> arrow_metadata = nullptr;
   if (record_batch->get()->schema()->HasMetadata()) {
@@ -93,25 +168,9 @@ arrow::Status ColumnTyping::setTimeColumnNameMetadata(
   }
 
   ARROW_RETURN_NOT_OK(arrow_metadata->Set(
-      TIME_COLUMN_NAME_METADATA_KEY, time_column_name
+      metadata_key, column_name
   ));
   *record_batch = record_batch->get()->ReplaceSchemaMetadata(arrow_metadata);
-
-  return arrow::Status::OK();
-}
-
-arrow::Status ColumnTyping::getTimeColumnNameMetadata(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch,
-    std::string* time_column_name) {
-  auto metadata = record_batch->schema()->metadata();
-  if (metadata == nullptr ||
-      !metadata->Contains(TIME_COLUMN_NAME_METADATA_KEY)) {
-    return arrow::Status::Invalid(
-        "RecordBatch has no metadata to extract time column name");
-  }
-
-  *time_column_name =
-      metadata->Get(TIME_COLUMN_NAME_METADATA_KEY).ValueOrDie();
 
   return arrow::Status::OK();
 }

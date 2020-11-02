@@ -42,7 +42,7 @@ arrow::Status PointsConverter::convertToPoints(
         record_batch, &time_column_name));
 
     std::string measurement_column_name;
-    ARROW_RETURN_NOT_OK(extractMeasurementColumnName(
+    ARROW_RETURN_NOT_OK(ColumnTyping::getMeasurementColumnNameMetadata(
         record_batch, &measurement_column_name));
 
     auto group = RecordBatchGrouping::extractGroup(record_batch);
@@ -271,52 +271,8 @@ arrow::Status PointsConverter::convertPointsGroup(
 
   ARROW_RETURN_NOT_OK(ColumnTyping::setTimeColumnNameMetadata(
       record_batch, options.time_column_name));
-
-  return arrow::Status::OK();
-}
-
-arrow::Status PointsConverter::extractMeasurementColumnName(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch,
-    std::string* measurement_column_name) {
-  bool found_measurement = false;
-
-  for (auto& field : record_batch->schema()->fields()) {
-    if (!field->HasMetadata()) {
-      return arrow::Status::Invalid(fmt::format(
-          "Can't convert RecordBatch to points. "
-          "Field {} has no type metadata", field->name()));
-    }
-
-    auto column_type = ColumnTyping::getColumnType(field);
-    switch (column_type) {
-      case MEASUREMENT:
-        if (found_measurement) {
-          return arrow::Status::Invalid(fmt::format(
-              "Can't convert RecordBatch to points. "
-              "Found two columns with type of MEASUREMENT: "
-              "{} and {}", field->name(), *measurement_column_name
-          ));
-        } else {
-          *measurement_column_name = field->name();
-          found_measurement = true;
-        }
-
-        break;
-      case UNKNOWN:
-        return arrow::Status::Invalid(fmt::format(
-            "Can't convert RecordBatch to points. "
-            "Found column with UNKNOWN type: "
-            "{}", field->name()
-        ));
-      default:
-        continue;
-    }
-  }
-
-  if (!found_measurement) {
-    return arrow::Status::Invalid("Can't convert RecordBatch to points. "
-                                  "Measurement column not found");
-  }
+  ARROW_RETURN_NOT_OK(ColumnTyping::setMeasurementColumnNameMetadata(
+      record_batch, options.measurement_column_name));
 
   return arrow::Status::OK();
 }

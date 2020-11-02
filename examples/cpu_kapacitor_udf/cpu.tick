@@ -1,6 +1,7 @@
 dbrp "graphite"."default"
 
 var log_url = 'http://172.20.0.2:7777/'
+
 var win_period = 7m
 var win_every = 2m
 
@@ -34,7 +35,6 @@ var cputime_all = stream
 
 var cputime_host = cputime_all
     |groupBy('host', 'type')
-        .byMeasurement()
     |flatten().tolerance(5s)
 
 var cputime_host_calc = cputime_host
@@ -63,7 +63,6 @@ var cputime_host_calc = cputime_host
 
 var cputime_all_win = cputime_all
     |groupBy('cpu', 'host', 'type')
-        .byMeasurement()
     |flatten().tolerance(5s)
     |window()
         .period(win_period)
