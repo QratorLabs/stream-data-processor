@@ -65,8 +65,7 @@ arrow::Status CSVParser::tryFindTimeColumn() {
     return arrow::Status::OK();
   }
 
-  ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
-      &time_field, TIME));
+  ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(&time_field, TIME));
 
   ARROW_RETURN_NOT_OK(record_batches_schema_->SetField(
       record_batches_schema_->GetFieldIndex(time_field->name()), time_field));

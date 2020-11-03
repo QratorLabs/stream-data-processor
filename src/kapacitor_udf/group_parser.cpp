@@ -8,8 +8,7 @@
 
 RecordBatchGroup GroupParser::parse(
     const std::string& group_string,
-    const std::string& measurement_column_name
-) {
+    const std::string& measurement_column_name) {
   auto measurement_and_tags = StringUtils::split(group_string, "\n");
   if (measurement_and_tags.empty()) {
     return {};
@@ -42,9 +41,8 @@ RecordBatchGroup GroupParser::parse(
   return RecordBatchGrouping::constructGroupFromOrderedMap(group_map);
 }
 
-std::string GroupParser::encode(
-    const RecordBatchGroup& group,
-    const std::string& measurement_column_name) {
+std::string GroupParser::encode(const RecordBatchGroup& group,
+                                const std::string& measurement_column_name) {
   std::string measurement_prefix = "";
   std::stringstream tags_group_string_builder;
   bool first_tag_written = false;

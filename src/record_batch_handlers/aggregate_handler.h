@@ -68,8 +68,7 @@ class AggregateHandler : public RecordBatchHandler {
   static arrow::Status fillMeasurementColumn(
       const arrow::RecordBatchVector& grouped,
       arrow::ArrayVector* result_arrays,
-      const std::string& measurement_column_name
-      );
+      const std::string& measurement_column_name);
 
  private:
   static const std::unordered_map<AggregateFunctionEnumType,

@@ -3,8 +3,8 @@
 #include <iostream>
 #include <memory>
 
-#include <cxxopts.hpp>
 #include <spdlog/spdlog.h>
+#include <cxxopts.hpp>
 #include <uvw.hpp>
 
 #include "kapacitor_udf/kapacitor_udf.h"
@@ -43,11 +43,10 @@ class StreamAggregateUDFAgentClientFactory : public UnixSocketClientFactory {
 
 int main(int argc, char** argv) {
   cxxopts::Options options("AggregateUDF", "Aggregates data from kapacitor");
-  options.add_options()
-      ("b,batch", "Unix socket path for batch data", cxxopts::value<std::string>())
-      ("s,stream", "Unix socket path for stream data", cxxopts::value<std::string>())
-      ("h,help", "Print this message")
-      ;
+  options.add_options()("b,batch", "Unix socket path for batch data",
+                        cxxopts::value<std::string>())(
+      "s,stream", "Unix socket path for stream data",
+      cxxopts::value<std::string>())("h,help", "Print this message");
 
   std::string batch_socket_path, stream_socket_path;
   try {
@@ -71,13 +70,11 @@ int main(int argc, char** argv) {
 
   UnixSocketServer batch_server(
       std::make_shared<BatchAggregateUDFAgentClientFactory>(),
-      batch_socket_path,
-      loop.get());
+      batch_socket_path, loop.get());
 
   UnixSocketServer stream_server(
       std::make_shared<StreamAggregateUDFAgentClientFactory>(),
-      stream_socket_path,
-      loop.get());
+      stream_socket_path, loop.get());
 
   auto signal_handle = loop->resource<uvw::SignalHandle>();
   signal_handle->on<uvw::SignalEvent>(

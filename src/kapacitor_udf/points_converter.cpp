@@ -2,10 +2,10 @@
 
 #include <spdlog/spdlog.h>
 
+#include "group_parser.h"
 #include "metadata/column_typing.h"
 #include "metadata/grouping.h"
 #include "points_converter.h"
-#include "group_parser.h"
 
 arrow::Status PointsConverter::convertToRecordBatches(
     const agent::PointBatch& points, arrow::RecordBatchVector* record_batches,
@@ -14,7 +14,7 @@ arrow::Status PointsConverter::convertToRecordBatches(
   for (size_t i = 0; i < points.points_size(); ++i) {
     auto point_group_string = points.points(i).group();
     if (groups_indexes.find(point_group_string) == groups_indexes.end()) {
-      groups_indexes[point_group_string] = std::vector{ i };
+      groups_indexes[point_group_string] = std::vector{i};
     } else {
       groups_indexes[point_group_string].push_back(i);
     }
@@ -22,20 +22,21 @@ arrow::Status PointsConverter::convertToRecordBatches(
 
   for (auto& [group_string, group_indexes] : groups_indexes) {
     record_batches->emplace_back();
-    ARROW_RETURN_NOT_OK(convertPointsGroup(
-        points, group_string, group_indexes,
-        &record_batches->back(), options));
+    ARROW_RETURN_NOT_OK(convertPointsGroup(points, group_string,
+                                           group_indexes,
+                                           &record_batches->back(), options));
   }
 
   return arrow::Status::OK();
 }
 
 arrow::Status PointsConverter::convertToPoints(
-    const arrow::RecordBatchVector& record_batches, agent::PointBatch* points) {
+    const arrow::RecordBatchVector& record_batches,
+    agent::PointBatch* points) {
   int points_count = 0;
   for (auto& record_batch : record_batches) {
     points->mutable_points()->Reserve(points_count +
-        record_batch->num_rows());
+                                      record_batch->num_rows());
 
     std::string time_column_name;
     ARROW_RETURN_NOT_OK(ColumnTyping::getTimeColumnNameMetadata(
@@ -47,14 +48,13 @@ arrow::Status PointsConverter::convertToPoints(
 
     auto group = RecordBatchGrouping::extractGroup(record_batch);
 
-    auto group_string = GroupParser::encode(
-        group, measurement_column_name);
+    auto group_string = GroupParser::encode(group, measurement_column_name);
 
     for (int i = 0; i < record_batch->num_columns(); ++i) {
       auto& column_name = record_batch->column_name(i);
       auto column = record_batch->column(i);
-      auto column_type = ColumnTyping::getColumnType(
-          record_batch->schema()->field(i));
+      auto column_type =
+          ColumnTyping::getColumnType(record_batch->schema()->field(i));
 
       for (int j = 0; j < column->length(); ++j) {
         auto get_scalar_result = column->GetScalar(j);
@@ -64,8 +64,9 @@ arrow::Status PointsConverter::convertToPoints(
 
         if (i == 0) {
           points->mutable_points()->Add();
-          points->mutable_points()->Mutable(
-              points_count + j)->set_group(group_string);
+          points->mutable_points()
+              ->Mutable(points_count + j)
+              ->set_group(group_string);
         }
 
         auto& point = points->mutable_points()->operator[](points_count + j);
@@ -74,9 +75,7 @@ arrow::Status PointsConverter::convertToPoints(
         bool skip_column = false;
 
         switch (column_type) {
-          case MEASUREMENT:
-            point.set_name(scalar_value->ToString());
-            break;
+          case MEASUREMENT: point.set_name(scalar_value->ToString()); break;
           case TIME:
             point.set_time(
                 std::static_pointer_cast<arrow::Int64Scalar>(scalar_value)
@@ -95,7 +94,8 @@ arrow::Status PointsConverter::convertToPoints(
                 break;
               case arrow::Type::DOUBLE:
                 point.mutable_fieldsdouble()->operator[](column_name) =
-                    std::static_pointer_cast<arrow::DoubleScalar>(scalar_value)
+                    std::static_pointer_cast<arrow::DoubleScalar>(
+                        scalar_value)
                         ->value;
                 break;
               case arrow::Type::STRING:
@@ -121,11 +121,11 @@ arrow::Status PointsConverter::convertToPoints(
 
             break;
           default:
-            return arrow::Status::Invalid(fmt::format(
-                "Can't convert RecordBatch to points. "
-                "Found column with UNKNOWN type: "
-                "{}", record_batch->schema()->field(i)->name()
-            ));
+            return arrow::Status::Invalid(
+                fmt::format("Can't convert RecordBatch to points. "
+                            "Found column with UNKNOWN type: "
+                            "{}",
+                            record_batch->schema()->field(i)->name()));
         }
 
         if (skip_column) {
@@ -184,14 +184,13 @@ arrow::Status PointsConverter::buildColumnArrays(
   return arrow::Status::OK();
 }
 arrow::Status PointsConverter::convertPointsGroup(
-    const agent::PointBatch& points,
-    const std::string& group_string,
+    const agent::PointBatch& points, const std::string& group_string,
     const std::vector<size_t>& group_indexes,
     std::shared_ptr<arrow::RecordBatch>* record_batch,
     const PointsToRecordBatchesConversionOptions& options) {
   auto pool = arrow::default_memory_pool();
-  auto timestamp_builder = arrow::TimestampBuilder(
-      arrow::timestamp(arrow::TimeUnit::MILLI), pool);
+  auto timestamp_builder =
+      arrow::TimestampBuilder(arrow::timestamp(arrow::TimeUnit::MILLI), pool);
   auto measurement_builder = arrow::StringBuilder(pool);
   std::map<std::string, arrow::StringBuilder> tags_builders;
   std::map<std::string, arrow::DoubleBuilder> double_fields_builders;
@@ -226,10 +225,9 @@ arrow::Status PointsConverter::convertPointsGroup(
   arrow::ArrayVector column_arrays;
 
   schema_fields.push_back(arrow::field(
-      options.time_column_name,
-      arrow::timestamp(arrow::TimeUnit::MILLI)));
-  ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
-      &schema_fields.back(), TIME));
+      options.time_column_name, arrow::timestamp(arrow::TimeUnit::MILLI)));
+  ARROW_RETURN_NOT_OK(
+      ColumnTyping::setColumnTypeMetadata(&schema_fields.back(), TIME));
   column_arrays.emplace_back();
   ARROW_RETURN_NOT_OK(timestamp_builder.Finish(&column_arrays.back()));
 
@@ -243,8 +241,8 @@ arrow::Status PointsConverter::convertPointsGroup(
   ARROW_RETURN_NOT_OK(buildColumnArrays(&column_arrays, &schema_fields,
                                         &tags_builders, arrow::utf8(), TAG));
   ARROW_RETURN_NOT_OK(buildColumnArrays(&column_arrays, &schema_fields,
-                                        &int_fields_builders,
-                                        arrow::int64(), FIELD));
+                                        &int_fields_builders, arrow::int64(),
+                                        FIELD));
   ARROW_RETURN_NOT_OK(buildColumnArrays(&column_arrays, &schema_fields,
                                         &double_fields_builders,
                                         arrow::float64(), FIELD));
@@ -262,12 +260,12 @@ arrow::Status PointsConverter::convertPointsGroup(
   try {
     group = GroupParser::parse(group_string, options.measurement_column_name);
   } catch (const GroupParserException& exc) {
-    return arrow::Status::Invalid(fmt::format(
-        "Error while parsing group string: {}", group_string));
+    return arrow::Status::Invalid(
+        fmt::format("Error while parsing group string: {}", group_string));
   }
 
-  ARROW_RETURN_NOT_OK(RecordBatchGrouping::setGroupMetadata(
-      record_batch, group));
+  ARROW_RETURN_NOT_OK(
+      RecordBatchGrouping::setGroupMetadata(record_batch, group));
 
   ARROW_RETURN_NOT_OK(ColumnTyping::setTimeColumnNameMetadata(
       record_batch, options.time_column_name));

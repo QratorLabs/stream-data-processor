@@ -4,8 +4,8 @@
 
 arrow::Status MinAggregateFunction::aggregate(
     const std::shared_ptr<arrow::RecordBatch>& data,
-    const std::string& column_name, std::shared_ptr<arrow::Scalar>* result
-    ) const {
+    const std::string& column_name,
+    std::shared_ptr<arrow::Scalar>* result) const {
   auto min_max_result =
       arrow::compute::MinMax(data->GetColumnByName(column_name));
   if (!min_max_result.ok()) {

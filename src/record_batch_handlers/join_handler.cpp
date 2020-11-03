@@ -18,7 +18,9 @@ arrow::Status JoinHandler::handle(
   std::unordered_map<std::string, std::shared_ptr<arrow::DataType>>
       column_types;
 
-  std::unordered_map<std::string, std::shared_ptr<arrow::ArrayBuilder>>       // TODO: check fields on quality
+  std::unordered_map<
+      std::string,
+      std::shared_ptr<arrow::ArrayBuilder>>  // TODO: check fields on quality
       column_builders;
 
   std::unordered_map<std::string, std::set<JoinValue, JoinValueCompare>>
@@ -43,8 +45,8 @@ arrow::Status JoinHandler::handle(
     }
 
     for (size_t j = 0; j < record_batches[i]->num_rows(); ++j) {
-      ARROW_RETURN_NOT_OK(getJoinKey(
-          record_batches[i], j, &join_key, time_column_name));
+      ARROW_RETURN_NOT_OK(
+          getJoinKey(record_batches[i], j, &join_key, time_column_name));
       if (keys_to_rows.find(join_key.key_string) == keys_to_rows.end()) {
         keys_to_rows[join_key.key_string] =
             std::set<JoinValue, JoinValueCompare>();
@@ -127,9 +129,10 @@ arrow::Status JoinHandler::handle(
       time_column_name, result_record_batch, &result_record_batch));
 
   ARROW_RETURN_NOT_OK(ColumnTyping::setTimeColumnNameMetadata(
-      &result_record_batch, time_column_name));                               // TODO: set measurement column name metadata
+      &result_record_batch,
+      time_column_name));  // TODO: set measurement column name metadata
 
-  result->push_back(result_record_batch);                                     // TODO: copy column types
+  result->push_back(result_record_batch);  // TODO: copy column types
   return arrow::Status::OK();
 }
 

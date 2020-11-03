@@ -14,8 +14,8 @@ arrow::Status GroupHandler::handle(
   for (auto& group : grouped_record_batches) {
     copySchemaMetadata(record_batch, &group);
 
-    ARROW_RETURN_NOT_OK(RecordBatchGrouping::fillGroupMetadata(
-        &group, grouping_columns_));
+    ARROW_RETURN_NOT_OK(
+        RecordBatchGrouping::fillGroupMetadata(&group, grouping_columns_));
 
     ARROW_RETURN_NOT_OK(copyColumnTypes(record_batch, &group));
     result->push_back(group);

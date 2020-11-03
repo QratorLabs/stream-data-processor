@@ -8,7 +8,9 @@ void Node::passData(const std::vector<std::shared_ptr<arrow::Buffer>>& data) {
     for (auto& consumer : consumers_) {
       try {
         consumer->consume(buffer);
-      } catch (const std::exception& e) { spdlog::get(name_)->error(e.what()); }
+      } catch (const std::exception& e) {
+        spdlog::get(name_)->error(e.what());
+      }
     }
   }
 }

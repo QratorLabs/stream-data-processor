@@ -15,16 +15,16 @@
 #include <zmq.hpp>
 
 #include "consumers/consumers.h"
-#include "nodes/data_handlers/data_handlers.h"
 #include "kapacitor_udf/kapacitor_udf.h"
+#include "metadata.pb.h"
+#include "metadata/column_typing.h"
 #include "node_pipeline/node_pipeline.h"
+#include "nodes/data_handlers/data_handlers.h"
 #include "nodes/nodes.h"
 #include "producers/producers.h"
+#include "udf.pb.h"
 #include "utils/parsers/graphite_parser.h"
 #include "utils/utils.h"
-#include "metadata.pb.h"
-#include "udf.pb.h"
-#include "metadata/column_typing.h"
 
 int main(int argc, char** argv) {
   spdlog::set_level(spdlog::level::debug);
@@ -42,7 +42,11 @@ int main(int argc, char** argv) {
   field = record_batch->schema()->field(0);
   ColumnTyping::setColumnTypeMetadata(&field, TAG);
 
-  spdlog::debug(record_batch->schema()->field(0)->metadata()->Get("column_type").ValueOrDie());
+  spdlog::debug(record_batch->schema()
+                    ->field(0)
+                    ->metadata()
+                    ->Get("column_type")
+                    .ValueOrDie());
 
   return 0;
 }

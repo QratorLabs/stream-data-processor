@@ -12,8 +12,7 @@ arrow::Status FilterHandler::handle(
   auto pool = arrow::default_memory_pool();
   std::shared_ptr<gandiva::Filter> filter;
 
-  ARROW_RETURN_NOT_OK(
-      prepareFilter(record_batch->schema(), &filter));
+  ARROW_RETURN_NOT_OK(prepareFilter(record_batch->schema(), &filter));
 
   std::shared_ptr<gandiva::SelectionVector> selection;
 
@@ -22,8 +21,7 @@ arrow::Status FilterHandler::handle(
 
   ARROW_RETURN_NOT_OK(filter->Evaluate(*record_batch, selection));
 
-  auto take_result =
-      arrow::compute::Take(record_batch, selection->ToArray());
+  auto take_result = arrow::compute::Take(record_batch, selection->ToArray());
 
   if (!take_result.ok()) {
     return take_result.status();

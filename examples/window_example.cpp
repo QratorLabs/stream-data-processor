@@ -3,8 +3,8 @@
 #include <uvw.hpp>
 
 #include "consumers/consumers.h"
-#include "nodes/data_handlers/data_handlers.h"
 #include "node_pipeline/node_pipeline.h"
+#include "nodes/data_handlers/data_handlers.h"
 #include "nodes/nodes.h"
 #include "nodes/period_handlers/serialized_period_handler.h"
 #include "producers/producers.h"

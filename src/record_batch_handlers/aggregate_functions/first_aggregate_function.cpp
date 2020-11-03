@@ -7,11 +7,11 @@
 
 arrow::Status FirstAggregateFunction::aggregate(
     const std::shared_ptr<arrow::RecordBatch>& data,
-    const std::string& column_name, std::shared_ptr<arrow::Scalar>* result
-    ) const {
+    const std::string& column_name,
+    std::shared_ptr<arrow::Scalar>* result) const {
   std::string time_column_name;
-  ARROW_RETURN_NOT_OK(ColumnTyping::getTimeColumnNameMetadata(
-      data, &time_column_name));
+  ARROW_RETURN_NOT_OK(
+      ColumnTyping::getTimeColumnNameMetadata(data, &time_column_name));
 
   auto ts_column = data->GetColumnByName(time_column_name);
   if (ts_column == nullptr) {

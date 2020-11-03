@@ -15,17 +15,16 @@ arrow::Status MapHandler::handle(
     const std::shared_ptr<arrow::RecordBatch>& record_batch,
     arrow::RecordBatchVector* result) {
   auto result_record_batch = arrow::RecordBatch::Make(
-      record_batch->schema(),
-      record_batch->num_rows(),
-      record_batch->columns()
-      );
+      record_batch->schema(), record_batch->num_rows(),
+      record_batch->columns());
 
   std::shared_ptr<gandiva::Projector> projector;
-  ARROW_RETURN_NOT_OK(prepareProjector(result_record_batch->schema(), &projector));
+  ARROW_RETURN_NOT_OK(
+      prepareProjector(result_record_batch->schema(), &projector));
   std::shared_ptr<arrow::Schema> result_schema = nullptr;
 
-  ARROW_RETURN_NOT_OK(prepareResultSchema(
-      result_record_batch->schema(), &result_schema));
+  ARROW_RETURN_NOT_OK(
+      prepareResultSchema(result_record_batch->schema(), &result_schema));
 
   ARROW_RETURN_NOT_OK(eval(&result_record_batch, projector, result_schema));
 

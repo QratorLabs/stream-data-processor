@@ -42,15 +42,12 @@ class ColumnTyping {
  private:
   static arrow::Status setColumnNameMetadata(
       std::shared_ptr<arrow::RecordBatch>* record_batch,
-      const std::string& column_name,
-      const std::string& metadata_key,
-      arrow::Type::type arrow_column_type,
-      ColumnType column_type);
+      const std::string& column_name, const std::string& metadata_key,
+      arrow::Type::type arrow_column_type, ColumnType column_type);
 
   static arrow::Status getColumnNameMetadata(
       const std::shared_ptr<arrow::RecordBatch>& record_batch,
-      const std::string& metadata_key,
-      std::string* column_name);
+      const std::string& metadata_key, std::string* column_name);
 
  private:
   static const std::string COLUMN_TYPE_METADATA_KEY;

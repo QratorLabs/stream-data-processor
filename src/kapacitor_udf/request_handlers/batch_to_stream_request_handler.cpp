@@ -9,8 +9,7 @@ BatchToStreamRequestHandler::BatchToStreamRequestHandler(
     const PointsConverter::PointsToRecordBatchesConversionOptions&
         to_record_batches_options,
     const std::shared_ptr<RecordBatchHandler>& handler)
-    : RecordBatchRequestHandler(agent, to_record_batches_options,
-                                handler) {}
+    : RecordBatchRequestHandler(agent, to_record_batches_options, handler) {}
 
 agent::Response BatchToStreamRequestHandler::info() const {
   agent::Response response;

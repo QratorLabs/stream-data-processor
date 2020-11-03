@@ -7,7 +7,7 @@ StreamToStreamRequestHandler::StreamToStreamRequestHandler(
     const std::shared_ptr<RecordBatchHandler>& handlers_pipeline,
     uvw::Loop* loop, const std::chrono::duration<uint64_t>& batch_interval)
     : StreamRecordBatchRequestHandlerBase(agent, to_record_batches_options,
-                                handlers_pipeline),
+                                          handlers_pipeline),
       batch_timer_(loop->resource<uvw::TimerHandle>()),
       batch_interval_(batch_interval) {
   batch_timer_->on<uvw::TimerEvent>(

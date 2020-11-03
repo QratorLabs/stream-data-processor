@@ -13,8 +13,8 @@
 #include <zmq.hpp>
 
 #include "consumers/consumers.h"
-#include "nodes/data_handlers/data_handlers.h"
 #include "node_pipeline/node_pipeline.h"
+#include "nodes/data_handlers/data_handlers.h"
 #include "nodes/nodes.h"
 #include "nodes/period_handlers/serialized_period_handler.h"
 #include "producers/producers.h"
@@ -42,10 +42,10 @@ int main(int argc, char** argv) {
   std::unordered_map<std::string, NodePipeline> pipelines;
 
   GraphiteParser::GraphiteParserOptions parser_options{
-      { "*.cpu.*.percent.* host.measurement.cpu.type.field" },
+      {"*.cpu.*.percent.* host.measurement.cpu.type.field"},
       "time",
-      "."
-  };
+      ".",
+      "measurement"};
   std::shared_ptr<Node> parse_graphite_node = std::make_shared<EvalNode>(
       "parse_graphite_node",
       std::make_shared<DataParser>(
@@ -171,21 +171,21 @@ int main(int argc, char** argv) {
                                           "_result_42.txt");
 
   std::vector<MapHandler::MapCase> cputime_host_calc_map_cases{
-      { gandiva::TreeExprBuilder::MakeExpression(
+      {gandiva::TreeExprBuilder::MakeExpression(
           "less_than",
           {arrow::field("idle.mean", arrow::float64()),
            arrow::field("info_host_level", arrow::float64())},
-          arrow::field("alert_info", arrow::boolean())) },
-      { gandiva::TreeExprBuilder::MakeExpression(
+          arrow::field("alert_info", arrow::boolean()))},
+      {gandiva::TreeExprBuilder::MakeExpression(
           "less_than",
           {arrow::field("idle.mean", arrow::float64()),
            arrow::field("warn_host_level", arrow::float64())},
-          arrow::field("alert_warn", arrow::boolean())) },
-      { gandiva::TreeExprBuilder::MakeExpression(
+          arrow::field("alert_warn", arrow::boolean()))},
+      {gandiva::TreeExprBuilder::MakeExpression(
           "less_than",
           {arrow::field("idle.mean", arrow::float64()),
            arrow::field("crit_host_level", arrow::float64())},
-          arrow::field("alert_crit", arrow::boolean())) }};
+          arrow::field("alert_crit", arrow::boolean()))}};
   std::vector cputime_host_calc_map_consumers{cputime_host_calc_map_consumer};
   std::shared_ptr<Node> cputime_host_calc_map_node =
       std::make_shared<EvalNode>(
@@ -220,7 +220,8 @@ int main(int argc, char** argv) {
       &pipelines[cputime_all_filter_node->getName()], loop.get(), zmq_context,
       TransportUtils::ZMQTransportType::INPROC);
 
-  std::vector<std::string> cputime_win_grouping_columns{"cpu", "host", "type"};
+  std::vector<std::string> cputime_win_grouping_columns{"cpu", "host",
+                                                        "type"};
   std::shared_ptr<Node> cputime_win_group_by_node =
       std::make_shared<EvalNode>(
           "cputime_win_group_by_node",
@@ -232,8 +233,8 @@ int main(int argc, char** argv) {
   pipelines[cputime_win_group_by_node->getName()].setNode(
       cputime_win_group_by_node);
   pipelines[cputime_win_group_by_node->getName()].subscribeTo(
-      &pipelines[cputime_all_win_window_node->getName()], loop.get(), zmq_context,
-      TransportUtils::ZMQTransportType::INPROC);
+      &pipelines[cputime_all_win_window_node->getName()], loop.get(),
+      zmq_context, TransportUtils::ZMQTransportType::INPROC);
 
   AggregateHandler::AggregateOptions cputime_win_last_options{
       {{"idle",
@@ -286,9 +287,13 @@ int main(int argc, char** argv) {
        {"warn_core_level", {warn_core_level}},
        {"crit_core_level", {crit_core_level}},
        {"win-period",
-        {static_cast<double>(std::chrono::duration_cast<std::chrono::seconds>(win_period).count())}},
+        {static_cast<double>(
+            std::chrono::duration_cast<std::chrono::seconds>(win_period)
+                .count())}},
        {"win-every",
-        {static_cast<double>(std::chrono::duration_cast<std::chrono::seconds>(win_every).count())}}},
+        {static_cast<double>(
+            std::chrono::duration_cast<std::chrono::seconds>(win_every)
+                .count())}}},
       {{"alert-author", {"@kv:qrator.net"}},
        {"incident-owners", {"nobody"}},
        {"incident-comment", {""}},
@@ -313,21 +318,21 @@ int main(int argc, char** argv) {
                                           "_result_43.txt");
 
   std::vector<MapHandler::MapCase> cputime_win_calc_map_cases{
-      { gandiva::TreeExprBuilder::MakeExpression(
+      {gandiva::TreeExprBuilder::MakeExpression(
           "less_than",
           {arrow::field("idle.mean", arrow::float64()),
            arrow::field("info_core_level", arrow::float64())},
-          arrow::field("alert_info", arrow::boolean())) },
-      { gandiva::TreeExprBuilder::MakeExpression(
+          arrow::field("alert_info", arrow::boolean()))},
+      {gandiva::TreeExprBuilder::MakeExpression(
           "less_than",
           {arrow::field("idle.mean", arrow::float64()),
            arrow::field("warn_core_level", arrow::float64())},
-          arrow::field("alert_warn", arrow::boolean())) },
-      { gandiva::TreeExprBuilder::MakeExpression(
+          arrow::field("alert_warn", arrow::boolean()))},
+      {gandiva::TreeExprBuilder::MakeExpression(
           "less_than",
           {arrow::field("idle.mean", arrow::float64()),
            arrow::field("crit_core_level", arrow::float64())},
-          arrow::field("alert_crit", arrow::boolean())) }};
+          arrow::field("alert_crit", arrow::boolean()))}};
   std::vector cputime_win_calc_map_consumers{cputime_win_calc_map_consumer};
   std::shared_ptr<Node> cputime_win_calc_map_node =
       std::make_shared<EvalNode>(

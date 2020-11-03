@@ -10,7 +10,8 @@
 #include "record_batch_handlers/record_batch_handler.h"
 #include "record_batch_request_handler.h"
 
-class StreamToStreamRequestHandler : public StreamRecordBatchRequestHandlerBase {
+class StreamToStreamRequestHandler
+    : public StreamRecordBatchRequestHandlerBase {
  public:
   StreamToStreamRequestHandler(
       const std::shared_ptr<IUDFAgent>& agent,

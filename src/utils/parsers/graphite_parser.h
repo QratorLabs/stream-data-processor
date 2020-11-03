@@ -22,6 +22,7 @@ class GraphiteParser : public Parser {
     std::vector<std::string> template_strings;
     std::string time_column_name{"time"};
     std::string separator{"."};
+    std::string measurement_column_name{"measurement"};
   };
 
   explicit GraphiteParser(const GraphiteParserOptions& parser_options);
@@ -104,6 +105,7 @@ class GraphiteParser : public Parser {
 
   std::string separator_;
   std::string time_column_name_;
+  std::string measurement_column_name_;
   std::vector<MetricTemplate> templates_;
   std::set<std::shared_ptr<Metric>, MetricComparator> parsed_metrics_;
 };

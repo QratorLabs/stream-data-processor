@@ -23,7 +23,6 @@ arrow::Status SerializedRecordBatchHandler::handle(
   arrow::RecordBatchVector result;
   ARROW_RETURN_NOT_OK(handler_strategy_->handle(record_batches, &result));
 
-  ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(
-      result, target));
+  ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(result, target));
   return arrow::Status::OK();
 }

@@ -9,7 +9,8 @@
 
 #include "udf.pb.h"
 
-class StreamAggregateRequestHandler : public StreamRecordBatchRequestHandlerBase {
+class StreamAggregateRequestHandler
+    : public StreamRecordBatchRequestHandlerBase {
  public:
   explicit StreamAggregateRequestHandler(
       const std::shared_ptr<IUDFAgent>& agent);

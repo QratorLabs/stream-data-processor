@@ -6,8 +6,9 @@
 #include "utils/string_utils.h"
 
 GraphiteParser::GraphiteParser(const GraphiteParserOptions& parser_options)
-    : separator_(parser_options.separator)
-    , time_column_name_(parser_options.time_column_name) {
+    : separator_(parser_options.separator),
+      time_column_name_(parser_options.time_column_name),
+      measurement_column_name_(parser_options.measurement_column_name) {
   for (auto& template_string : parser_options.template_strings) {
     templates_.emplace_back(template_string);
   }
@@ -113,7 +114,8 @@ arrow::Status GraphiteParser::parseRecordBatches(
                 std::static_pointer_cast<arrow::StringBuilder>(field.second)
                     ->Append(field_value));
             break;
-          default: return arrow::Status::ExecutionError("Unexpected field type");
+          default:
+            return arrow::Status::ExecutionError("Unexpected field type");
         }
       } else {
         ARROW_RETURN_NOT_OK(field.second->AppendNull());
@@ -128,22 +130,23 @@ arrow::Status GraphiteParser::parseRecordBatches(
   column_arrays.emplace_back();
   ARROW_RETURN_NOT_OK(timestamp_builder.Finish(&column_arrays.back()));
 
-  fields.push_back(arrow::field(time_column_name_, arrow::timestamp(arrow::TimeUnit::SECOND)));
+  fields.push_back(arrow::field(time_column_name_,
+                                arrow::timestamp(arrow::TimeUnit::SECOND)));
 
-  ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
-      &fields.back(), TIME));
+  ARROW_RETURN_NOT_OK(
+      ColumnTyping::setColumnTypeMetadata(&fields.back(), TIME));
 
-  fields.push_back(arrow::field("measurement", arrow::utf8()));
-  ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
-      &fields.back(), MEASUREMENT));
+  fields.push_back(arrow::field(measurement_column_name_, arrow::utf8()));
+  ARROW_RETURN_NOT_OK(
+      ColumnTyping::setColumnTypeMetadata(&fields.back(), MEASUREMENT));
 
   column_arrays.emplace_back();
   ARROW_RETURN_NOT_OK(measurement_name_builder.Finish(&column_arrays.back()));
 
   for (auto& tag : tags_id_to_builders) {
     fields.push_back(arrow::field(tag.first, arrow::utf8()));
-    ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
-        &fields.back(), TAG));
+    ARROW_RETURN_NOT_OK(
+        ColumnTyping::setColumnTypeMetadata(&fields.back(), TAG));
 
     column_arrays.emplace_back();
     ARROW_RETURN_NOT_OK(tag.second.Finish(&column_arrays.back()));
@@ -165,16 +168,18 @@ arrow::Status GraphiteParser::parseRecordBatches(
       default: return arrow::Status::ExecutionError("Unexpected field type");
     }
 
-    ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
-        &fields.back(), FIELD));
+    ARROW_RETURN_NOT_OK(
+        ColumnTyping::setColumnTypeMetadata(&fields.back(), FIELD));
   }
 
   record_batches->push_back(arrow::RecordBatch::Make(
       arrow::schema(fields), parsed_metrics_.size(), column_arrays));
 
   ARROW_RETURN_NOT_OK(ColumnTyping::setTimeColumnNameMetadata(
-      &record_batches->back(), time_column_name_
-      ));
+      &record_batches->back(), time_column_name_));
+
+  ARROW_RETURN_NOT_OK(ColumnTyping::setMeasurementColumnNameMetadata(
+      &record_batches->back(), measurement_column_name_));
 
   parsed_metrics_.clear();
   return arrow::Status::OK();

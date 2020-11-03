@@ -59,12 +59,10 @@ arrow::Status PeriodNode::appendData(const char* data, size_t length) {
       auto current_slice = record_batch->Slice(0, divide_index);
       std::vector<std::shared_ptr<arrow::Buffer>> buffers;
 
-      ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(
-          {current_slice}, &buffers));
+      ARROW_RETURN_NOT_OK(
+          Serializer::serializeRecordBatches({current_slice}, &buffers));
 
-      for (auto& buffer : buffers) {
-        data_buffers_.push_back(buffer);
-      }
+      for (auto& buffer : buffers) { data_buffers_.push_back(buffer); }
     }
 
     pass();
@@ -83,12 +81,10 @@ arrow::Status PeriodNode::appendData(const char* data, size_t length) {
 
   std::vector<std::shared_ptr<arrow::Buffer>> buffers;
 
-  ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(
-      {record_batch}, &buffers));
+  ARROW_RETURN_NOT_OK(
+      Serializer::serializeRecordBatches({record_batch}, &buffers));
 
-  for (auto& buffer : buffers) {
-    data_buffers_.push_back(buffer);
-  }
+  for (auto& buffer : buffers) { data_buffers_.push_back(buffer); }
 
   return arrow::Status::OK();
 }

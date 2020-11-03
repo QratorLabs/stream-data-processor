@@ -5,7 +5,8 @@
 
 template <>
 arrow::Status DefaultHandler::addMissingColumn<int64_t>(
-    const std::unordered_map<std::string, DefaultCase<int64_t>>& default_cases,
+    const std::unordered_map<std::string, DefaultCase<int64_t>>&
+        default_cases,
     std::shared_ptr<arrow::RecordBatch>* record_batch) const {
   for (auto& [column_name, default_case] : default_cases) {
     if (record_batch->get()->schema()->GetFieldByName(column_name) !=
@@ -13,15 +14,16 @@ arrow::Status DefaultHandler::addMissingColumn<int64_t>(
       continue;
     }
 
-    std::vector column_values(record_batch->get()->num_rows(), default_case.default_value);
+    std::vector column_values(record_batch->get()->num_rows(),
+                              default_case.default_value);
     arrow::Int64Builder builder;
     ARROW_RETURN_NOT_OK(builder.AppendValues(column_values));
     std::shared_ptr<arrow::Array> array;
     ARROW_RETURN_NOT_OK(builder.Finish(&array));
 
     auto new_field = arrow::field(column_name, arrow::int64());
-    ARROW_RETURN_NOT_OK(
-        ColumnTyping::setColumnTypeMetadata(&new_field, default_case.default_column_type));
+    ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
+        &new_field, default_case.default_column_type));
 
     auto add_column_result = record_batch->get()->AddColumn(
         record_batch->get()->num_columns(), new_field, array);
@@ -46,15 +48,16 @@ arrow::Status DefaultHandler::addMissingColumn<double>(
       continue;
     }
 
-    std::vector column_values(record_batch->get()->num_rows(), default_case.default_value);
+    std::vector column_values(record_batch->get()->num_rows(),
+                              default_case.default_value);
     arrow::DoubleBuilder builder;
     ARROW_RETURN_NOT_OK(builder.AppendValues(column_values));
     std::shared_ptr<arrow::Array> array;
     ARROW_RETURN_NOT_OK(builder.Finish(&array));
 
     auto new_field = arrow::field(column_name, arrow::float64());
-    ARROW_RETURN_NOT_OK(
-        ColumnTyping::setColumnTypeMetadata(&new_field, default_case.default_column_type));
+    ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
+        &new_field, default_case.default_column_type));
 
     auto add_column_result = record_batch->get()->AddColumn(
         record_batch->get()->num_columns(), new_field, array);
@@ -70,7 +73,8 @@ arrow::Status DefaultHandler::addMissingColumn<double>(
 
 template <>
 arrow::Status DefaultHandler::addMissingColumn<std::string>(
-    const std::unordered_map<std::string, DefaultCase<std::string>>& default_cases,
+    const std::unordered_map<std::string, DefaultCase<std::string>>&
+        default_cases,
     std::shared_ptr<arrow::RecordBatch>* record_batch) const {
   for (auto& [column_name, default_case] : default_cases) {
     if (record_batch->get()->schema()->GetFieldByName(column_name) !=
@@ -78,15 +82,16 @@ arrow::Status DefaultHandler::addMissingColumn<std::string>(
       continue;
     }
 
-    std::vector column_values(record_batch->get()->num_rows(), default_case.default_value);
+    std::vector column_values(record_batch->get()->num_rows(),
+                              default_case.default_value);
     arrow::StringBuilder builder;
     ARROW_RETURN_NOT_OK(builder.AppendValues(column_values));
     std::shared_ptr<arrow::Array> array;
     ARROW_RETURN_NOT_OK(builder.Finish(&array));
 
     auto new_field = arrow::field(column_name, arrow::utf8());
-    ARROW_RETURN_NOT_OK(
-        ColumnTyping::setColumnTypeMetadata(&new_field, default_case.default_column_type));
+    ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
+        &new_field, default_case.default_column_type));
 
     auto add_column_result = record_batch->get()->AddColumn(
         record_batch->get()->num_columns(), new_field, array);
@@ -110,15 +115,16 @@ arrow::Status DefaultHandler::addMissingColumn<bool>(
       continue;
     }
 
-    std::vector column_values(record_batch->get()->num_rows(), default_case.default_value);
+    std::vector column_values(record_batch->get()->num_rows(),
+                              default_case.default_value);
     arrow::BooleanBuilder builder;
     ARROW_RETURN_NOT_OK(builder.AppendValues(column_values));
     std::shared_ptr<arrow::Array> array;
     ARROW_RETURN_NOT_OK(builder.Finish(&array));
 
     auto new_field = arrow::field(column_name, arrow::boolean());
-    ARROW_RETURN_NOT_OK(
-        ColumnTyping::setColumnTypeMetadata(&new_field, default_case.default_column_type));
+    ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
+        &new_field, default_case.default_column_type));
 
     auto add_column_result = record_batch->get()->AddColumn(
         record_batch->get()->num_columns(), new_field, array);

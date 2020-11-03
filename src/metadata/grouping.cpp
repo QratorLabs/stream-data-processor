@@ -11,17 +11,12 @@ arrow::Status RecordBatchGrouping::fillGroupMetadata(
     const std::vector<std::string>& grouping_columns) {
   std::map<std::string, std::string> group_columns_values;
 
-  ARROW_RETURN_NOT_OK(fillGroupMap(
-      &group_columns_values,
-      *record_batch,
-      extractGroupingColumnsNames(*record_batch)
-      ));
+  ARROW_RETURN_NOT_OK(
+      fillGroupMap(&group_columns_values, *record_batch,
+                   extractGroupingColumnsNames(*record_batch)));
 
-  ARROW_RETURN_NOT_OK(fillGroupMap(
-      &group_columns_values,
-      *record_batch,
-      grouping_columns
-      ));
+  ARROW_RETURN_NOT_OK(
+      fillGroupMap(&group_columns_values, *record_batch, grouping_columns));
 
   auto group = constructGroupFromOrderedMap(group_columns_values);
   ARROW_RETURN_NOT_OK(setGroupMetadata(record_batch, group));
@@ -123,9 +118,8 @@ arrow::Status RecordBatchGrouping::setGroupMetadata(
     arrow_metadata = std::make_shared<arrow::KeyValueMetadata>();
   }
 
-  ARROW_RETURN_NOT_OK(arrow_metadata->Set(
-      GROUP_METADATA_KEY, group.SerializeAsString()
-  ));
+  ARROW_RETURN_NOT_OK(
+      arrow_metadata->Set(GROUP_METADATA_KEY, group.SerializeAsString()));
   *record_batch = record_batch->get()->ReplaceSchemaMetadata(arrow_metadata);
 
   return arrow::Status::OK();

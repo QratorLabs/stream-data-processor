@@ -1,7 +1,7 @@
 #include <spdlog/spdlog.h>
 
-#include "record_batch_request_handler.h"
 #include "kapacitor_udf/group_parser.h"
+#include "record_batch_request_handler.h"
 
 RecordBatchRequestHandler::RecordBatchRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent,
@@ -44,8 +44,8 @@ void RecordBatchRequestHandler::handleBatch() {
   record_batches = std::move(result);
 
   agent::PointBatch response_points;
-  convert_result = PointsConverter::convertToPoints(
-      record_batches, &response_points);
+  convert_result =
+      PointsConverter::convertToPoints(record_batches, &response_points);
 
   if (!convert_result.ok()) {
     response.mutable_error()->set_error(convert_result.message());
@@ -64,9 +64,7 @@ StreamRecordBatchRequestHandlerBase::StreamRecordBatchRequestHandlerBase(
     PointsConverter::PointsToRecordBatchesConversionOptions
         to_record_batches_options,
     const std::shared_ptr<RecordBatchHandler>& handler)
-    : RecordBatchRequestHandler(agent, to_record_batches_options, handler) {
-
-}
+    : RecordBatchRequestHandler(agent, to_record_batches_options, handler) {}
 
 void StreamRecordBatchRequestHandlerBase::beginBatch(
     const agent::BeginBatch& batch) {

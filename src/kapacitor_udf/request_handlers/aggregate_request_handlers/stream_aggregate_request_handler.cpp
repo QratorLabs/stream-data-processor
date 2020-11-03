@@ -1,21 +1,21 @@
 #include <spdlog/spdlog.h>
 
 #include "aggregate_options_parser.h"
-#include "stream_aggregate_request_handler.h"
-#include "record_batch_handlers/record_batch_handlers.h"
 #include "kapacitor_udf/request_handlers/invalid_option_exception.h"
+#include "record_batch_handlers/record_batch_handlers.h"
+#include "stream_aggregate_request_handler.h"
 
 const PointsConverter::PointsToRecordBatchesConversionOptions
-    StreamAggregateRequestHandler::DEFAULT_TO_RECORD_BATCHES_OPTIONS{
-    "time", "name"
-};
+    StreamAggregateRequestHandler::DEFAULT_TO_RECORD_BATCHES_OPTIONS{"time",
+                                                                     "name"};
 
 const std::string StreamAggregateRequestHandler::TOLERANCE_OPTION_NAME{
-  "tolerance"};
+    "tolerance"};
 
 StreamAggregateRequestHandler::StreamAggregateRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent)
-    : StreamRecordBatchRequestHandlerBase(agent, DEFAULT_TO_RECORD_BATCHES_OPTIONS) {}
+    : StreamRecordBatchRequestHandlerBase(
+          agent, DEFAULT_TO_RECORD_BATCHES_OPTIONS) {}
 
 agent::Response StreamAggregateRequestHandler::info() const {
   agent::Response response;
@@ -24,8 +24,11 @@ agent::Response StreamAggregateRequestHandler::info() const {
   *response.mutable_info()->mutable_options() =
       AggregateOptionsParser::getResponseOptionsMap();
 
-  response.mutable_info()->mutable_options()->operator[](
-      TOLERANCE_OPTION_NAME).add_valuetypes(agent::ValueType::DURATION);
+  response.mutable_info()
+      ->mutable_options()
+      ->
+      operator[](TOLERANCE_OPTION_NAME)
+      .add_valuetypes(agent::ValueType::DURATION);
 
   return response;
 }
@@ -93,13 +96,14 @@ void StreamAggregateRequestHandler::point(const agent::Point& point) {
 }
 
 void StreamAggregateRequestHandler::parseToleranceOption(
-    const google::protobuf::RepeatedPtrField<agent::Option>& request_options
-    ) {
+    const google::protobuf::RepeatedPtrField<agent::Option>&
+        request_options) {
   bool found_tolerance_option = false;
   for (auto& option : request_options) {
     if (option.name() == TOLERANCE_OPTION_NAME) {
       if (found_tolerance_option) {
-        throw InvalidOptionException("Doubled tolerance option is prohibited");
+        throw InvalidOptionException(
+            "Doubled tolerance option is prohibited");
       } else {
         found_tolerance_option = true;
       }
@@ -107,11 +111,11 @@ void StreamAggregateRequestHandler::parseToleranceOption(
       if (option.values_size() != 1) {
         throw InvalidOptionException(fmt::format(
             "tolerance option should accept exactly one argument, "
-            "got {} instead", option.values_size()));
+            "got {} instead",
+            option.values_size()));
       }
 
-      tolerance_ = std::chrono::nanoseconds(
-          option.values(0).durationvalue());
+      tolerance_ = std::chrono::nanoseconds(option.values(0).durationvalue());
     }
   }
 }
@@ -127,7 +131,7 @@ bool StreamAggregateRequestHandler::needHandleBefore(
   }
 
   if (std::chrono::milliseconds(
-      point.time() - batch_points_.points(0).time()) < tolerance_) {
+          point.time() - batch_points_.points(0).time()) < tolerance_) {
     return false;
   }
 
