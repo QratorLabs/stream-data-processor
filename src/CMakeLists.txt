@@ -71,6 +71,7 @@ set(KAPACITOR_UDF_LIBRARY_NAME "kapacitor_udf_lib")
 set("${KAPACITOR_UDF_LIBRARY_NAME}_PUBLIC_INCLUDE_DIRS"
   "${CMAKE_CURRENT_SOURCE_DIR}"
   "${CMAKE_SOURCE_DIR}/third_party/uvw/src"
+  "${CMAKE_SOURCE_DIR}/third_party/cxxopts/include"
   )
 set("${KAPACITOR_UDF_LIBRARY_NAME}_DEPENDENCIES"
   uvw::uvw-static

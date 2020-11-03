@@ -1,9 +1,10 @@
 #include <chrono>
 #include <csignal>
+#include <iostream>
 #include <memory>
 
+#include <cxxopts.hpp>
 #include <spdlog/spdlog.h>
-
 #include <uvw.hpp>
 
 #include "kapacitor_udf/kapacitor_udf.h"
@@ -41,16 +42,32 @@ class StreamAggregateUDFAgentClientFactory : public UnixSocketClientFactory {
 };
 
 int main(int argc, char** argv) {
-  spdlog::flush_every(std::chrono::seconds(5));
+  cxxopts::Options options("AggregateUDF", "Aggregates data from kapacitor");
+  options.add_options()
+      ("b,batch", "Unix socket path for batch data", cxxopts::value<std::string>())
+      ("s,stream", "Unix socket path for stream data", cxxopts::value<std::string>())
+      ("h,help", "Print this message")
+      ;
 
-  if (argc < 3) {
-    spdlog::error("Unix socket paths not provided");
+  std::string batch_socket_path, stream_socket_path;
+  try {
+    auto arguments_parse_result = options.parse(argc, argv);
+    if (arguments_parse_result.count("help") > 0) {
+      std::cout << options.help() << std::endl;
+      return 0;
+    }
+
+    batch_socket_path = arguments_parse_result["batch"].as<std::string>();
+    stream_socket_path = arguments_parse_result["stream"].as<std::string>();
+  } catch (const cxxopts::OptionException& exc) {
+    std::cerr << exc.what() << std::endl;
+    std::cout << options.help() << std::endl;
     return 1;
   }
 
+  spdlog::flush_every(std::chrono::seconds(5));
+
   auto loop = uvw::Loop::getDefault();
-  std::string batch_socket_path(argv[1]);
-  std::string stream_socket_path(argv[2]);
 
   UnixSocketServer batch_server(
       std::make_shared<BatchAggregateUDFAgentClientFactory>(),
