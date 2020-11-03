@@ -41,7 +41,7 @@ udf-docker$ make cpu_kapacitor_udf
 Now, start the UDF:
 
 ```terminal
-udf-docker$ ./cpu_kapacitor_udf \
+udf-docker$ ./examples/cpu_kapacitor_udf \
                 --batch /var/run/batchAggregateUDF.sock \
                 --stream /var/run/streamAggregateUDF.sock
 ```
