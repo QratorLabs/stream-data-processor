@@ -1,4 +1,6 @@
 #include <sstream>
+#include <string>
+#include <vector>
 
 #include <catch2/catch.hpp>
 
@@ -41,4 +43,20 @@ TEST_CASE( "throws when trying to decode uint64_t", "[UVarIntCoder]" ) {
 TEST_CASE( "throws EOFException on empty input", "[UVarIntCoder]" ) {
   std::istringstream ss("");
   CHECK_THROWS_AS( UVarIntCoder::decode(ss), EOFException );
+}
+
+TEST_CASE( "more uvarint tests", "[UVarIntCoder]" ) {
+  std::vector<uint32_t> values{ 1, 127, 128, 255, 16384, 190 };
+  std::vector<std::string> codes{ "\x01", "\x7F", "\x80\x01", "\xFF\x01", "\x80\x80\x01", "\xbe\x01" };
+  REQUIRE( values.size() == codes.size() );
+
+  for (size_t i = 0; i < values.size(); ++i) {
+    std::ostringstream to;
+    UVarIntCoder::encode(to, values[i]);
+    REQUIRE( to.str() == codes[i] );
+
+    std::istringstream from(codes[i]);
+    auto value = UVarIntCoder::decode(from);
+    REQUIRE( value == values[i] );
+  }
 }

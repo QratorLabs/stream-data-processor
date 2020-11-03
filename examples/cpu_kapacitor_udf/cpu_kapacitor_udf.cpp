@@ -43,17 +43,25 @@ class StreamAggregateUDFAgentClientFactory : public UnixSocketClientFactory {
 
 int main(int argc, char** argv) {
   cxxopts::Options options("AggregateUDF", "Aggregates data from kapacitor");
-  options.add_options()("b,batch", "Unix socket path for batch data",
-                        cxxopts::value<std::string>())(
-      "s,stream", "Unix socket path for stream data",
-      cxxopts::value<std::string>())("h,help", "Print this message");
+  options.add_options()
+  ("b,batch", "Unix socket path for batch data",
+      cxxopts::value<std::string>())
+  ("s,stream", "Unix socket path for stream data",
+      cxxopts::value<std::string>())
+  ("v,verbose", "Enable detailed logging")
+  ("h,help", "Print this message")
+  ;
 
   std::string batch_socket_path, stream_socket_path;
   try {
     auto arguments_parse_result = options.parse(argc, argv);
-    if (arguments_parse_result.count("help") > 0) {
+    if (arguments_parse_result["help"].as<bool>()) {
       std::cout << options.help() << std::endl;
       return 0;
+    }
+
+    if (arguments_parse_result["verbose"].as<bool>()) {
+      spdlog::set_level(spdlog::level::debug);
     }
 
     batch_socket_path = arguments_parse_result["batch"].as<std::string>();

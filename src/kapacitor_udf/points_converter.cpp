@@ -47,7 +47,6 @@ arrow::Status PointsConverter::convertToPoints(
         record_batch, &measurement_column_name));
 
     auto group = RecordBatchGrouping::extractGroup(record_batch);
-
     auto group_string = GroupParser::encode(group, measurement_column_name);
 
     for (int i = 0; i < record_batch->num_columns(); ++i) {
@@ -63,10 +62,16 @@ arrow::Status PointsConverter::convertToPoints(
         }
 
         if (i == 0) {
-          points->mutable_points()->Add();
-          points->mutable_points()
-              ->Mutable(points_count + j)
-              ->set_group(group_string);
+          auto point = points->mutable_points()->Add();
+          point->set_group(group_string);
+          for (auto& grouping_column :
+               group.group_columns_names().columns_names()) {
+            if (grouping_column == measurement_column_name) {
+              point->set_byname(true);
+            } else {
+              point->add_dimensions(grouping_column);
+            }
+          }
         }
 
         auto& point = points->mutable_points()->operator[](points_count + j);
