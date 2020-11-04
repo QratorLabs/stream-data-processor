@@ -25,7 +25,10 @@ UnixSocketServer::UnixSocketServer(
   socket_handle_->bind(socket_path);
 }
 
-void UnixSocketServer::start() { socket_handle_->listen(); }
+void UnixSocketServer::start() {
+  socket_handle_->listen();
+  spdlog::info("Server is started");
+}
 
 void UnixSocketServer::stop() {
   socket_handle_->close();

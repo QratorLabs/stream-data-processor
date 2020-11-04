@@ -49,11 +49,12 @@ udf-docker$ ./examples/cpu_kapacitor_udf \
 ### Kapacitor container
 
 We just started the UDF, let's move to the kapacitor and open a new session. 
-We need to run a kapacitor container with everything we need:
+We need to run a kapacitor container with everything we need (`recording.srpl`
+is your sample recording you want to test):
 
 ```terminal
 host$ docker run --rm --name kapacitor-container -p 9092:9092 \
-        -v $PWD/f3ddca66-eecb-4e02-a41b-94869645fbc9.srpl:/var/lib/kapacitor/replay/f3ddca66-eecb-4e02-a41b-94869645fbc9.srpl \
+        -v $PWD/recording.srpl:/var/lib/kapacitor/replay/recording.srpl \
         -v sockets-vol:/var/run/ \
         -v $PWD/kapacitor.conf:/etc/kapacitor/kapacitor.conf:ro \
         kapacitor
@@ -64,7 +65,7 @@ Now we can add a task from a new session and test it on the sample data:
 ```terminal
 host$ kapacitor define cpu_task -tick cpu.tick
 host$ kapacitor enable cpu_task
-host$ kapacitor replay -recording f3ddca66-eecb-4e02-a41b-94869645fbc9 -task cpu_task
+host$ kapacitor replay -recording recording -task cpu_task
 ```
 
 If needed, you can add a 

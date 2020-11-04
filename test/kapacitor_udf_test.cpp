@@ -130,7 +130,7 @@ SCENARIO( "AggregateOptionsParser behavior", "[AggregateOptionsParser]" ) {
   }
 }
 
-TEST_CASE( "parsing group with measurement", "[GroupParser]" ) {
+TEST_CASE( "parsing group string with measurement", "[GroupParser]" ) {
   std::string measurement_column_name = "name";
   std::string measurement_value = "cpu";
   std::string tag_name_0 = "cpu";

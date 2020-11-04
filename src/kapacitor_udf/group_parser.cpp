@@ -65,3 +65,21 @@ std::string GroupParser::encode(const RecordBatchGroup& group,
 
   return measurement_prefix + tags_group_string_builder.str();
 }
+
+RecordBatchGroup GroupParser::parse(
+    const agent::Point& point, const std::string& measurement_column_name) {
+  std::map<std::string, std::string> group_map;
+  if (point.byname()) {
+    group_map[measurement_column_name] = point.name();
+  }
+
+  for (auto& dimension : point.dimensions()) {
+    if (point.tags().find(dimension) == point.tags().end()) {
+      throw GroupParserException();
+    }
+
+    group_map[dimension] = point.tags().at(dimension);
+  }
+
+  return RecordBatchGrouping::constructGroupFromOrderedMap(group_map);
+}
