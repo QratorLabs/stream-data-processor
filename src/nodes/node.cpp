@@ -2,6 +2,8 @@
 
 #include "node.h"
 
+namespace stream_data_processor {
+
 void Node::passData(const std::vector<std::shared_ptr<arrow::Buffer>>& data) {
   for (auto& buffer : data) {
     spdlog::get(name_)->info("Passing data of size {}", buffer->size());
@@ -24,3 +26,5 @@ void Node::addConsumer(const std::shared_ptr<Consumer>& consumer) {
 }
 
 const std::string& Node::getName() const { return name_; }
+
+}  // namespace stream_data_processor

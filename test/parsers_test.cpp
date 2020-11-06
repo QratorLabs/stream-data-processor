@@ -8,7 +8,9 @@
 #include <catch2/catch.hpp>
 
 #include "test_help.h"
-#include "utils/parsers/graphite_parser.h"
+#include "nodes/data_handlers/parsers/graphite_parser.h"
+
+using namespace stream_data_processor;
 
 TEST_CASE( "parse sample metric with custom separator", "[GraphiteParser]") {
   GraphiteParser::GraphiteParserOptions parser_options {{

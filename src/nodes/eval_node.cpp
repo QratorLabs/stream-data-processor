@@ -4,6 +4,8 @@
 
 #include "eval_node.h"
 
+namespace stream_data_processor {
+
 void EvalNode::start() { spdlog::get(name_)->info("Node started"); }
 
 void EvalNode::handleData(const char* data, size_t length) {
@@ -31,3 +33,5 @@ arrow::Status EvalNode::processData(
   ARROW_RETURN_NOT_OK(data_handler_->handle(data_buffer, processed_data));
   return arrow::Status::OK();
 }
+
+}  // namespace stream_data_processor

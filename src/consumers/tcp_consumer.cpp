@@ -1,5 +1,10 @@
 #include "tcp_consumer.h"
 
+namespace stream_data_processor {
+
+using transport_utils::IPv4Endpoint;
+using transport_utils::TransportUtils;
+
 const std::chrono::duration<uint64_t, std::milli> TCPConsumer::RETRY_DELAY(
     100);
 
@@ -93,3 +98,5 @@ void TCPConsumer::flushBuffers() {
     data_buffers_.pop();
   }
 }
+
+}  // namespace stream_data_processor

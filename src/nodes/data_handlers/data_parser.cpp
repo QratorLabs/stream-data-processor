@@ -6,7 +6,9 @@
 #include <arrow/io/api.h>
 
 #include "data_parser.h"
-#include "utils/serializer.h"
+#include "utils/serialize_utils.h"
+
+namespace stream_data_processor {
 
 DataParser::DataParser(std::shared_ptr<Parser> parser)
     : parser_(std::move(parser)) {}
@@ -21,6 +23,8 @@ arrow::Status DataParser::handle(
   }
 
   ARROW_RETURN_NOT_OK(
-      Serializer::serializeRecordBatches(record_batches, target));
+      serialize_utils::serializeRecordBatches(record_batches, target));
   return arrow::Status::OK();
 }
+
+}  // namespace stream_data_processor

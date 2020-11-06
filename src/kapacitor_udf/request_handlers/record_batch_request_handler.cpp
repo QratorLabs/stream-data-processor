@@ -1,7 +1,14 @@
 #include <spdlog/spdlog.h>
 
-#include "kapacitor_udf/group_parser.h"
+#include "kapacitor_udf/utils/grouping_utils.h"
 #include "record_batch_request_handler.h"
+
+#include "utils/convert_utils.h"
+
+namespace stream_data_processor {
+namespace kapacitor_udf {
+
+using convert_utils::PointsConverter;
 
 RecordBatchRequestHandler::RecordBatchRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent,
@@ -81,3 +88,6 @@ void StreamRecordBatchRequestHandlerBase::endBatch(
       "Invalid EndBatch request, UDF wants stream data");
   agent_.lock()->writeResponse(response);
 }
+
+}  // namespace kapacitor_udf
+}  // namespace stream_data_processor

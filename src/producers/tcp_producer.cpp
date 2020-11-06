@@ -1,6 +1,11 @@
 #include "tcp_producer.h"
 #include "utils/transport_utils.h"
 
+namespace stream_data_processor {
+
+using transport_utils::IPv4Endpoint;
+using transport_utils::TransportUtils;
+
 TCPProducer::TCPProducer(const std::shared_ptr<Node>& node,
                          const IPv4Endpoint& listen_endpoint, uvw::Loop* loop,
                          bool is_external)
@@ -62,3 +67,5 @@ void TCPProducer::handleData(const char* data, size_t length) {
     }
   }
 }
+
+}  // namespace stream_data_processor

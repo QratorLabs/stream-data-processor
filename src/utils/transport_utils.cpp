@@ -6,6 +6,9 @@
 
 #include "string_utils.h"
 
+namespace stream_data_processor {
+namespace transport_utils {
+
 const size_t TransportUtils::MESSAGE_SIZE_STRING_LENGTH{10};
 const std::string TransportUtils::CONNECT_MESSAGE{"connect"};
 const std::string TransportUtils::END_MESSAGE{"end"};
@@ -140,3 +143,6 @@ zmq::socket_t& TransportUtils::Subscriber::synchronize_socket() {
 }
 
 void TransportUtils::Subscriber::prepareForListening() { is_ready_ = true; }
+
+}  // namespace transport_utils
+}  // namespace stream_data_processor

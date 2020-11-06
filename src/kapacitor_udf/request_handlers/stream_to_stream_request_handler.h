@@ -5,10 +5,13 @@
 
 #include <uvw.hpp>
 
-#include "kapacitor_udf/points_converter.h"
 #include "kapacitor_udf/udf_agent.h"
+#include "kapacitor_udf/utils/points_converter.h"
 #include "record_batch_handlers/record_batch_handler.h"
 #include "record_batch_request_handler.h"
+
+namespace stream_data_processor {
+namespace kapacitor_udf {
 
 class StreamToStreamRequestHandler
     : public StreamRecordBatchRequestHandlerBase {
@@ -34,3 +37,6 @@ class StreamToStreamRequestHandler
   std::shared_ptr<uvw::TimerHandle> batch_timer_;
   std::chrono::duration<uint64_t> batch_interval_;
 };
+
+}  // namespace kapacitor_udf
+}  // namespace stream_data_processor

@@ -5,6 +5,9 @@
 #include "record_batch_handlers/record_batch_handlers.h"
 #include "stream_aggregate_request_handler.h"
 
+namespace stream_data_processor {
+namespace kapacitor_udf {
+
 const PointsConverter::PointsToRecordBatchesConversionOptions
     StreamAggregateRequestHandler::DEFAULT_TO_RECORD_BATCHES_OPTIONS{"time",
                                                                      "name"};
@@ -137,3 +140,6 @@ bool StreamAggregateRequestHandler::needHandleBefore(
 
   return true;
 }
+
+}  // namespace kapacitor_udf
+}  // namespace stream_data_processor

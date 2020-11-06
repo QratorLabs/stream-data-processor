@@ -3,7 +3,9 @@
 #include <arrow/api.h>
 
 #include "data_handler.h"
-#include "utils/parsers/parser.h"
+#include "parsers/parser.h"
+
+namespace stream_data_processor {
 
 class DataParser : public DataHandler {
  public:
@@ -16,3 +18,5 @@ class DataParser : public DataHandler {
  private:
   std::shared_ptr<Parser> parser_;
 };
+
+}  // namespace stream_data_processor

@@ -1,5 +1,7 @@
 #include "pipeline_handler.h"
 
+namespace stream_data_processor {
+
 PipelineHandler::PipelineHandler(
     const std::vector<std::shared_ptr<RecordBatchHandler>>& pipeline_handlers)
     : pipeline_handlers_(pipeline_handlers) {}
@@ -29,3 +31,5 @@ arrow::Status PipelineHandler::handle(
   *result = std::move(current_result);
   return arrow::Status::OK();
 }
+
+}  // namespace stream_data_processor

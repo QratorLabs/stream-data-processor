@@ -11,33 +11,36 @@
 #include "server/unix_socket_client.h"
 #include "server/unix_socket_server.h"
 
-class BatchAggregateUDFAgentClientFactory : public UnixSocketClientFactory {
+namespace sdp = stream_data_processor;
+namespace udf = sdp::kapacitor_udf;
+
+class BatchAggregateUDFAgentClientFactory : public sdp::UnixSocketClientFactory {
  public:
-  std::shared_ptr<UnixSocketClient> createClient(
+  std::shared_ptr<sdp::UnixSocketClient> createClient(
       const std::shared_ptr<uvw::PipeHandle>& pipe_handle) override {
     auto agent =
-        std::make_shared<SocketBasedUDFAgent>(pipe_handle, pipe_handle);
+        std::make_shared<udf::SocketBasedUDFAgent>(pipe_handle, pipe_handle);
 
-    std::shared_ptr<RequestHandler> handler =
-        std::make_shared<BatchAggregateRequestHandler>(agent);
+    std::shared_ptr<udf::RequestHandler> handler =
+        std::make_shared<udf::BatchAggregateRequestHandler>(agent);
 
     agent->setHandler(handler);
-    return std::make_shared<AgentClient>(agent);
+    return std::make_shared<udf::AgentClient>(agent);
   }
 };
 
-class StreamAggregateUDFAgentClientFactory : public UnixSocketClientFactory {
+class StreamAggregateUDFAgentClientFactory : public sdp::UnixSocketClientFactory {
  public:
-  std::shared_ptr<UnixSocketClient> createClient(
+  std::shared_ptr<sdp::UnixSocketClient> createClient(
       const std::shared_ptr<uvw::PipeHandle>& pipe_handle) override {
     auto agent =
-        std::make_shared<SocketBasedUDFAgent>(pipe_handle, pipe_handle);
+        std::make_shared<udf::SocketBasedUDFAgent>(pipe_handle, pipe_handle);
 
-    std::shared_ptr<RequestHandler> handler =
-        std::make_shared<StreamAggregateRequestHandler>(agent);
+    std::shared_ptr<udf::RequestHandler> handler =
+        std::make_shared<udf::StreamAggregateRequestHandler>(agent);
 
     agent->setHandler(handler);
-    return std::make_shared<AgentClient>(agent);
+    return std::make_shared<udf::AgentClient>(agent);
   }
 };
 
@@ -76,11 +79,11 @@ int main(int argc, char** argv) {
 
   auto loop = uvw::Loop::getDefault();
 
-  UnixSocketServer batch_server(
+  sdp::UnixSocketServer batch_server(
       std::make_shared<BatchAggregateUDFAgentClientFactory>(),
       batch_socket_path, loop.get());
 
-  UnixSocketServer stream_server(
+  sdp::UnixSocketServer stream_server(
       std::make_shared<StreamAggregateUDFAgentClientFactory>(),
       stream_socket_path, loop.get());
 

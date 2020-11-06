@@ -6,6 +6,8 @@
 #include "metadata/column_typing.h"
 #include "utils/utils.h"
 
+namespace stream_data_processor {
+
 arrow::Status JoinHandler::handle(
     const arrow::RecordBatchVector& record_batches,
     arrow::RecordBatchVector* result) {
@@ -27,7 +29,7 @@ arrow::Status JoinHandler::handle(
       keys_to_rows;
 
   std::string time_column_name;
-  ARROW_RETURN_NOT_OK(ColumnTyping::getTimeColumnNameMetadata(
+  ARROW_RETURN_NOT_OK(metadata::getTimeColumnNameMetadata(
       record_batches.front(), &time_column_name));
 
   JoinKey join_key;
@@ -37,7 +39,7 @@ arrow::Status JoinHandler::handle(
         column_builders[field->name()] =
             std::shared_ptr<arrow::ArrayBuilder>();
 
-        ARROW_RETURN_NOT_OK(ArrowUtils::makeArrayBuilder(
+        ARROW_RETURN_NOT_OK(arrow_utils::makeArrayBuilder(
             field->type()->id(), &column_builders[field->name()], pool));
 
         column_types[field->name()] = field->type();
@@ -95,7 +97,7 @@ arrow::Status JoinHandler::handle(
           return get_scalar_result.status();
         }
 
-        ARROW_RETURN_NOT_OK(ArrowUtils::appendToBuilder(
+        ARROW_RETURN_NOT_OK(arrow_utils::appendToBuilder(
             get_scalar_result.ValueOrDie(), &column_builders[column_name],
             record_batch->schema()->field(i)->type()->id()));
 
@@ -125,10 +127,10 @@ arrow::Status JoinHandler::handle(
   auto result_record_batch = arrow::RecordBatch::Make(
       arrow::schema(fields), row_count, result_arrays);
 
-  ARROW_RETURN_NOT_OK(ComputeUtils::sortByColumn(
+  ARROW_RETURN_NOT_OK(compute_utils::sortByColumn(
       time_column_name, result_record_batch, &result_record_batch));
 
-  ARROW_RETURN_NOT_OK(ColumnTyping::setTimeColumnNameMetadata(
+  ARROW_RETURN_NOT_OK(metadata::setTimeColumnNameMetadata(
       &result_record_batch,
       time_column_name));  // TODO: set measurement column name metadata
 
@@ -179,3 +181,5 @@ arrow::Status JoinHandler::handle(
   ARROW_RETURN_NOT_OK(handle({record_batch}, result));
   return arrow::Status::OK();
 }
+
+}  // namespace stream_data_processor

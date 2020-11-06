@@ -1,9 +1,10 @@
-#include <spdlog/spdlog.h>
-
-#include "aggregate_options_parser.h"
 #include "batch_aggregate_request_handler.h"
+#include "aggregate_options_parser.h"
 #include "kapacitor_udf/request_handlers/invalid_option_exception.h"
 #include "record_batch_handlers/record_batch_handlers.h"
+
+namespace stream_data_processor {
+namespace kapacitor_udf {
 
 const PointsConverter::PointsToRecordBatchesConversionOptions
     BatchAggregateRequestHandler::DEFAULT_TO_RECORD_BATCHES_OPTIONS{"time",
@@ -101,3 +102,6 @@ void BatchAggregateRequestHandler::endBatch(const agent::EndBatch& batch) {
 
   handleBatch();
 }
+
+}  // namespace kapacitor_udf
+}  // namespace stream_data_processor

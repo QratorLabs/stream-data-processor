@@ -2,7 +2,9 @@
 
 #include "map_handler.h"
 
-#include "utils/serializer.h"
+#include "utils/serialize_utils.h"
+
+namespace stream_data_processor {
 
 MapHandler::MapHandler(const std::vector<MapCase>& map_cases) {
   for (auto& map_case : map_cases) {
@@ -52,8 +54,8 @@ arrow::Status MapHandler::prepareResultSchema(
 
   for (size_t i = 0; i < expressions_.size(); ++i) {
     result_fields.push_back(expressions_[i]->result());
-    ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
-        &result_fields.back(), column_types_[i]));
+    ARROW_RETURN_NOT_OK(metadata::setColumnTypeMetadata(&result_fields.back(),
+                                                        column_types_[i]));
   }
 
   *result_schema = arrow::schema(result_fields);
@@ -82,3 +84,5 @@ arrow::Status MapHandler::eval(
 
   return arrow::Status::OK();
 }
+
+}  // namespace stream_data_processor

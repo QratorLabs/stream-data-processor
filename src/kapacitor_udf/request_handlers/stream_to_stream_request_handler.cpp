@@ -1,5 +1,8 @@
 #include "stream_to_stream_request_handler.h"
 
+namespace stream_data_processor {
+namespace kapacitor_udf {
+
 StreamToStreamRequestHandler::StreamToStreamRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent,
     const PointsConverter::PointsToRecordBatchesConversionOptions&
@@ -58,3 +61,6 @@ void StreamToStreamRequestHandler::stop() {
   handleBatch();
   batch_timer_->stop();
 }
+
+}  // namespace kapacitor_udf
+}  // namespace stream_data_processor

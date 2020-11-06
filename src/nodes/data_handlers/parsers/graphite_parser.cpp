@@ -5,6 +5,8 @@
 #include "metadata/column_typing.h"
 #include "utils/string_utils.h"
 
+namespace stream_data_processor {
+
 GraphiteParser::GraphiteParser(const GraphiteParserOptions& parser_options)
     : separator_(parser_options.separator),
       time_column_name_(parser_options.time_column_name),
@@ -17,7 +19,7 @@ GraphiteParser::GraphiteParser(const GraphiteParserOptions& parser_options)
 arrow::Status GraphiteParser::parseRecordBatches(
     const std::shared_ptr<arrow::Buffer>& buffer,
     std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches) {
-  auto metric_strings = StringUtils::split(buffer->ToString(), "\n");
+  auto metric_strings = string_utils::split(buffer->ToString(), "\n");
   if (metric_strings.empty()) {
     return arrow::Status::OK();
   }
@@ -134,11 +136,11 @@ arrow::Status GraphiteParser::parseRecordBatches(
                                 arrow::timestamp(arrow::TimeUnit::SECOND)));
 
   ARROW_RETURN_NOT_OK(
-      ColumnTyping::setColumnTypeMetadata(&fields.back(), TIME));
+      metadata::setColumnTypeMetadata(&fields.back(), metadata::TIME));
 
   fields.push_back(arrow::field(measurement_column_name_, arrow::utf8()));
   ARROW_RETURN_NOT_OK(
-      ColumnTyping::setColumnTypeMetadata(&fields.back(), MEASUREMENT));
+      metadata::setColumnTypeMetadata(&fields.back(), metadata::MEASUREMENT));
 
   column_arrays.emplace_back();
   ARROW_RETURN_NOT_OK(measurement_name_builder.Finish(&column_arrays.back()));
@@ -146,7 +148,7 @@ arrow::Status GraphiteParser::parseRecordBatches(
   for (auto& tag : tags_id_to_builders) {
     fields.push_back(arrow::field(tag.first, arrow::utf8()));
     ARROW_RETURN_NOT_OK(
-        ColumnTyping::setColumnTypeMetadata(&fields.back(), TAG));
+        metadata::setColumnTypeMetadata(&fields.back(), metadata::TAG));
 
     column_arrays.emplace_back();
     ARROW_RETURN_NOT_OK(tag.second.Finish(&column_arrays.back()));
@@ -169,16 +171,16 @@ arrow::Status GraphiteParser::parseRecordBatches(
     }
 
     ARROW_RETURN_NOT_OK(
-        ColumnTyping::setColumnTypeMetadata(&fields.back(), FIELD));
+        metadata::setColumnTypeMetadata(&fields.back(), metadata::FIELD));
   }
 
   record_batches->push_back(arrow::RecordBatch::Make(
       arrow::schema(fields), parsed_metrics_.size(), column_arrays));
 
-  ARROW_RETURN_NOT_OK(ColumnTyping::setTimeColumnNameMetadata(
+  ARROW_RETURN_NOT_OK(metadata::setTimeColumnNameMetadata(
       &record_batches->back(), time_column_name_));
 
-  ARROW_RETURN_NOT_OK(ColumnTyping::setMeasurementColumnNameMetadata(
+  ARROW_RETURN_NOT_OK(metadata::setMeasurementColumnNameMetadata(
       &record_batches->back(), measurement_column_name_));
 
   parsed_metrics_.clear();
@@ -239,7 +241,7 @@ std::string GraphiteParser::Metric::getKeyString() const {
     key_parts.push_back(tag.first + '=' + tag.second);
   }
 
-  return StringUtils::concatenateStrings(key_parts, ".");
+  return string_utils::concatenateStrings(key_parts, ".");
 }
 
 void GraphiteParser::Metric::mergeWith(const Metric& other) {
@@ -260,7 +262,7 @@ void GraphiteParser::Metric::mergeWith(const Metric& other) {
 
 GraphiteParser::MetricTemplate::MetricTemplate(
     const std::string& template_string) {
-  auto template_string_parts = StringUtils::split(template_string, " ");
+  auto template_string_parts = string_utils::split(template_string, " ");
   if (template_string_parts.empty()) {
     return;
   }
@@ -307,7 +309,7 @@ void GraphiteParser::MetricTemplate::prepareTemplateParts(
     return;
   }
 
-  auto template_string_parts = StringUtils::split(template_string, ".");
+  auto template_string_parts = string_utils::split(template_string, ".");
   if (template_string_parts.empty()) {
     throw GraphiteParserException();
   }
@@ -342,9 +344,9 @@ void GraphiteParser::MetricTemplate::addTemplatePart(
 void GraphiteParser::MetricTemplate::prepareAdditionalTags(
     const std::string& additional_tags_string) {
   auto additional_tags_parts =
-      StringUtils::split(additional_tags_string, ",");
+      string_utils::split(additional_tags_string, ",");
   for (auto& part : additional_tags_parts) {
-    auto tag = StringUtils::split(part, "=");
+    auto tag = string_utils::split(part, "=");
     if (tag.size() != 2) {
       throw GraphiteParserException();
     }
@@ -355,14 +357,14 @@ void GraphiteParser::MetricTemplate::prepareAdditionalTags(
 
 bool GraphiteParser::MetricTemplate::match(
     const std::string& metric_string) const {
-  auto metric_parts = StringUtils::split(metric_string, " ");
+  auto metric_parts = string_utils::split(metric_string, " ");
 
   if (metric_parts.size() < 2 ||
       (filter_ != nullptr && !std::regex_match(metric_parts[0], *filter_))) {
     return false;
   }
 
-  auto metric_description_parts = StringUtils::split(metric_parts[0], ".");
+  auto metric_description_parts = string_utils::split(metric_parts[0], ".");
   return metric_description_parts.size() == parts_.size() ||
          (metric_description_parts.size() > parts_.size() &&
           multiple_last_part_);
@@ -377,12 +379,12 @@ GraphiteParser::MetricTemplate::buildMetric(
     return nullptr;
   }
 
-  auto metric_parts = StringUtils::split(metric_string, " ");
+  auto metric_parts = string_utils::split(metric_string, " ");
   if (metric_parts.empty()) {
     throw GraphiteParserException();
   }
 
-  auto metric_description_parts = StringUtils::split(metric_parts[0], ".");
+  auto metric_description_parts = string_utils::split(metric_parts[0], ".");
   if (metric_description_parts.size() < parts_.size()) {
     throw GraphiteParserException();
   }
@@ -423,19 +425,19 @@ GraphiteParser::MetricTemplate::buildMetric(
 
   GraphiteParser::SortedKVContainer<std::string> tags;
   for (auto& tag : tags_parts) {
-    tags.emplace(tag.first, std::move(StringUtils::concatenateStrings(
+    tags.emplace(tag.first, std::move(string_utils::concatenateStrings(
                                 tag.second, separator)));
   }
 
   for (auto& tag : additional_tags_) { tags.emplace(tag.first, tag.second); }
 
   auto metric =
-      std::make_shared<Metric>(std::move(StringUtils::concatenateStrings(
+      std::make_shared<Metric>(std::move(string_utils::concatenateStrings(
                                    measurement_name_parts, separator)),
                                std::move(tags));
 
   if (!field_parts.empty()) {
-    metric->fields[StringUtils::concatenateStrings(field_parts, separator)] =
+    metric->fields[string_utils::concatenateStrings(field_parts, separator)] =
         metric_parts[1];
   } else {
     metric->fields[DEFAULT_FIELD_NAME] = metric_parts[1];
@@ -464,3 +466,5 @@ bool GraphiteParser::MetricComparator::operator()(
     return metric1->timestamp < metric2->timestamp;
   }
 }
+
+}  // namespace stream_data_processor

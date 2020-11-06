@@ -1,5 +1,9 @@
 #include "publisher_consumer.h"
 
+namespace stream_data_processor {
+
+using transport_utils::TransportUtils;
+
 const std::chrono::duration<uint64_t, std::milli>
     PublisherConsumer::CONNECT_TIMEOUT{1000};
 
@@ -96,3 +100,5 @@ void PublisherConsumer::flushBuffer() {
                              std::to_string(zmq_errno()));
   }
 }
+
+}  // namespace stream_data_processor

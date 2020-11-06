@@ -8,6 +8,8 @@
 
 #include "record_batch_handler.h"
 
+namespace stream_data_processor {
+
 class SortHandler : public RecordBatchHandler {
  public:
   template <typename StringVectorType>
@@ -21,3 +23,5 @@ class SortHandler : public RecordBatchHandler {
  private:
   std::vector<std::string> sort_by_columns_;
 };
+
+}  // namespace stream_data_processor

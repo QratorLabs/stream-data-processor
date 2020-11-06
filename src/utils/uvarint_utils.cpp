@@ -1,4 +1,7 @@
-#include "uvarint.h"
+#include "uvarint_utils.h"
+
+namespace stream_data_processor {
+namespace uvarint_utils {
 
 const uint32_t UVarIntCoder::UINT32_MASK = UINT32_MAX;
 const uint8_t UVarIntCoder::SHIFT_SIZE = 7;
@@ -44,3 +47,6 @@ uint32_t UVarIntCoder::decode(std::istream& reader) {
     }
   }
 }
+
+}  // namespace uvarint_utils
+}  // namespace stream_data_processor

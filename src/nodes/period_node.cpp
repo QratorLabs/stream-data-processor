@@ -5,6 +5,8 @@
 #include "period_node.h"
 #include "utils/utils.h"
 
+namespace stream_data_processor {
+
 void PeriodNode::handleData(const char* data, size_t length) {
   auto append_result = appendData(data, length);
   if (!append_result.ok()) {
@@ -16,13 +18,13 @@ arrow::Status PeriodNode::appendData(const char* data, size_t length) {
   auto data_buffer = std::make_shared<arrow::Buffer>(
       reinterpret_cast<const uint8_t*>(data), length);
   arrow::RecordBatchVector record_batches;
-  ARROW_RETURN_NOT_OK(
-      Serializer::deserializeRecordBatches(data_buffer, &record_batches));
+  ARROW_RETURN_NOT_OK(serialize_utils::deserializeRecordBatches(
+      data_buffer, &record_batches));
 
   std::shared_ptr<arrow::RecordBatch> record_batch;
   ARROW_RETURN_NOT_OK(
-      DataConverter::concatenateRecordBatches(record_batches, &record_batch));
-  ARROW_RETURN_NOT_OK(ComputeUtils::sortByColumn(
+      convert_utils::concatenateRecordBatches(record_batches, &record_batch));
+  ARROW_RETURN_NOT_OK(compute_utils::sortByColumn(
       time_column_name_, record_batch, &record_batch));
 
   if (first_ts_in_current_batch_ == 0) {
@@ -60,7 +62,7 @@ arrow::Status PeriodNode::appendData(const char* data, size_t length) {
       std::vector<std::shared_ptr<arrow::Buffer>> buffers;
 
       ARROW_RETURN_NOT_OK(
-          Serializer::serializeRecordBatches({current_slice}, &buffers));
+          serialize_utils::serializeRecordBatches({current_slice}, &buffers));
 
       for (auto& buffer : buffers) { data_buffers_.push_back(buffer); }
     }
@@ -82,7 +84,7 @@ arrow::Status PeriodNode::appendData(const char* data, size_t length) {
   std::vector<std::shared_ptr<arrow::Buffer>> buffers;
 
   ARROW_RETURN_NOT_OK(
-      Serializer::serializeRecordBatches({record_batch}, &buffers));
+      serialize_utils::serializeRecordBatches({record_batch}, &buffers));
 
   for (auto& buffer : buffers) { data_buffers_.push_back(buffer); }
 
@@ -160,3 +162,5 @@ void PeriodNode::removeOldBuffers() {
 
   separation_idx_.back() = data_buffers_.size();
 }
+
+}  // namespace stream_data_processor

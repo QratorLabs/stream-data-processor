@@ -12,6 +12,8 @@
 #include "node.h"
 #include "period_handlers/period_handler.h"
 
+namespace stream_data_processor {
+
 class PeriodNode : public Node {
  public:
   PeriodNode(const std::string& name, uint64_t range, uint64_t period,
@@ -62,3 +64,5 @@ class PeriodNode : public Node {
   std::deque<std::shared_ptr<arrow::Buffer>> data_buffers_;
   std::time_t first_ts_in_current_batch_{0};
 };
+
+}  // namespace stream_data_processor

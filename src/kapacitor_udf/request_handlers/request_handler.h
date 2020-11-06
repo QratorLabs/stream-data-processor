@@ -6,6 +6,9 @@
 
 #include "udf.pb.h"
 
+namespace stream_data_processor {
+namespace kapacitor_udf {
+
 class IUDFAgent;
 
 class RequestHandler {
@@ -37,3 +40,6 @@ class RequestHandler {
  protected:
   std::weak_ptr<IUDFAgent> agent_;
 };
+
+}  // namespace kapacitor_udf
+}  // namespace stream_data_processor

@@ -11,7 +11,9 @@
 #include "metadata/grouping.h"
 #include "record_batch_handlers/record_batch_handlers.h"
 #include "test_help.h"
-#include "utils/serializer.h"
+#include "utils/serialize_utils.h"
+
+using namespace stream_data_processor;
 
 TEST_CASE( "filter one of two integers based on equal function", "[FilterHandler]" ) {
   auto field = arrow::field("field_name", arrow::int64());
@@ -101,8 +103,8 @@ TEST_CASE ( "split one record batch to separate ones by grouping on column with 
   checkValue<int64_t, arrow::Int64Scalar>(1, result[1],
                                           "field_name", 0);
 
-  REQUIRE( RecordBatchGrouping::extractGroupMetadata(result[0]) !=
-            RecordBatchGrouping::extractGroupMetadata(result[1]) );
+  REQUIRE(metadata::extractGroupMetadata(result[0]) !=
+            metadata::extractGroupMetadata(result[1]) );
 }
 
 TEST_CASE( "add new columns to empty record batch with different schema", "[DefaultHandler]") {
@@ -209,9 +211,9 @@ TEST_CASE( "join on timestamp and tag column", "[JoinHandler]" ) {
   arrow::RecordBatchVector record_batches;
 
   record_batches.push_back(arrow::RecordBatch::Make(schema_1, 1, {ts_array_1, tag_array_1, field_1_array}));
-  arrowAssertNotOk(ColumnTyping::setTimeColumnNameMetadata(&record_batches.back(), ts_field->name()));
+  arrowAssertNotOk(metadata::setTimeColumnNameMetadata(&record_batches.back(), ts_field->name()));
   record_batches.push_back(arrow::RecordBatch::Make(schema_2, 1, {ts_array_2, tag_array_2, field_2_array}));
-  arrowAssertNotOk(ColumnTyping::setTimeColumnNameMetadata(&record_batches.back(), ts_field->name()));
+  arrowAssertNotOk(metadata::setTimeColumnNameMetadata(&record_batches.back(), ts_field->name()));
 
   std::vector<std::string> join_on_columns{"tag"};
   std::shared_ptr<RecordBatchHandler> handler = std::make_shared<JoinHandler>(std::move(join_on_columns));
@@ -278,9 +280,9 @@ TEST_CASE( "assign missed values to null", "[JoinHandler]" ) {
   arrow::RecordBatchVector record_batches;
 
   record_batches.push_back(arrow::RecordBatch::Make(schema_1, 2, {ts_array_1, tag_array_1, field_1_array}));
-  arrowAssertNotOk(ColumnTyping::setTimeColumnNameMetadata(&record_batches.back(), ts_field->name()));
+  arrowAssertNotOk(metadata::setTimeColumnNameMetadata(&record_batches.back(), ts_field->name()));
   record_batches.push_back(arrow::RecordBatch::Make(schema_2, 1, {ts_array_2, tag_array_2, field_2_array}));
-  arrowAssertNotOk(ColumnTyping::setTimeColumnNameMetadata(&record_batches.back(), ts_field->name()));
+  arrowAssertNotOk(metadata::setTimeColumnNameMetadata(&record_batches.back(), ts_field->name()));
 
   std::vector<std::string> join_on_columns{"tag"};
   std::shared_ptr<RecordBatchHandler> handler = std::make_shared<JoinHandler>(std::move(join_on_columns));
@@ -351,9 +353,9 @@ TEST_CASE( "join depending on tolerance", "[JoinHandler]" ) {
   arrow::RecordBatchVector record_batches;
 
   record_batches.push_back(arrow::RecordBatch::Make(schema_1, 1, {ts_array_1, tag_array_1, field_1_array}));
-  arrowAssertNotOk(ColumnTyping::setTimeColumnNameMetadata(&record_batches.back(), ts_field->name()));
+  arrowAssertNotOk(metadata::setTimeColumnNameMetadata(&record_batches.back(), ts_field->name()));
   record_batches.push_back(arrow::RecordBatch::Make(schema_2, 1, {ts_array_2, tag_array_2, field_2_array}));
-  arrowAssertNotOk(ColumnTyping::setTimeColumnNameMetadata(&record_batches.back(), ts_field->name()));
+  arrowAssertNotOk(metadata::setTimeColumnNameMetadata(&record_batches.back(), ts_field->name()));
 
   std::vector<std::string> join_on_columns{"tag"};
   std::shared_ptr<RecordBatchHandler> handler = std::make_shared<JoinHandler>(std::move(join_on_columns), 5);
@@ -398,9 +400,9 @@ SCENARIO( "groups aggregation", "[AggregateHandler]" ) {
 
     auto record_batch_0 =
         arrow::RecordBatch::Make(schema, 1, {time_array_0, tag_array_0});
-    arrowAssertNotOk(RecordBatchGrouping::fillGroupMetadata(&record_batch_0,
-                                                            {tag_field->name()}));
-    arrowAssertNotOk(ColumnTyping::setTimeColumnNameMetadata(&record_batch_0, time_field->name()));
+    arrowAssertNotOk(metadata::fillGroupMetadata(&record_batch_0,
+                                                 {tag_field->name()}));
+    arrowAssertNotOk(metadata::setTimeColumnNameMetadata(&record_batch_0, time_field->name()));
 
     arrow::TimestampBuilder time_builder_1
         (arrow::timestamp(arrow::TimeUnit::SECOND),
@@ -416,9 +418,9 @@ SCENARIO( "groups aggregation", "[AggregateHandler]" ) {
 
     auto record_batch_1 =
         arrow::RecordBatch::Make(schema, 1, {time_array_1, tag_array_1});
-    arrowAssertNotOk(RecordBatchGrouping::fillGroupMetadata(&record_batch_1,
-                                                            {tag_field->name()}));
-    arrowAssertNotOk(ColumnTyping::setTimeColumnNameMetadata(&record_batch_1, time_field->name()));
+    arrowAssertNotOk(metadata::fillGroupMetadata(&record_batch_1,
+                                                 {tag_field->name()}));
+    arrowAssertNotOk(metadata::setTimeColumnNameMetadata(&record_batch_1, time_field->name()));
 
     arrow::TimestampBuilder time_builder_2
         (arrow::timestamp(arrow::TimeUnit::SECOND),
@@ -434,9 +436,9 @@ SCENARIO( "groups aggregation", "[AggregateHandler]" ) {
 
     auto record_batch_2 =
         arrow::RecordBatch::Make(schema, 1, {time_array_2, tag_array_2});
-    arrowAssertNotOk(RecordBatchGrouping::fillGroupMetadata(&record_batch_2,
-                                                            {tag_field->name()}));
-    arrowAssertNotOk(ColumnTyping::setTimeColumnNameMetadata(&record_batch_2, time_field->name()));
+    arrowAssertNotOk(metadata::fillGroupMetadata(&record_batch_2,
+                                                 {tag_field->name()}));
+    arrowAssertNotOk(metadata::setTimeColumnNameMetadata(&record_batch_2, time_field->name()));
 
     arrow::RecordBatchVector result;
 
@@ -458,7 +460,7 @@ SCENARIO( "groups aggregation", "[AggregateHandler]" ) {
         checkValue<int64_t, arrow::Int64Scalar>(101, result[0], time_field->name(), 1);
         checkValue<std::string, arrow::StringScalar>(group_1, result[0], tag_field->name(), 0);
         checkValue<std::string, arrow::StringScalar>(group_1, result[0], tag_field->name(), 1);
-        REQUIRE( !RecordBatchGrouping::extractGroupMetadata(result[0]).empty() );
+        REQUIRE( !metadata::extractGroupMetadata(result[0]).empty() );
       }
     }
 
@@ -477,13 +479,13 @@ SCENARIO( "groups aggregation", "[AggregateHandler]" ) {
         checkColumnsArePresent(result[0], {time_field->name(), tag_field->name()});
         checkValue<int64_t, arrow::Int64Scalar>(100, result[0], time_field->name(), 0);
         checkValue<std::string, arrow::StringScalar>(group_1, result[0], tag_field->name(), 0);
-        REQUIRE( !RecordBatchGrouping::extractGroupMetadata(result[0]).empty() );
+        REQUIRE( !metadata::extractGroupMetadata(result[0]).empty() );
 
         checkSize(result[1], 1, 2);
         checkColumnsArePresent(result[1], {time_field->name(), tag_field->name()});
         checkValue<int64_t, arrow::Int64Scalar>(102, result[1], time_field->name(), 0);
         checkValue<std::string, arrow::StringScalar>(group_2, result[1], tag_field->name(), 0);
-        REQUIRE( !RecordBatchGrouping::extractGroupMetadata(result[1]).empty() );
+        REQUIRE( !metadata::extractGroupMetadata(result[1]).empty() );
       }
     }
   }
@@ -505,7 +507,7 @@ SCENARIO( "aggregating time", "[AggregateHandler]" ) {
 
     auto record_batch =
         arrow::RecordBatch::Make(schema, 1, {time_array});
-    arrowAssertNotOk(ColumnTyping::setTimeColumnNameMetadata(&record_batch,
+    arrowAssertNotOk(metadata::setTimeColumnNameMetadata(&record_batch,
                                                              time_field->name()));
 
     AND_GIVEN("AggregateHandler with different result time column name") {
@@ -535,7 +537,7 @@ SCENARIO( "aggregating time", "[AggregateHandler]" ) {
                                                   new_time_column_name,
                                                   0);
           std::string result_time_column_name;
-          arrowAssertNotOk(ColumnTyping::getTimeColumnNameMetadata(result[0], &result_time_column_name));
+          arrowAssertNotOk(metadata::getTimeColumnNameMetadata(result[0], &result_time_column_name));
           REQUIRE( result_time_column_name == new_time_column_name );
         }
       }

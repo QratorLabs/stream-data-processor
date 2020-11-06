@@ -3,7 +3,9 @@
 #include <bprinter/table_printer.h>
 
 #include "print_consumer.h"
-#include "utils/serializer.h"
+#include "utils/serialize_utils.h"
+
+namespace stream_data_processor {
 
 PrintConsumer::PrintConsumer(std::ofstream& ostrm) : ostrm_(ostrm) {}
 
@@ -12,7 +14,7 @@ void PrintConsumer::start() {}
 void PrintConsumer::consume(const std::shared_ptr<arrow::Buffer>& data) {
   arrow::RecordBatchVector record_batches;
   auto deserialize_status =
-      Serializer::deserializeRecordBatches(data, &record_batches);
+      serialize_utils::deserializeRecordBatches(data, &record_batches);
   if (!deserialize_status.ok()) {
     throw std::runtime_error(deserialize_status.message());
   }
@@ -61,3 +63,5 @@ FilePrintConsumer::FilePrintConsumer(const std::string& file_name)
     : PrintConsumer(ostrm_obj_), ostrm_obj_(file_name) {}
 
 FilePrintConsumer::~FilePrintConsumer() { ostrm_obj_.close(); }
+
+}  // namespace stream_data_processor

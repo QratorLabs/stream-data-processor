@@ -1,7 +1,9 @@
 #include "default_handler.h"
 
 #include "metadata/column_typing.h"
-#include "utils/serializer.h"
+#include "utils/serialize_utils.h"
+
+namespace stream_data_processor {
 
 template <>
 arrow::Status DefaultHandler::addMissingColumn<int64_t>(
@@ -22,7 +24,7 @@ arrow::Status DefaultHandler::addMissingColumn<int64_t>(
     ARROW_RETURN_NOT_OK(builder.Finish(&array));
 
     auto new_field = arrow::field(column_name, arrow::int64());
-    ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
+    ARROW_RETURN_NOT_OK(metadata::setColumnTypeMetadata(
         &new_field, default_case.default_column_type));
 
     auto add_column_result = record_batch->get()->AddColumn(
@@ -56,7 +58,7 @@ arrow::Status DefaultHandler::addMissingColumn<double>(
     ARROW_RETURN_NOT_OK(builder.Finish(&array));
 
     auto new_field = arrow::field(column_name, arrow::float64());
-    ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
+    ARROW_RETURN_NOT_OK(metadata::setColumnTypeMetadata(
         &new_field, default_case.default_column_type));
 
     auto add_column_result = record_batch->get()->AddColumn(
@@ -90,7 +92,7 @@ arrow::Status DefaultHandler::addMissingColumn<std::string>(
     ARROW_RETURN_NOT_OK(builder.Finish(&array));
 
     auto new_field = arrow::field(column_name, arrow::utf8());
-    ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
+    ARROW_RETURN_NOT_OK(metadata::setColumnTypeMetadata(
         &new_field, default_case.default_column_type));
 
     auto add_column_result = record_batch->get()->AddColumn(
@@ -123,7 +125,7 @@ arrow::Status DefaultHandler::addMissingColumn<bool>(
     ARROW_RETURN_NOT_OK(builder.Finish(&array));
 
     auto new_field = arrow::field(column_name, arrow::boolean());
-    ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
+    ARROW_RETURN_NOT_OK(metadata::setColumnTypeMetadata(
         &new_field, default_case.default_column_type));
 
     auto add_column_result = record_batch->get()->AddColumn(
@@ -160,3 +162,5 @@ arrow::Status DefaultHandler::handle(
 
   return arrow::Status::OK();
 }
+
+}  // namespace stream_data_processor

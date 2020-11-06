@@ -2,10 +2,13 @@
 
 #include <memory>
 
-#include "kapacitor_udf/points_converter.h"
 #include "kapacitor_udf/request_handlers/record_batch_request_handler.h"
+#include "kapacitor_udf/utils/points_converter.h"
 
 #include "udf.pb.h"
+
+namespace stream_data_processor {
+namespace kapacitor_udf {
 
 class BatchAggregateRequestHandler : public RecordBatchRequestHandler {
  public:
@@ -28,3 +31,6 @@ class BatchAggregateRequestHandler : public RecordBatchRequestHandler {
 
   bool in_batch_{false};
 };
+
+}  // namespace kapacitor_udf
+}  // namespace stream_data_processor

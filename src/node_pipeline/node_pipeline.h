@@ -10,6 +10,10 @@
 #include "producers/producer.h"
 #include "utils/transport_utils.h"
 
+namespace stream_data_processor {
+
+using transport_utils::TransportUtils;
+
 class NodePipeline {
  public:
   NodePipeline() = default;
@@ -39,3 +43,5 @@ class NodePipeline {
   std::shared_ptr<Node> node_{nullptr};
   std::shared_ptr<Producer> producer_{nullptr};
 };
+
+}  // namespace stream_data_processor

@@ -3,6 +3,9 @@
 #include "aggregate_options_parser.h"
 #include "kapacitor_udf/request_handlers/invalid_option_exception.h"
 
+namespace stream_data_processor {
+namespace kapacitor_udf {
+
 const std::unordered_map<std::string,
                          AggregateHandler::AggregateFunctionEnumType>
     AggregateOptionsParser::FUNCTION_NAMES_TO_TYPES{
@@ -86,3 +89,6 @@ void AggregateOptionsParser::parseTimeAggregateRule(
   aggregate_options->result_time_column_rule.aggregate_function =
       FUNCTION_NAMES_TO_TYPES.at(time_aggregate_function_name);
 }
+
+}  // namespace kapacitor_udf
+}  // namespace stream_data_processor

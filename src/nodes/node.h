@@ -11,6 +11,8 @@
 
 #include "consumers/consumer.h"
 
+namespace stream_data_processor {
+
 class Node {
  public:
   explicit Node(std::string name)
@@ -48,3 +50,5 @@ class Node {
   std::shared_ptr<spdlog::logger> logger_;
   std::vector<std::shared_ptr<Consumer>> consumers_;
 };
+
+}  // namespace stream_data_processor

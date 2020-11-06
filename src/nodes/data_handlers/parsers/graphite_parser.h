@@ -14,6 +14,8 @@
 
 #include "parser.h"
 
+namespace stream_data_processor {
+
 class GraphiteParserException : public std::exception {};
 
 class GraphiteParser : public Parser {
@@ -109,3 +111,5 @@ class GraphiteParser : public Parser {
   std::vector<MetricTemplate> templates_;
   std::set<std::shared_ptr<Metric>, MetricComparator> parsed_metrics_;
 };
+
+}  // namespace stream_data_processor

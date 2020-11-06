@@ -10,6 +10,10 @@
 #include "producer.h"
 #include "utils/transport_utils.h"
 
+namespace stream_data_processor {
+
+using transport_utils::TransportUtils;
+
 class SubscriberProducer : public Producer {
  public:
   template <typename SubscriberType>
@@ -41,3 +45,5 @@ class SubscriberProducer : public Producer {
   std::shared_ptr<uvw::PollHandle> synchronize_poller_;
   bool ready_to_confirm_connection_{false};
 };
+
+}  // namespace stream_data_processor

@@ -5,6 +5,10 @@
 #include "producers/subscriber_producer.h"
 #include "utils/transport_utils.h"
 
+namespace stream_data_processor {
+
+using transport_utils::TransportUtils;
+
 const std::string NodePipeline::SYNC_SUFFIX{"_sync"};
 
 void NodePipeline::addConsumer(const std::shared_ptr<Consumer>& consumer) {
@@ -76,3 +80,5 @@ void NodePipeline::subscribeTo(
 
   setProducer(producer);
 }
+
+}  // namespace stream_data_processor

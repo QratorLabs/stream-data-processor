@@ -12,6 +12,10 @@
 #include "consumer.h"
 #include "utils/transport_utils.h"
 
+namespace stream_data_processor {
+
+using transport_utils::IPv4Endpoint;
+
 class TCPConsumer : public Consumer {
  public:
   TCPConsumer(const std::vector<IPv4Endpoint>& target_endpoints,
@@ -37,3 +41,5 @@ class TCPConsumer : public Consumer {
   size_t connected_targets_{0};
   std::queue<std::shared_ptr<arrow::Buffer>> data_buffers_;
 };
+
+}  // namespace stream_data_processor

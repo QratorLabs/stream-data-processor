@@ -3,6 +3,9 @@
 #include <exception>
 #include <string>
 
+namespace stream_data_processor {
+namespace kapacitor_udf {
+
 class InvalidOptionException : public std::exception {
  public:
   explicit InvalidOptionException(const std::string& message)
@@ -15,3 +18,6 @@ class InvalidOptionException : public std::exception {
  private:
   std::string message_;
 };
+
+}  // namespace kapacitor_udf
+}  // namespace stream_data_processor

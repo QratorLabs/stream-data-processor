@@ -10,12 +10,14 @@
 
 #include "metadata.pb.h"
 
+namespace stream_data_processor {
+
 class DefaultHandler : public RecordBatchHandler {
  public:
   template <typename ValueType>
   struct DefaultCase {
     ValueType default_value;
-    ColumnType default_column_type{UNKNOWN};
+    metadata::ColumnType default_column_type{metadata::UNKNOWN};
   };
 
   struct DefaultHandlerOptions {
@@ -46,3 +48,5 @@ class DefaultHandler : public RecordBatchHandler {
  private:
   DefaultHandlerOptions options_;
 };
+
+}  // namespace stream_data_processor

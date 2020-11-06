@@ -12,6 +12,9 @@
 
 #include "udf.pb.h"
 
+namespace stream_data_processor {
+namespace kapacitor_udf {
+
 class AggregateOptionsParser {
  public:
   static google::protobuf::Map<std::string, agent::OptionInfo>
@@ -39,3 +42,6 @@ class AggregateOptionsParser {
       FUNCTION_NAMES_TO_TYPES;
   static const std::regex AGGREGATE_STRING_REGEX;
 };
+
+}  // namespace kapacitor_udf
+}  // namespace stream_data_processor

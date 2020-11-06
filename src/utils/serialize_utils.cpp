@@ -1,6 +1,9 @@
-#include "serializer.h"
+#include "serialize_utils.h"
 
-arrow::Status Serializer::serializeRecordBatches(
+namespace stream_data_processor {
+namespace serialize_utils {
+
+arrow::Status serializeRecordBatches(
     const std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches,
     std::vector<std::shared_ptr<arrow::Buffer>>* target) {
   for (auto& record_batch : record_batches) {
@@ -25,7 +28,7 @@ arrow::Status Serializer::serializeRecordBatches(
   return arrow::Status::OK();
 }
 
-arrow::Status Serializer::deserializeRecordBatches(
+arrow::Status deserializeRecordBatches(
     const std::shared_ptr<arrow::Buffer>& buffer,
     std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches) {
   auto buffer_input = std::make_shared<arrow::io::BufferReader>(buffer);
@@ -41,3 +44,6 @@ arrow::Status Serializer::deserializeRecordBatches(
   ARROW_RETURN_NOT_OK(buffer_input->Close());
   return arrow::Status::OK();
 }
+
+}  // namespace serialize_utils
+}  // namespace stream_data_processor

@@ -7,6 +7,8 @@
 #include "record_batch_handlers/aggregate_functions/aggregate_functions.h"
 #include "test_help.h"
 
+using namespace stream_data_processor;
+
 TEST_CASE( "mean of two even integers is integer", "[MeanAggregateFunction]" ) {
   std::shared_ptr<AggregateFunction> mean_function = std::make_shared<MeanAggregateFunction>();
 

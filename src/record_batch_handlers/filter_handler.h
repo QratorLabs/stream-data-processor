@@ -7,6 +7,8 @@
 
 #include "record_batch_handler.h"
 
+namespace stream_data_processor {
+
 class FilterHandler : public RecordBatchHandler {
  public:
   template <typename ConditionVectorType>
@@ -24,3 +26,5 @@ class FilterHandler : public RecordBatchHandler {
  private:
   std::vector<gandiva::ConditionPtr> conditions_;
 };
+
+}  // namespace stream_data_processor

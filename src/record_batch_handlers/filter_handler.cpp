@@ -3,8 +3,9 @@
 #include <gandiva/tree_expr_builder.h>
 
 #include "filter_handler.h"
-#include "metadata/grouping.h"
-#include "utils/serializer.h"
+#include "utils/serialize_utils.h"
+
+namespace stream_data_processor {
 
 arrow::Status FilterHandler::handle(
     const std::shared_ptr<arrow::RecordBatch>& record_batch,
@@ -60,3 +61,5 @@ arrow::Status FilterHandler::prepareFilter(
 
   return arrow::Status::OK();
 }
+
+}  // namespace stream_data_processor

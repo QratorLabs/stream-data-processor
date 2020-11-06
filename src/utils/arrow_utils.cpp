@@ -1,8 +1,11 @@
 #include "arrow_utils.h"
 
-arrow::Status ArrowUtils::makeArrayBuilder(
-    arrow::Type::type type, std::shared_ptr<arrow::ArrayBuilder>* builder,
-    arrow::MemoryPool* pool) {
+namespace stream_data_processor {
+namespace arrow_utils {
+
+arrow::Status makeArrayBuilder(arrow::Type::type type,
+                               std::shared_ptr<arrow::ArrayBuilder>* builder,
+                               arrow::MemoryPool* pool) {
   switch (type) {
     case arrow::Type::INT64:
       *builder = std::make_shared<arrow::Int64Builder>(pool);
@@ -29,9 +32,9 @@ arrow::Status ArrowUtils::makeArrayBuilder(
   }
 }
 
-arrow::Status ArrowUtils::appendToBuilder(
-    const std::shared_ptr<arrow::Scalar>& value,
-    std::shared_ptr<arrow::ArrayBuilder>* builder, arrow::Type::type type) {
+arrow::Status appendToBuilder(const std::shared_ptr<arrow::Scalar>& value,
+                              std::shared_ptr<arrow::ArrayBuilder>* builder,
+                              arrow::Type::type type) {
   switch (type) {
     case arrow::Type::INT64:
       ARROW_RETURN_NOT_OK(
@@ -68,3 +71,6 @@ arrow::Status ArrowUtils::appendToBuilder(
           "types");  // TODO: support any type
   }
 }
+
+}  // namespace arrow_utils
+}  // namespace stream_data_processor

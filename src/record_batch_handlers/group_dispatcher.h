@@ -7,6 +7,8 @@
 #include "record_batch_handler.h"
 #include "stateful_handlers/stateful_handler.h"
 
+namespace stream_data_processor {
+
 class GroupDispatcher : public RecordBatchHandler {
  public:
   explicit GroupDispatcher(std::shared_ptr<StatefulHandler> initial_state);
@@ -20,3 +22,5 @@ class GroupDispatcher : public RecordBatchHandler {
   std::unordered_map<std::string, std::shared_ptr<StatefulHandler> >
       groups_states_;
 };
+
+}  // namespace stream_data_processor

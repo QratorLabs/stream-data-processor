@@ -2,9 +2,12 @@
 
 #include <spdlog/spdlog.h>
 
-#include "data_converter.h"
+#include "convert_utils.h"
 
-arrow::Status DataConverter::convertTableToRecordBatch(
+namespace stream_data_processor {
+namespace convert_utils {
+
+arrow::Status convertTableToRecordBatch(
     const std::shared_ptr<arrow::Table>& table,
     std::shared_ptr<arrow::RecordBatch>* record_batch) {
   auto prepared_table_result = table->CombineChunks();
@@ -25,7 +28,7 @@ arrow::Status DataConverter::convertTableToRecordBatch(
   return arrow::Status::OK();
 }
 
-arrow::Status DataConverter::concatenateRecordBatches(
+arrow::Status concatenateRecordBatches(
     const std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches,
     std::shared_ptr<arrow::RecordBatch>* target) {
   auto table_result = arrow::Table::FromRecordBatches(record_batches);
@@ -37,3 +40,6 @@ arrow::Status DataConverter::concatenateRecordBatches(
       convertTableToRecordBatch(table_result.ValueOrDie(), target));
   return arrow::Status::OK();
 }
+
+}  // namespace convert_utils
+}  // namespace stream_data_processor

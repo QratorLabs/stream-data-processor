@@ -2,6 +2,10 @@
 
 #include "subscriber_producer.h"
 
+namespace stream_data_processor {
+
+using transport_utils::TransportUtils;
+
 void SubscriberProducer::start() {
   fetchSocketEvents();
   poller_->start(uvw::Flags<uvw::PollHandle::Event>::from<
@@ -94,3 +98,5 @@ void SubscriberProducer::fetchSocketEvents() {
              .recv(message, zmq::recv_flags::dontwait)
              .has_value()) {}
 }
+
+}  // namespace stream_data_processor

@@ -1,6 +1,8 @@
 #include "serialized_period_handler.h"
 
-#include "utils/serializer.h"
+#include "utils/serialize_utils.h"
+
+namespace stream_data_processor {
 
 SerializedPeriodHandler::SerializedPeriodHandler(
     std::shared_ptr<RecordBatchHandler> handler_strategy)
@@ -12,7 +14,7 @@ arrow::Status SerializedPeriodHandler::handle(
   arrow::RecordBatchVector period_vector;
   for (auto& buffer : period) {
     ARROW_RETURN_NOT_OK(
-        Serializer::deserializeRecordBatches(buffer, &period_vector));
+        serialize_utils::deserializeRecordBatches(buffer, &period_vector));
   }
 
   if (period_vector.empty()) {
@@ -22,6 +24,9 @@ arrow::Status SerializedPeriodHandler::handle(
   arrow::RecordBatchVector result;
   ARROW_RETURN_NOT_OK(handler_strategy_->handle(period_vector, &result));
 
-  ARROW_RETURN_NOT_OK(Serializer::serializeRecordBatches(result, target));
+  ARROW_RETURN_NOT_OK(
+      serialize_utils::serializeRecordBatches(result, target));
   return arrow::Status::OK();
 }
+
+}  // namespace stream_data_processor

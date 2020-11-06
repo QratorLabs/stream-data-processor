@@ -2,7 +2,10 @@
 
 #include "batch_to_stream_request_handler.h"
 
-#include "utils/serializer.h"
+#include "utils/serialize_utils.h"
+
+namespace stream_data_processor {
+namespace kapacitor_udf {
 
 BatchToStreamRequestHandler::BatchToStreamRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent,
@@ -75,3 +78,6 @@ void BatchToStreamRequestHandler::endBatch(const agent::EndBatch& batch) {
   in_batch_ = false;
   handleBatch();
 }
+
+}  // namespace kapacitor_udf
+}  // namespace stream_data_processor

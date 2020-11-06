@@ -5,6 +5,8 @@
 
 #include "record_batch_handler.h"
 
+namespace stream_data_processor {
+
 class GroupHandler : public RecordBatchHandler {
  public:
   template <typename StringVectorType>
@@ -18,3 +20,5 @@ class GroupHandler : public RecordBatchHandler {
  private:
   std::vector<std::string> grouping_columns_;
 };
+
+}  // namespace stream_data_processor

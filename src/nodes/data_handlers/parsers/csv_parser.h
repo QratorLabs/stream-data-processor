@@ -2,6 +2,8 @@
 
 #include "parser.h"
 
+namespace stream_data_processor {
+
 class CSVParser : public Parser {
  public:
   explicit CSVParser(std::shared_ptr<arrow::Schema> schema = nullptr);
@@ -17,3 +19,5 @@ class CSVParser : public Parser {
  private:
   std::shared_ptr<arrow::Schema> record_batches_schema_;
 };
+
+}  // namespace stream_data_processor

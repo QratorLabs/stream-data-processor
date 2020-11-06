@@ -2,8 +2,11 @@
 
 #include "string_utils.h"
 
-std::vector<std::string> StringUtils::split(const std::string& str,
-                                            const std::string& delimiter) {
+namespace stream_data_processor {
+namespace string_utils {
+
+std::vector<std::string> split(const std::string& str,
+                               const std::string& delimiter) {
   if (str.empty()) {
     return std::vector<std::string>();
   }
@@ -20,8 +23,8 @@ std::vector<std::string> StringUtils::split(const std::string& str,
   return parts;
 }
 
-std::string StringUtils::concatenateStrings(
-    const std::vector<std::string>& parts, const std::string& delimiter) {
+std::string concatenateStrings(const std::vector<std::string>& parts,
+                               const std::string& delimiter) {
   if (parts.empty()) {
     return "";
   }
@@ -34,3 +37,6 @@ std::string StringUtils::concatenateStrings(
   builder << parts.back();
   return builder.str();
 }
+
+}  // namespace string_utils
+}  // namespace stream_data_processor

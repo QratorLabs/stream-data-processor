@@ -7,6 +7,8 @@
 
 #include "record_batch_handler.h"
 
+namespace stream_data_processor {
+
 class JoinHandler : public RecordBatchHandler {
  public:
   template <typename StringVectorType>
@@ -58,3 +60,5 @@ class JoinHandler : public RecordBatchHandler {
   std::vector<std::string> join_on_columns_;
   int64_t tolerance_;
 };
+
+}  // namespace stream_data_processor

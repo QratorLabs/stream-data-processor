@@ -4,10 +4,13 @@
 #include <memory>
 #include <string>
 
-#include "kapacitor_udf/points_converter.h"
 #include "kapacitor_udf/request_handlers/record_batch_request_handler.h"
+#include "kapacitor_udf/utils/points_converter.h"
 
 #include "udf.pb.h"
+
+namespace stream_data_processor {
+namespace kapacitor_udf {
 
 class StreamAggregateRequestHandler
     : public StreamRecordBatchRequestHandlerBase {
@@ -38,3 +41,6 @@ class StreamAggregateRequestHandler
 
   std::chrono::nanoseconds tolerance_{0};
 };
+
+}  // namespace kapacitor_udf
+}  // namespace stream_data_processor

@@ -1,12 +1,14 @@
 #include "window_handler.h"
 #include "utils/utils.h"
 
+namespace stream_data_processor {
+
 arrow::Status WindowHandler::handle(
     const arrow::RecordBatchVector& record_batches,
     arrow::RecordBatchVector* result) {
   std::shared_ptr<arrow::RecordBatch> record_batch;
   ARROW_RETURN_NOT_OK(
-      DataConverter::concatenateRecordBatches(record_batches, &record_batch));
+      convert_utils::concatenateRecordBatches(record_batches, &record_batch));
 
   copySchemaMetadata(record_batches.front(), &record_batch);
   ARROW_RETURN_NOT_OK(copyColumnTypes(record_batches.front(), &record_batch));
@@ -21,3 +23,5 @@ arrow::Status WindowHandler::handle(
   result->push_back(record_batch);
   return arrow::Status::OK();
 }
+
+}  // namespace stream_data_processor

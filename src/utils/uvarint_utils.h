@@ -4,6 +4,9 @@
 #include <fstream>
 #include <string>
 
+namespace stream_data_processor {
+namespace uvarint_utils {
+
 class EOFException : public std::exception {};
 
 class UVarIntCoder {
@@ -17,3 +20,6 @@ class UVarIntCoder {
   static const uint8_t VARINT_MORE_MASK;
   static const uint8_t VARINT_MASK;
 };
+
+}  // namespace uvarint_utils
+}  // namespace stream_data_processor

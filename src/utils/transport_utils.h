@@ -12,6 +12,9 @@
 #include "nodes/node.h"
 #include "producers/producer.h"
 
+namespace stream_data_processor {
+namespace transport_utils {
+
 struct IPv4Endpoint {
   std::string host;
   uint16_t port;
@@ -84,3 +87,6 @@ class TransportUtils {
   static std::string getSizeString(size_t size);
   static size_t parseMessageSize(const std::string& size_string);
 };
+
+}  // namespace transport_utils
+}  // namespace stream_data_processor

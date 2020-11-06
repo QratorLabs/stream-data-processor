@@ -1,6 +1,8 @@
 #include "group_dispatcher.h"
 #include "metadata/grouping.h"
 
+namespace stream_data_processor {
+
 GroupDispatcher::GroupDispatcher(
     std::shared_ptr<StatefulHandler> initial_state)
     : initial_state_(std::move(initial_state)) {}
@@ -8,8 +10,7 @@ GroupDispatcher::GroupDispatcher(
 arrow::Status GroupDispatcher::handle(
     const std::shared_ptr<arrow::RecordBatch>& record_batch,
     arrow::RecordBatchVector* result) {
-  auto group_metadata =
-      RecordBatchGrouping::extractGroupMetadata(record_batch);
+  auto group_metadata = metadata::extractGroupMetadata(record_batch);
 
   if (groups_states_.find(group_metadata) == groups_states_.end()) {
     groups_states_[group_metadata] = initial_state_->clone();
@@ -20,3 +21,5 @@ arrow::Status GroupDispatcher::handle(
 
   return arrow::Status::OK();
 }
+
+}  // namespace stream_data_processor

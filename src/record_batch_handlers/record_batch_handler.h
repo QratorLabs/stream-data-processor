@@ -7,6 +7,8 @@
 
 #include "metadata/column_typing.h"
 
+namespace stream_data_processor {
+
 class RecordBatchHandler {
  public:
   virtual arrow::Status handle(
@@ -41,8 +43,8 @@ class RecordBatchHandler {
       }
 
       if (to_field->Equals(from_field)) {
-        ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(
-            &to_field, ColumnTyping::getColumnType(from_field)));
+        ARROW_RETURN_NOT_OK(metadata::setColumnTypeMetadata(
+            &to_field, metadata::getColumnType(from_field)));
         auto set_field_result = to->get()->schema()->SetField(
             to->get()->schema()->GetFieldIndex(from_field->name()), to_field);
         ARROW_RETURN_NOT_OK(set_field_result.status());
@@ -52,3 +54,5 @@ class RecordBatchHandler {
     return arrow::Status::OK();
   }
 };
+
+}  // namespace stream_data_processor

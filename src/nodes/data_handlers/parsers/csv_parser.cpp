@@ -4,6 +4,8 @@
 #include "csv_parser.h"
 #include "metadata/column_typing.h"
 
+namespace stream_data_processor {
+
 CSVParser::CSVParser(std::shared_ptr<arrow::Schema> schema)
     : record_batches_schema_(std::move(schema)) {}
 
@@ -65,10 +67,13 @@ arrow::Status CSVParser::tryFindTimeColumn() {
     return arrow::Status::OK();
   }
 
-  ARROW_RETURN_NOT_OK(ColumnTyping::setColumnTypeMetadata(&time_field, TIME));
+  ARROW_RETURN_NOT_OK(
+      metadata::setColumnTypeMetadata(&time_field, metadata::TIME));
 
   ARROW_RETURN_NOT_OK(record_batches_schema_->SetField(
       record_batches_schema_->GetFieldIndex(time_field->name()), time_field));
 
   return arrow::Status::OK();
 }
+
+}  // namespace stream_data_processor

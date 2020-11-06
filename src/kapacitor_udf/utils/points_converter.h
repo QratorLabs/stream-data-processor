@@ -10,6 +10,10 @@
 #include "metadata.pb.h"
 #include "udf.pb.h"
 
+namespace stream_data_processor {
+namespace kapacitor_udf {
+namespace convert_utils {
+
 class PointsConverter {
  public:
   struct PointsToRecordBatchesConversionOptions {
@@ -50,5 +54,9 @@ class PointsConverter {
       arrow::ArrayVector* column_arrays, arrow::FieldVector* schema_fields,
       std::map<std::string, BuilderType>* builders,
       const std::shared_ptr<arrow::DataType>& data_type,
-      ColumnType column_type);
+      metadata::ColumnType column_type);
 };
+
+}  // namespace convert_utils
+}  // namespace kapacitor_udf
+}  // namespace stream_data_processor

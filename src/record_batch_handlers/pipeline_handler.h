@@ -6,6 +6,8 @@
 
 #include "record_batch_handler.h"
 
+namespace stream_data_processor {
+
 class PipelineHandler : public RecordBatchHandler {
  public:
   explicit PipelineHandler(
@@ -31,3 +33,5 @@ class PipelineHandler : public RecordBatchHandler {
  private:
   std::vector<std::shared_ptr<RecordBatchHandler>> pipeline_handlers_;
 };
+
+}  // namespace stream_data_processor

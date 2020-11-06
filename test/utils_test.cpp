@@ -4,6 +4,8 @@
 #include "test_help.h"
 #include "utils/utils.h"
 
+using namespace stream_data_processor;
+
 TEST_CASE( "serialization and deserialization preserves schema metadata", "[Serializer]" ) {
   std::string metadata_key = "metadata";
   std::vector<std::string> metadata_values{ "batch_0", "batch_1"};
@@ -33,13 +35,13 @@ TEST_CASE( "serialization and deserialization preserves schema metadata", "[Seri
   arrow::RecordBatchVector record_batches{record_batch_0, record_batch_1};
   std::vector<std::shared_ptr<arrow::Buffer>> buffers;
 
-  arrowAssertNotOk(Serializer::serializeRecordBatches(
+  arrowAssertNotOk(serialize_utils::serializeRecordBatches(
       record_batches, &buffers));
 
   for (size_t i = 0; i < 2; ++i) {
     arrow::RecordBatchVector deserialized;
 
-    arrowAssertNotOk(Serializer::deserializeRecordBatches(
+    arrowAssertNotOk(serialize_utils::deserializeRecordBatches(
         buffers[i], &deserialized));
 
     REQUIRE( deserialized.size() == 1 );

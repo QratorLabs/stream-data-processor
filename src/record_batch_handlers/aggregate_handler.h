@@ -9,6 +9,8 @@
 
 #include "metadata.pb.h"
 
+namespace stream_data_processor {
+
 class AggregateHandler : public RecordBatchHandler {
  public:
   enum AggregateFunctionEnumType { kFirst, kLast, kMax, kMin, kMean };
@@ -16,13 +18,13 @@ class AggregateHandler : public RecordBatchHandler {
   struct AggregateCase {
     AggregateFunctionEnumType aggregate_function;
     std::string result_column_name;
-    ColumnType result_column_type{FIELD};
+    metadata::ColumnType result_column_type{metadata::FIELD};
   };
 
   struct AggregateOptions {
     std::unordered_map<std::string, std::vector<AggregateCase>>
         aggregate_columns;
-    AggregateCase result_time_column_rule{kLast, "time", TIME};
+    AggregateCase result_time_column_rule{kLast, "time", metadata::TIME};
   };
 
   explicit AggregateHandler(const AggregateOptions& options);
@@ -77,3 +79,5 @@ class AggregateHandler : public RecordBatchHandler {
 
   AggregateOptions options_;
 };
+
+}  // namespace stream_data_processor

@@ -11,11 +11,13 @@
 
 #include "metadata.pb.h"
 
+namespace stream_data_processor {
+
 class MapHandler : public RecordBatchHandler {
  public:
   struct MapCase {
     gandiva::ExpressionPtr expression;
-    ColumnType result_column_type{FIELD};
+    metadata::ColumnType result_column_type{metadata::FIELD};
   };
 
   explicit MapHandler(const std::vector<MapCase>& map_cases);
@@ -40,5 +42,7 @@ class MapHandler : public RecordBatchHandler {
 
  private:
   gandiva::ExpressionVector expressions_;
-  std::vector<ColumnType> column_types_;
+  std::vector<metadata::ColumnType> column_types_;
 };
+
+}  // namespace stream_data_processor

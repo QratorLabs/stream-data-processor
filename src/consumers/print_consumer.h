@@ -7,6 +7,8 @@
 
 #include "consumer.h"
 
+namespace stream_data_processor {
+
 class PrintConsumer : public Consumer {
  public:
   explicit PrintConsumer(std::ofstream& ostrm);
@@ -42,3 +44,5 @@ class FilePrintConsumer : public PrintConsumer {
  private:
   std::ofstream ostrm_obj_;
 };
+
+}  // namespace stream_data_processor
