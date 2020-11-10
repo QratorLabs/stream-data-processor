@@ -9,6 +9,7 @@ target_sources(test_main PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/aggregate_functions_test.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/kapacitor_udf_test.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/parsers_test.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/record_batch_builder.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/record_batch_handlers_test.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/utils_test.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/uvarint_test.cpp"

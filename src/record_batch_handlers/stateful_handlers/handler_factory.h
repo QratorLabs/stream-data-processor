@@ -6,9 +6,9 @@
 
 namespace stream_data_processor {
 
-class StatefulHandler : public RecordBatchHandler {
+class HandlerFactory {
  public:
-  virtual std::shared_ptr<StatefulHandler> clone() const = 0;
+  virtual std::shared_ptr<RecordBatchHandler> createHandler() const = 0;
 };
 
 }  // namespace stream_data_processor

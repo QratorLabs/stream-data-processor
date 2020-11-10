@@ -39,6 +39,7 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_SOURCES"
   nodes/data_handlers/parsers/graphite_parser.cpp
   nodes/period_handlers/serialized_period_handler.cpp
   record_batch_handlers/aggregate_functions/aggregate_functions.cpp
+  record_batch_handlers/stateful_handlers/threshold_state_machine.cpp
   record_batch_handlers/aggregate_handler.cpp
   record_batch_handlers/default_handler.cpp
   record_batch_handlers/filter_handler.cpp

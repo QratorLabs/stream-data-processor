@@ -5,21 +5,21 @@
 #include <unordered_map>
 
 #include "record_batch_handler.h"
-#include "stateful_handlers/stateful_handler.h"
+#include "stateful_handlers/handler_factory.h"
 
 namespace stream_data_processor {
 
 class GroupDispatcher : public RecordBatchHandler {
  public:
-  explicit GroupDispatcher(std::shared_ptr<StatefulHandler> initial_state);
+  explicit GroupDispatcher(std::shared_ptr<HandlerFactory> handler_factory);
 
   arrow::Status handle(
       const std::shared_ptr<arrow::RecordBatch>& record_batch,
       arrow::RecordBatchVector* result) override;
 
  private:
-  std::shared_ptr<const StatefulHandler> initial_state_;
-  std::unordered_map<std::string, std::shared_ptr<StatefulHandler> >
+  std::shared_ptr<HandlerFactory> handler_factory_;
+  std::unordered_map<std::string, std::shared_ptr<RecordBatchHandler> >
       groups_states_;
 };
 

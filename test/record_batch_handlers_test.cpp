@@ -1,3 +1,5 @@
+#include <chrono>
+#include <ctime>
 #include <deque>
 #include <memory>
 #include <vector>
@@ -10,8 +12,10 @@
 #include "metadata/column_typing.h"
 #include "metadata/grouping.h"
 #include "record_batch_handlers/record_batch_handlers.h"
+#include "record_batch_handlers/stateful_handlers/threshold_state_machine.h"
 #include "test_help.h"
 #include "utils/serialize_utils.h"
+#include "record_batch_builder.h"
 
 using namespace stream_data_processor;
 
@@ -539,6 +543,392 @@ SCENARIO( "aggregating time", "[AggregateHandler]" ) {
           std::string result_time_column_name;
           arrowAssertNotOk(metadata::getTimeColumnNameMetadata(result[0], &result_time_column_name));
           REQUIRE( result_time_column_name == new_time_column_name );
+        }
+      }
+    }
+  }
+}
+
+using namespace std::chrono_literals;
+
+SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) {
+  GIVEN("ThresholdStateMachine with initial state") {
+    ThresholdStateMachine::Options options{
+        "value", "level",
+        10,
+        2, 5s,
+        5s,
+        0.5, 0.3, 5s
+    };
+
+    std::shared_ptr<HandlerFactory> factory =
+        std::make_shared<ThresholdStateMachineFactory>(options);
+
+    std::shared_ptr<ThresholdStateMachine> state_machine =
+        std::static_pointer_cast<ThresholdStateMachine>(factory->createHandler());
+
+    REQUIRE(instanceOf<internal::StateOK>(state_machine->getState().get()));
+
+    RecordBatchBuilder builder;
+    builder.reset();
+
+    std::string time_column_name{"time"};
+
+    std::shared_ptr<arrow::RecordBatch> record_batch;
+    arrow::RecordBatchVector result;
+
+    AND_GIVEN("RecordBatch with ok value") {
+      auto now = std::time(nullptr);
+      int64_t value = 7;
+      arrowAssertNotOk(builder.setRowNumber(1));
+
+      arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+          time_column_name, {now}, arrow::TimeUnit::SECOND));
+
+      arrowAssertNotOk(builder.buildColumn<int64_t>(options.watch_column_name,
+                                                    {value}));
+      arrowAssertNotOk(builder.getResult(&record_batch));
+
+      WHEN("ThresholdStateMachine is applied to the RecordBatch") {
+        arrowAssertNotOk(state_machine->handle(record_batch, &result));
+
+        THEN("threshold column is added and state is OK") {
+          REQUIRE(result.size() == 1);
+
+          checkSize(result[0], 1, 3);
+
+          checkColumnsArePresent(result[0], {
+              time_column_name, options.watch_column_name,
+              options.threshold_column_name
+          });
+
+          checkValue<int64_t, arrow::Int64Scalar>(
+              now, result[0], time_column_name, 0);
+          checkValue<int64_t, arrow::Int64Scalar>(
+              value, result[0], options.watch_column_name, 0);
+          checkValue<double, arrow::DoubleScalar>(
+              options.default_threshold, result[0], options.threshold_column_name, 0);
+
+          REQUIRE(instanceOf<internal::StateOK>(state_machine->getState().get()));
+        }
+      }
+    }
+
+    AND_GIVEN("RecordBatch with value bigger than threshold") {
+      auto now = std::time(nullptr);
+      int64_t value = 15;
+      arrowAssertNotOk(builder.setRowNumber(1));
+
+      arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+          time_column_name, {now}, arrow::TimeUnit::SECOND));
+
+      arrowAssertNotOk(builder.buildColumn<int64_t>(options.watch_column_name,
+                                                    {value}));
+      arrowAssertNotOk(builder.getResult(&record_batch));
+
+      WHEN("ThresholdStateMachine is applied to the RecordBatch") {
+        arrowAssertNotOk(state_machine->handle(record_batch, &result));
+
+        THEN("threshold column is added and state is Alert") {
+          REQUIRE(result.size() == 1);
+
+          checkSize(result[0], 1, 3);
+
+          checkColumnsArePresent(result[0], {
+              time_column_name, options.watch_column_name,
+              options.threshold_column_name
+          });
+
+          checkValue<int64_t, arrow::Int64Scalar>(
+              now, result[0], time_column_name, 0);
+          checkValue<int64_t, arrow::Int64Scalar>(
+              value, result[0], options.watch_column_name, 0);
+          checkValue<double, arrow::DoubleScalar>(
+              options.default_threshold, result[0], options.threshold_column_name, 0);
+
+          REQUIRE(instanceOf<internal::StateAlert>(state_machine->getState().get()));
+
+          AND_WHEN("value keeps bigger than threshold exceeding alert duration") {
+            auto next_time = now + options.max_alert_duration.count() + 1;
+            value = 17;
+            builder.reset();
+            arrowAssertNotOk(builder.setRowNumber(1));
+
+            arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+                time_column_name, {next_time}, arrow::TimeUnit::SECOND));
+
+            arrowAssertNotOk(builder.buildColumn<int64_t>(options.watch_column_name,
+                                                          {value}));
+            arrowAssertNotOk(builder.getResult(&record_batch));
+
+            result.clear();
+            arrowAssertNotOk(state_machine->handle(record_batch, &result));
+
+            THEN("increased threshold column is added and state is OK") {
+              REQUIRE(result.size() == 1);
+
+              checkSize(result[0], 1, 3);
+
+              checkColumnsArePresent(result[0], {
+                  time_column_name, options.watch_column_name,
+                  options.threshold_column_name
+              });
+
+              checkValue<int64_t, arrow::Int64Scalar>(
+                  next_time, result[0], time_column_name, 0);
+              checkValue<int64_t, arrow::Int64Scalar>(
+                  value, result[0], options.watch_column_name, 0);
+              checkValue<double, arrow::DoubleScalar>(
+                  options.default_threshold * options.increase_scale_factor,
+                  result[0],
+                  options.threshold_column_name,
+                  0);
+
+              REQUIRE(instanceOf<internal::StateOK>(state_machine->getState().get()));
+            }
+          }
+
+          AND_WHEN("value is flapping near the threshold") {
+            auto next_time = now + 2;
+            value = 9;
+            builder.reset();
+            arrowAssertNotOk(builder.setRowNumber(1));
+
+            arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+                time_column_name, {next_time}, arrow::TimeUnit::SECOND));
+
+            arrowAssertNotOk(builder.buildColumn<int64_t>(options.watch_column_name,
+                                                          {value}));
+            arrowAssertNotOk(builder.getResult(&record_batch));
+
+            result.clear();
+            arrowAssertNotOk(state_machine->handle(record_batch, &result));
+
+            THEN("threshold column is added and state is Relaxed") {
+              REQUIRE(result.size() == 1);
+
+              checkSize(result[0], 1, 3);
+
+              checkColumnsArePresent(result[0], {
+                  time_column_name, options.watch_column_name,
+                  options.threshold_column_name
+              });
+
+              checkValue<int64_t, arrow::Int64Scalar>(
+                  next_time, result[0], time_column_name, 0);
+              checkValue<int64_t, arrow::Int64Scalar>(
+                  value, result[0], options.watch_column_name, 0);
+              checkValue<double, arrow::DoubleScalar>(
+                  options.default_threshold,
+                  result[0],
+                  options.threshold_column_name,
+                  0);
+
+              REQUIRE(instanceOf<internal::StateRelax>(state_machine->getState().get()));
+
+              AND_WHEN("value returns back to normal") {
+                next_time += options.relax_duration.count() + 1;
+                value = 6;
+                builder.reset();
+                arrowAssertNotOk(builder.setRowNumber(1));
+
+                arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+                    time_column_name, {next_time}, arrow::TimeUnit::SECOND));
+
+                arrowAssertNotOk(builder.buildColumn<int64_t>(options.watch_column_name,
+                                                              {value}));
+                arrowAssertNotOk(builder.getResult(&record_batch));
+
+                result.clear();
+                arrowAssertNotOk(state_machine->handle(record_batch,
+                                                       &result));
+
+                THEN("threshold keeps at old value and state is back to OK") {
+                  REQUIRE(result.size() == 1);
+
+                  checkSize(result[0], 1, 3);
+
+                  checkColumnsArePresent(result[0], {
+                      time_column_name, options.watch_column_name,
+                      options.threshold_column_name
+                  });
+
+                  checkValue<int64_t, arrow::Int64Scalar>(
+                      next_time, result[0], time_column_name, 0);
+                  checkValue<int64_t, arrow::Int64Scalar>(
+                      value, result[0], options.watch_column_name, 0);
+                  checkValue<double, arrow::DoubleScalar>(
+                      options.default_threshold,
+                      result[0],
+                      options.threshold_column_name,
+                      0);
+
+                  REQUIRE(instanceOf<internal::StateOK>(state_machine->getState().get()));
+                }
+              }
+
+              AND_WHEN("value returns back to alert") {
+                next_time += 1;
+                value = 12;
+                builder.reset();
+                arrowAssertNotOk(builder.setRowNumber(1));
+
+                arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+                    time_column_name, {next_time}, arrow::TimeUnit::SECOND));
+
+                arrowAssertNotOk(builder.buildColumn<int64_t>(options.watch_column_name,
+                                                              {value}));
+                arrowAssertNotOk(builder.getResult(&record_batch));
+
+                result.clear();
+                arrowAssertNotOk(state_machine->handle(record_batch,
+                                                       &result));
+
+                THEN("threshold keeps at old value and state is back to Alert") {
+                  REQUIRE(result.size() == 1);
+
+                  checkSize(result[0], 1, 3);
+
+                  checkColumnsArePresent(result[0], {
+                      time_column_name, options.watch_column_name,
+                      options.threshold_column_name
+                  });
+
+                  checkValue<int64_t, arrow::Int64Scalar>(
+                      next_time, result[0], time_column_name, 0);
+                  checkValue<int64_t, arrow::Int64Scalar>(
+                      value, result[0], options.watch_column_name, 0);
+                  checkValue<double, arrow::DoubleScalar>(
+                      options.default_threshold,
+                      result[0],
+                      options.threshold_column_name,
+                      0);
+
+                  REQUIRE(instanceOf<internal::StateAlert>(state_machine->getState().get()));
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    AND_GIVEN("RecordBatch with value lower than threshold times decrease_trigger_factor") {
+      auto now = std::time(nullptr);
+      double value = options.default_threshold * options.decrease_trigger_factor - 0.1;
+      arrowAssertNotOk(builder.setRowNumber(1));
+
+      arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+          time_column_name, {now}, arrow::TimeUnit::SECOND));
+
+      arrowAssertNotOk(builder.buildColumn<double>(options.watch_column_name,
+                                                    {value}));
+      arrowAssertNotOk(builder.getResult(&record_batch));
+
+      WHEN("ThresholdStateMachine is applied to the RecordBatch") {
+        arrowAssertNotOk(state_machine->handle(record_batch, &result));
+
+        THEN("threshold column is added and state is Decrease") {
+          REQUIRE(result.size() == 1);
+
+          checkSize(result[0], 1, 3);
+
+          checkColumnsArePresent(result[0], {
+              time_column_name, options.watch_column_name,
+              options.threshold_column_name
+          });
+
+          checkValue<int64_t, arrow::Int64Scalar>(
+              now, result[0], time_column_name, 0);
+          checkValue<double, arrow::DoubleScalar>(
+              value, result[0], options.watch_column_name, 0);
+          checkValue<double, arrow::DoubleScalar>(
+              options.default_threshold,
+              result[0],
+              options.threshold_column_name,
+              0);
+
+          REQUIRE(instanceOf<internal::StateDecrease>(state_machine->getState().get()));
+
+          AND_WHEN("value keeps low exceeding descrease timeout") {
+            auto next_time = now + options.decrease_trigger_timeout.count() + 1;
+            value -= 0.1;
+            builder.reset();
+            arrowAssertNotOk(builder.setRowNumber(1));
+
+            arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+                time_column_name, {next_time}, arrow::TimeUnit::SECOND));
+
+            arrowAssertNotOk(builder.buildColumn<double>(options.watch_column_name,
+                                                         {value}));
+            arrowAssertNotOk(builder.getResult(&record_batch));
+
+            result.clear();
+            arrowAssertNotOk(state_machine->handle(record_batch, &result));
+
+            THEN("decreased threshold column is added and state returns to OK") {
+              REQUIRE(result.size() == 1);
+
+              checkSize(result[0], 1, 3);
+
+              checkColumnsArePresent(result[0], {
+                  time_column_name, options.watch_column_name,
+                  options.threshold_column_name
+              });
+
+              checkValue<int64_t, arrow::Int64Scalar>(
+                  next_time, result[0], time_column_name, 0);
+              checkValue<double, arrow::DoubleScalar>(
+                  value, result[0], options.watch_column_name, 0);
+              checkValue<double, arrow::DoubleScalar>(
+                  options.default_threshold * options.decrease_scale_factor,
+                  result[0],
+                  options.threshold_column_name,
+                  0);
+
+              REQUIRE(instanceOf<internal::StateOK>(state_machine->getState().get()));
+            }
+          }
+
+          AND_WHEN("value is flapping near the decrease trigger level") {
+            auto next_time = now + 2;
+            value += 0.2;
+            builder.reset();
+            arrowAssertNotOk(builder.setRowNumber(1));
+
+            arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+                time_column_name, {next_time}, arrow::TimeUnit::SECOND));
+
+            arrowAssertNotOk(builder.buildColumn<double>(options.watch_column_name,
+                                                          {value}));
+            arrowAssertNotOk(builder.getResult(&record_batch));
+
+            result.clear();
+            arrowAssertNotOk(state_machine->handle(record_batch, &result));
+
+            THEN("threshold column is added and state returns to OK") {
+              REQUIRE(result.size() == 1);
+
+              checkSize(result[0], 1, 3);
+
+              checkColumnsArePresent(result[0], {
+                  time_column_name, options.watch_column_name,
+                  options.threshold_column_name
+              });
+
+              checkValue<int64_t, arrow::Int64Scalar>(
+                  next_time, result[0], time_column_name, 0);
+              checkValue<double, arrow::DoubleScalar>(
+                  value, result[0], options.watch_column_name, 0);
+              checkValue<double, arrow::DoubleScalar>(
+                  options.default_threshold,
+                  result[0],
+                  options.threshold_column_name,
+                  0);
+
+              REQUIRE(instanceOf<internal::StateOK>(state_machine->getState().get()));
+            }
+          }
         }
       }
     }

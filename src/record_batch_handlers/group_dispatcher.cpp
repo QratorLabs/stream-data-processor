@@ -4,8 +4,8 @@
 namespace stream_data_processor {
 
 GroupDispatcher::GroupDispatcher(
-    std::shared_ptr<StatefulHandler> initial_state)
-    : initial_state_(std::move(initial_state)) {}
+    std::shared_ptr<HandlerFactory> handler_factory)
+    : handler_factory_(std::move(handler_factory)) {}
 
 arrow::Status GroupDispatcher::handle(
     const std::shared_ptr<arrow::RecordBatch>& record_batch,
@@ -13,7 +13,7 @@ arrow::Status GroupDispatcher::handle(
   auto group_metadata = metadata::extractGroupMetadata(record_batch);
 
   if (groups_states_.find(group_metadata) == groups_states_.end()) {
-    groups_states_[group_metadata] = initial_state_->clone();
+    groups_states_[group_metadata] = handler_factory_->createHandler();
   }
 
   ARROW_RETURN_NOT_OK(

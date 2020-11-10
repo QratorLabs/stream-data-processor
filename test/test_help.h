@@ -42,7 +42,7 @@ inline void checkValue<std::string, arrow::StringScalar> (const std::string& exp
 
 
 template<typename T, typename ArrowType>
-inline bool equals(const T& expected_value, const std::shared_ptr<arrow::RecordBatch>& record_batch,
+[[ nodiscard ]] inline bool equals(const T& expected_value, const std::shared_ptr<arrow::RecordBatch>& record_batch,
             const std::string& column_name, size_t i) {
   auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
   if (!field_result.ok()) {
@@ -54,7 +54,7 @@ inline bool equals(const T& expected_value, const std::shared_ptr<arrow::RecordB
 }
 
 template<>
-inline bool equals<std::string, arrow::StringScalar> (const std::string& expected_value,
+[[ nodiscard ]] inline bool equals<std::string, arrow::StringScalar> (const std::string& expected_value,
                                                const std::shared_ptr<arrow::RecordBatch>& record_batch,
                                                const std::string& column_name, size_t i) {
   auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
@@ -78,4 +78,9 @@ inline void checkIsValid(const std::shared_ptr<arrow::RecordBatch>& record_batch
   auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
   arrowAssertNotOk(field_result.status());
   REQUIRE( field_result.ValueOrDie()->is_valid );
+}
+
+template <class ExpectedType, class ExactType>
+[[ nodiscard ]] inline bool instanceOf(ExactType* object) {
+  return dynamic_cast<const ExpectedType*>(object) != nullptr;
 }

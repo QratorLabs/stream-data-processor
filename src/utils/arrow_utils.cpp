@@ -72,5 +72,23 @@ arrow::Status appendToBuilder(const std::shared_ptr<arrow::Scalar>& value,
   }
 }
 
+bool isNumericType(arrow::Type::type type) {
+  switch (type) {
+    case arrow::Type::UINT8:
+    case arrow::Type::INT8:
+    case arrow::Type::UINT16:
+    case arrow::Type::INT16:
+    case arrow::Type::UINT32:
+    case arrow::Type::INT32:
+    case arrow::Type::UINT64:
+    case arrow::Type::INT64:
+    case arrow::Type::HALF_FLOAT:
+    case arrow::Type::FLOAT:
+    case arrow::Type::DOUBLE:
+    case arrow::Type::DECIMAL: return true;
+    default: return false;
+  }
+}
+
 }  // namespace arrow_utils
 }  // namespace stream_data_processor
