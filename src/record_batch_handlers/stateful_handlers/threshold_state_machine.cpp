@@ -133,7 +133,7 @@ arrow::Status StateAlert::addThresholdForRow(
   ARROW_RETURN_NOT_OK(getTimeAtRow(record_batch, row_id, &row_time));
 
   if (value > current_threshold_ && row_time > alert_start_ &&
-      row_time - alert_start_ > options.max_alert_duration.count()) {
+      row_time - alert_start_ > options.alert_duration.count()) {
     auto self =
         state_machine_.lock()
             ->getState();  // need to save this to avoid freeing our memory
@@ -238,7 +238,7 @@ arrow::Status StateDecrease::addThresholdForRow(
 
   if (value <= current_threshold_ * options.decrease_trigger_factor &&
       row_time > decrease_start_ &&
-      row_time - decrease_start_ > options.decrease_trigger_timeout.count()) {
+      row_time - decrease_start_ > options.decrease_duration.count()) {
     auto self =
         state_machine_.lock()
             ->getState();  // need to save this to avoid freeing our memory

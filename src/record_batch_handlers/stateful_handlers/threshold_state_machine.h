@@ -115,13 +115,13 @@ class ThresholdStateMachine : public RecordBatchHandler {
     double default_threshold;
 
     double increase_scale_factor;
-    std::chrono::seconds max_alert_duration;
+    std::chrono::seconds alert_duration;
 
     std::chrono::seconds relax_duration;
 
-    double decrease_scale_factor;
-    double decrease_trigger_factor;
-    std::chrono::seconds decrease_trigger_timeout;
+    double decrease_trigger_factor{0};
+    double decrease_scale_factor{0};
+    std::chrono::seconds decrease_duration{0};
 
     metadata::ColumnType threshold_column_type{metadata::FIELD};
   };

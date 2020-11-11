@@ -86,11 +86,13 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   kapacitor_udf/request_handlers/aggregate_request_handlers/batch_aggregate_request_handler.cpp
   kapacitor_udf/request_handlers/aggregate_request_handlers/stream_aggregate_request_handler.cpp
   kapacitor_udf/request_handlers/record_batch_request_handler.cpp
+  kapacitor_udf/request_handlers/stateful_threshold_request_handler.cpp
   kapacitor_udf/request_handlers/batch_to_stream_request_handler.cpp
   kapacitor_udf/request_handlers/stream_to_stream_request_handler.cpp
   metadata/column_typing.cpp
   metadata/grouping.cpp
   record_batch_handlers/aggregate_functions/aggregate_functions.cpp
+  record_batch_handlers/stateful_handlers/threshold_state_machine.cpp
   record_batch_handlers/aggregate_handler.cpp
   record_batch_handlers/default_handler.cpp
   record_batch_handlers/filter_handler.cpp

@@ -1,0 +1,20 @@
+dbrp "graphite"."default"
+
+var default_load_level = 30.0
+
+var load = stream
+    |from()
+        .measurement('load')
+	    .groupBy(*)
+    |flatten().tolerance(5s)
+    @adjustLevelUDF()
+        .watch('longterm')
+        .defaultLevel(default_load_level)
+        .increaseScaleFactor(2.0)
+        .alertDuration(5s)
+        .relaxDuration(10s)
+        .decreaseTriggerFactor(0.4)
+        .decreaseScaleFactor(0.5)
+        .decreaseDuration(5s)
+        .as('load_level')
+    |log()

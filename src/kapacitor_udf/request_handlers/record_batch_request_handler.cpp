@@ -73,6 +73,31 @@ StreamRecordBatchRequestHandlerBase::StreamRecordBatchRequestHandlerBase(
     const std::shared_ptr<RecordBatchHandler>& handler)
     : RecordBatchRequestHandler(agent, to_record_batches_options, handler) {}
 
+agent::Response StreamRecordBatchRequestHandlerBase::snapshot() const {
+  agent::Response response;
+
+  response.mutable_snapshot()->set_snapshot(
+      batch_points_.SerializeAsString());
+
+  return response;
+}
+
+agent::Response StreamRecordBatchRequestHandlerBase::restore(
+    const agent::RestoreRequest& restore_request) {
+  agent::Response response;
+  if (restore_request.snapshot().empty()) {
+    response.mutable_restore()->set_success(false);
+    response.mutable_restore()->set_error(
+        "Can't restore from empty snapshot");
+    return response;
+  }
+
+  batch_points_.mutable_points()->Clear();
+  batch_points_.ParseFromString(restore_request.snapshot());
+  response.mutable_restore()->set_success(true);
+  return response;
+}
+
 void StreamRecordBatchRequestHandlerBase::beginBatch(
     const agent::BeginBatch& batch) {
   agent::Response response;

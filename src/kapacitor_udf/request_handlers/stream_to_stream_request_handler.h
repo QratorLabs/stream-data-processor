@@ -26,9 +26,6 @@ class StreamToStreamRequestHandler
   [[nodiscard]] agent::Response info() const override;
   [[nodiscard]] agent::Response init(
       const agent::InitRequest& init_request) override;
-  [[nodiscard]] agent::Response snapshot() const override;
-  [[nodiscard]] agent::Response restore(
-      const agent::RestoreRequest& restore_request) override;
   void point(const agent::Point& point) override;
 
   void stop() override;

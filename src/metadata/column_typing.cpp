@@ -91,7 +91,12 @@ arrow::Status setColumnTypeMetadata(
 
   auto field = record_batch->get()->schema()->field(i);
   ARROW_RETURN_NOT_OK(setColumnTypeMetadata(&field, type));
-  ARROW_RETURN_NOT_OK(record_batch->get()->schema()->SetField(i, field));
+  auto new_schema = record_batch->get()->schema()->SetField(i, field);
+  ARROW_RETURN_NOT_OK(new_schema.status());
+
+  *record_batch = arrow::RecordBatch::Make(new_schema.ValueOrDie(),
+                                           record_batch->get()->num_rows(),
+                                           record_batch->get()->columns());
 
   return arrow::Status::OK();
 }

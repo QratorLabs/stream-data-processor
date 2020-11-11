@@ -558,7 +558,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
         10,
         2, 5s,
         5s,
-        0.5, 0.3, 5s
+        0.3, 0.5, 5s
     };
 
     std::shared_ptr<HandlerFactory> factory =
@@ -649,7 +649,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
           REQUIRE(instanceOf<internal::StateAlert>(state_machine->getState().get()));
 
           AND_WHEN("value keeps bigger than threshold exceeding alert duration") {
-            auto next_time = now + options.max_alert_duration.count() + 1;
+            auto next_time = now + options.alert_duration.count() + 1;
             value = 17;
             builder.reset();
             arrowAssertNotOk(builder.setRowNumber(1));
@@ -851,7 +851,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
           REQUIRE(instanceOf<internal::StateDecrease>(state_machine->getState().get()));
 
           AND_WHEN("value keeps low exceeding descrease timeout") {
-            auto next_time = now + options.decrease_trigger_timeout.count() + 1;
+            auto next_time = now + options.decrease_duration.count() + 1;
             value -= 0.1;
             builder.reset();
             arrowAssertNotOk(builder.setRowNumber(1));

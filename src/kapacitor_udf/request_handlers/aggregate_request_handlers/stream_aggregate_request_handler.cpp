@@ -52,40 +52,8 @@ agent::Response StreamAggregateRequestHandler::init(
     return response;
   }
 
-  auto aggregate_handler =
-      std::make_shared<AggregateHandler>(std::move(aggregate_options));
-
-  handler_ = std::make_shared<PipelineHandler>();
-
-  std::static_pointer_cast<PipelineHandler>(handler_)->pushBackHandler(
-      std::move(aggregate_handler));
-
+  handler_ = std::make_shared<AggregateHandler>(std::move(aggregate_options));
   response.mutable_init()->set_success(true);
-  return response;
-}
-
-agent::Response StreamAggregateRequestHandler::snapshot() const {
-  agent::Response response;
-
-  response.mutable_snapshot()->set_snapshot(
-      batch_points_.SerializeAsString());
-
-  return response;
-}
-
-agent::Response StreamAggregateRequestHandler::restore(
-    const agent::RestoreRequest& restore_request) {
-  agent::Response response;
-  if (restore_request.snapshot().empty()) {
-    response.mutable_restore()->set_success(false);
-    response.mutable_restore()->set_error(
-        "Can't restore from empty snapshot");
-    return response;
-  }
-
-  batch_points_.mutable_points()->Clear();
-  batch_points_.ParseFromString(restore_request.snapshot());
-  response.mutable_restore()->set_success(true);
   return response;
 }
 

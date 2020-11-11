@@ -41,6 +41,10 @@ class StreamRecordBatchRequestHandlerBase : public RecordBatchRequestHandler {
           to_record_batches_options,
       const std::shared_ptr<RecordBatchHandler>& handler = nullptr);
 
+  [[nodiscard]] agent::Response snapshot() const override;
+  [[nodiscard]] agent::Response restore(
+      const agent::RestoreRequest& restore_request) override;
+
   void beginBatch(const agent::BeginBatch& batch) override;
   void endBatch(const agent::EndBatch& batch) override;
 };

@@ -33,22 +33,6 @@ agent::Response StreamToStreamRequestHandler::init(
   return response;
 }
 
-agent::Response StreamToStreamRequestHandler::snapshot() const {
-  agent::Response response;
-  response.mutable_snapshot()->set_snapshot(
-      batch_points_.SerializeAsString());
-  return response;
-}
-
-agent::Response StreamToStreamRequestHandler::restore(
-    const agent::RestoreRequest& restore_request) {
-  agent::Response response;
-  batch_points_.mutable_points()->Clear();
-  batch_points_.ParseFromString(restore_request.snapshot());
-  response.mutable_restore()->set_success(true);
-  return response;
-}
-
 void StreamToStreamRequestHandler::point(const agent::Point& point) {
   auto new_point = batch_points_.mutable_points()->Add();
   new_point->CopyFrom(point);
