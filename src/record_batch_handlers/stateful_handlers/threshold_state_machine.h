@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <ctime>
+#include <limits>
 #include <memory>
 #include <string>
 
@@ -50,13 +51,13 @@ class StateOK : public ThresholdState {
   double current_threshold_;
 };
 
-class StateAlert : public ThresholdState {
+class StateIncrease : public ThresholdState {
  public:
-  StateAlert(const std::shared_ptr<ThresholdStateMachine>& state_machine,
-             double current_threshold, std::time_t alert_start);
+  StateIncrease(const std::shared_ptr<ThresholdStateMachine>& state_machine,
+                double current_threshold, std::time_t alert_start);
 
-  StateAlert(const std::weak_ptr<ThresholdStateMachine>& state_machine,
-             double current_threshold, std::time_t alert_start);
+  StateIncrease(const std::weak_ptr<ThresholdStateMachine>& state_machine,
+                double current_threshold, std::time_t alert_start);
 
   arrow::Status addThresholdForRow(
       const std::shared_ptr<arrow::RecordBatch>& record_batch, int row_id,
@@ -97,11 +98,14 @@ class ThresholdStateMachine : public RecordBatchHandler {
     double default_threshold;
 
     double increase_scale_factor;
-    std::chrono::seconds alert_duration;
+    std::chrono::seconds increase_after;
 
     double decrease_trigger_factor{0};
     double decrease_scale_factor{0};
-    std::chrono::seconds decrease_duration{0};
+    std::chrono::seconds decrease_after{0};
+
+    double min_threshold{0};
+    double max_threshold{std::numeric_limits<double>::max()};
 
     metadata::ColumnType threshold_column_type{metadata::FIELD};
   };

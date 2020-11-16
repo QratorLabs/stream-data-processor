@@ -645,10 +645,10 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
           checkValue<double, arrow::DoubleScalar>(
               options.default_threshold, result[0], options.threshold_column_name, 0);
 
-          REQUIRE(instanceOf<internal::StateAlert>(state_machine->getState().get()));
+          REQUIRE(instanceOf<internal::StateIncrease>(state_machine->getState().get()));
 
           AND_WHEN("value keeps bigger than threshold exceeding alert duration") {
-            auto next_time = now + options.alert_duration.count() + 1;
+            auto next_time = now + options.increase_after.count() + 1;
             value = 17;
             builder.reset();
             arrowAssertNotOk(builder.setRowNumber(1));
@@ -768,7 +768,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
           REQUIRE(instanceOf<internal::StateDecrease>(state_machine->getState().get()));
 
           AND_WHEN("value keeps low exceeding descrease timeout") {
-            auto next_time = now + options.decrease_duration.count() + 1;
+            auto next_time = now + options.decrease_after.count() + 1;
             value -= 0.1;
             builder.reset();
             arrowAssertNotOk(builder.setRowNumber(1));
@@ -850,4 +850,123 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
       }
     }
   }
+}
+
+TEST_CASE( "threshold not increasing over max", "[ThresholdStateMachine]" ) {
+  ThresholdStateMachine::Options options{
+    "value", "level",
+    20,
+    2, 1s
+  };
+  options.max_threshold = 30;
+
+  std::shared_ptr<HandlerFactory> factory =
+      std::make_shared<ThresholdStateMachineFactory>(options);
+
+  std::shared_ptr<ThresholdStateMachine> state_machine =
+      std::static_pointer_cast<ThresholdStateMachine>(factory->createHandler());
+
+  RecordBatchBuilder builder;
+  builder.reset();
+  arrowAssertNotOk(builder.setRowNumber(2));
+  std::string time_column_name{"time"};
+
+  arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+      time_column_name, {100, 102}, arrow::TimeUnit::SECOND));
+
+  arrowAssertNotOk(builder.buildColumn<double>(
+      options.watch_column_name, {40, 50}));
+
+  std::shared_ptr<arrow::RecordBatch> record_batch;
+  arrowAssertNotOk(builder.getResult(&record_batch));
+
+  arrow::RecordBatchVector result;
+  arrowAssertNotOk(state_machine->handle(record_batch, &result));
+
+  REQUIRE( result.size() == 1 );
+  checkSize(result[0], 2, 3);
+  checkColumnsArePresent(result[0], {
+      time_column_name, options.watch_column_name,
+      options.threshold_column_name
+  });
+
+  checkValue<int64_t, arrow::Int64Scalar>(
+      100, result[0], time_column_name, 0);
+  checkValue<double, arrow::DoubleScalar>(
+      40, result[0], options.watch_column_name, 0);
+  checkValue<double, arrow::DoubleScalar>(
+      options.default_threshold,
+      result[0],
+      options.threshold_column_name,
+      0);
+
+  checkValue<int64_t, arrow::Int64Scalar>(
+      102, result[0], time_column_name, 1);
+  checkValue<double, arrow::DoubleScalar>(
+      50, result[0], options.watch_column_name, 1);
+  checkValue<double, arrow::DoubleScalar>(
+      options.max_threshold,
+      result[0],
+      options.threshold_column_name,
+      1);
+}
+
+TEST_CASE( "threshold not decreasing over min", "[ThresholdStateMachine]" ) {
+  ThresholdStateMachine::Options options{
+      "value", "level",
+      20,
+      2, 1s,
+      0.4, 0.5, 1s
+  };
+  options.min_threshold = 15;
+
+  std::shared_ptr<HandlerFactory> factory =
+      std::make_shared<ThresholdStateMachineFactory>(options);
+
+  std::shared_ptr<ThresholdStateMachine> state_machine =
+      std::static_pointer_cast<ThresholdStateMachine>(factory->createHandler());
+
+  RecordBatchBuilder builder;
+  builder.reset();
+  arrowAssertNotOk(builder.setRowNumber(2));
+  std::string time_column_name{"time"};
+
+  arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+      time_column_name, {100, 102}, arrow::TimeUnit::SECOND));
+
+  arrowAssertNotOk(builder.buildColumn<double>(
+      options.watch_column_name, {5, 3}));
+
+  std::shared_ptr<arrow::RecordBatch> record_batch;
+  arrowAssertNotOk(builder.getResult(&record_batch));
+
+  arrow::RecordBatchVector result;
+  arrowAssertNotOk(state_machine->handle(record_batch, &result));
+
+  REQUIRE( result.size() == 1 );
+  checkSize(result[0], 2, 3);
+  checkColumnsArePresent(result[0], {
+      time_column_name, options.watch_column_name,
+      options.threshold_column_name
+  });
+
+  checkValue<int64_t, arrow::Int64Scalar>(
+      100, result[0], time_column_name, 0);
+  checkValue<double, arrow::DoubleScalar>(
+      5, result[0], options.watch_column_name, 0);
+  checkValue<double, arrow::DoubleScalar>(
+      options.default_threshold,
+      result[0],
+      options.threshold_column_name,
+      0);
+
+  checkValue<int64_t, arrow::Int64Scalar>(
+      102, result[0], time_column_name, 1);
+  checkValue<double, arrow::DoubleScalar>(
+      3, result[0], options.watch_column_name, 1);
+  checkValue<double, arrow::DoubleScalar>(
+      options.min_threshold,
+      result[0],
+      options.threshold_column_name,
+      1);
 }

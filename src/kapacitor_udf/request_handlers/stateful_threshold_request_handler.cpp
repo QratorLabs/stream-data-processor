@@ -18,26 +18,31 @@ inline const std::string WATCH_COLUMN_OPTION_NAME{"watch"};
 inline const std::string THRESHOLD_COLUMN_OPTION_NAME{"as"};
 inline const std::string DEFAULT_THRESHOLD_OPTION_NAME{"defaultLevel"};
 inline const std::string INCREASE_SCALE_OPTION_NAME{"increaseScaleFactor"};
-inline const std::string ALERT_DURATION_OPTION_NAME{"alertDuration"};
+inline const std::string INCREASE_AFTER_OPTION_NAME{"increaseAfter"};
 inline const std::string DECREASE_SCALE_OPTION_NAME{"decreaseScaleFactor"};
 inline const std::string DECREASE_TRIGGER_OPTION_NAME{
     "decreaseTriggerFactor"};
-inline const std::string DECREASE_DURATION_OPTION_NAME{"decreaseDuration"};
+inline const std::string DECREASE_AFTER_OPTION_NAME{"decreaseAfter"};
+inline const std::string MIN_LEVEL_OPTION_NAME{"minLevel"};
+inline const std::string MAX_LEVEL_OPTION_NAME{"maxLevel"};
 
 inline const std::unordered_set<std::string> REQUIRED_THRESHOLD_OPTIONS{
-    WATCH_COLUMN_OPTION_NAME, THRESHOLD_COLUMN_OPTION_NAME,
+    WATCH_COLUMN_OPTION_NAME,      THRESHOLD_COLUMN_OPTION_NAME,
     DEFAULT_THRESHOLD_OPTION_NAME, INCREASE_SCALE_OPTION_NAME,
-    ALERT_DURATION_OPTION_NAME};
+    INCREASE_AFTER_OPTION_NAME,    MIN_LEVEL_OPTION_NAME,
+    MAX_LEVEL_OPTION_NAME};
 
 inline const std::unordered_map<std::string, agent::ValueType>
     THRESHOLD_OPTIONS_TYPES{{WATCH_COLUMN_OPTION_NAME, agent::STRING},
                             {THRESHOLD_COLUMN_OPTION_NAME, agent::STRING},
                             {DEFAULT_THRESHOLD_OPTION_NAME, agent::DOUBLE},
                             {INCREASE_SCALE_OPTION_NAME, agent::DOUBLE},
-                            {ALERT_DURATION_OPTION_NAME, agent::DURATION},
+                            {INCREASE_AFTER_OPTION_NAME, agent::DURATION},
                             {DECREASE_SCALE_OPTION_NAME, agent::DOUBLE},
                             {DECREASE_TRIGGER_OPTION_NAME, agent::DOUBLE},
-                            {DECREASE_DURATION_OPTION_NAME, agent::DURATION}};
+                            {DECREASE_AFTER_OPTION_NAME, agent::DURATION},
+                            {MIN_LEVEL_OPTION_NAME, agent::DOUBLE},
+                            {MAX_LEVEL_OPTION_NAME, agent::DOUBLE}};
 
 google::protobuf::Map<std::string, agent::OptionInfo>
 getThresholdOptionsMap() {
@@ -94,21 +99,25 @@ ThresholdStateMachine::Options parseThresholdOptions(
       } else {
         threshold_options.increase_scale_factor = option_value.doublevalue();
       }
-    } else if (option_name == ALERT_DURATION_OPTION_NAME) {
+    } else if (option_name == INCREASE_AFTER_OPTION_NAME) {
       std::chrono::nanoseconds alert_duration(option_value.durationvalue());
 
-      threshold_options.alert_duration =
+      threshold_options.increase_after =
           std::chrono::duration_cast<std::chrono::seconds>(alert_duration);
-    } else if (option_name == DECREASE_DURATION_OPTION_NAME) {
+    } else if (option_name == DECREASE_AFTER_OPTION_NAME) {
       std::chrono::nanoseconds decrease_duration(
           option_value.durationvalue());
 
-      threshold_options.decrease_duration =
+      threshold_options.decrease_after =
           std::chrono::duration_cast<std::chrono::seconds>(decrease_duration);
     } else if (option_name == DECREASE_TRIGGER_OPTION_NAME) {
       threshold_options.decrease_trigger_factor = option_value.doublevalue();
     } else if (option_name == DECREASE_SCALE_OPTION_NAME) {
       threshold_options.decrease_scale_factor = option_value.doublevalue();
+    } else if (option_name == MIN_LEVEL_OPTION_NAME) {
+      threshold_options.min_threshold = option_value.doublevalue();
+    } else if (option_name == MAX_LEVEL_OPTION_NAME) {
+      threshold_options.max_threshold = option_value.doublevalue();
     } else {
       throw InvalidOptionException(
           fmt::format("Unexpected option name: {}", option_name));

@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include <spdlog/spdlog.h>
 
 #include "metadata/column_typing.h"
@@ -90,7 +92,7 @@ arrow::Status StateOK::addThresholdForRow(
   ARROW_RETURN_NOT_OK(getTimeAtRow(record_batch, row_id, &alert_start));
 
   if (value > current_threshold_) {
-    state_machine_.lock()->changeState(std::make_shared<StateAlert>(
+    state_machine_.lock()->changeState(std::make_shared<StateIncrease>(
         state_machine_, current_threshold_, alert_start));
 
     return arrow::Status::OK();
@@ -106,21 +108,21 @@ arrow::Status StateOK::addThresholdForRow(
   return arrow::Status::OK();
 }
 
-StateAlert::StateAlert(
+StateIncrease::StateIncrease(
     const std::shared_ptr<ThresholdStateMachine>& state_machine,
     double current_threshold, std::time_t alert_start)
     : state_machine_(state_machine),
       current_threshold_(current_threshold),
       alert_start_(alert_start) {}
 
-StateAlert::StateAlert(
+StateIncrease::StateIncrease(
     const std::weak_ptr<ThresholdStateMachine>& state_machine,
     double current_threshold, std::time_t alert_start)
     : state_machine_(state_machine),
       current_threshold_(current_threshold),
       alert_start_(alert_start) {}
 
-arrow::Status StateAlert::addThresholdForRow(
+arrow::Status StateIncrease::addThresholdForRow(
     const std::shared_ptr<arrow::RecordBatch>& record_batch, int row_id,
     arrow::DoubleBuilder* threshold_column_builder) {
   double value;
@@ -133,13 +135,15 @@ arrow::Status StateAlert::addThresholdForRow(
   ARROW_RETURN_NOT_OK(getTimeAtRow(record_batch, row_id, &row_time));
 
   if (value > current_threshold_ && row_time > alert_start_ &&
-      row_time - alert_start_ > options.alert_duration.count()) {
+      row_time - alert_start_ > options.increase_after.count()) {
     auto self =
         state_machine_.lock()
             ->getState();  // need to save this to avoid freeing our memory
 
     std::shared_ptr<ThresholdState> new_state = std::make_shared<StateOK>(
-        state_machine_, current_threshold_ * options.increase_scale_factor);
+        state_machine_,
+        std::min(current_threshold_ * options.increase_scale_factor,
+                 options.max_threshold));
 
     state_machine_.lock()->changeState(new_state);
 
@@ -192,13 +196,15 @@ arrow::Status StateDecrease::addThresholdForRow(
 
   if (value <= current_threshold_ * options.decrease_trigger_factor &&
       row_time > decrease_start_ &&
-      row_time - decrease_start_ > options.decrease_duration.count()) {
+      row_time - decrease_start_ > options.decrease_after.count()) {
     auto self =
         state_machine_.lock()
             ->getState();  // need to save this to avoid freeing our memory
 
     std::shared_ptr<ThresholdState> new_state = std::make_shared<StateOK>(
-        state_machine_, current_threshold_ * options.decrease_scale_factor);
+        state_machine_,
+        std::max(current_threshold_ * options.decrease_scale_factor,
+                 options.min_threshold));
 
     state_machine_.lock()->changeState(new_state);
 
@@ -214,7 +220,7 @@ arrow::Status StateDecrease::addThresholdForRow(
   if (value > current_threshold_) {
     auto self = state_machine_.lock()->getState();
 
-    state_machine_.lock()->changeState(std::make_shared<StateAlert>(
+    state_machine_.lock()->changeState(std::make_shared<StateIncrease>(
         state_machine_, current_threshold_, row_time));
 
     return arrow::Status::OK();
