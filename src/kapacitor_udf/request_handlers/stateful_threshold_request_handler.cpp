@@ -19,16 +19,15 @@ inline const std::string THRESHOLD_COLUMN_OPTION_NAME{"as"};
 inline const std::string DEFAULT_THRESHOLD_OPTION_NAME{"defaultLevel"};
 inline const std::string INCREASE_SCALE_OPTION_NAME{"increaseScaleFactor"};
 inline const std::string ALERT_DURATION_OPTION_NAME{"alertDuration"};
-inline const std::string RELAX_DURATION_OPTION_NAME{"relaxDuration"};
 inline const std::string DECREASE_SCALE_OPTION_NAME{"decreaseScaleFactor"};
 inline const std::string DECREASE_TRIGGER_OPTION_NAME{
     "decreaseTriggerFactor"};
 inline const std::string DECREASE_DURATION_OPTION_NAME{"decreaseDuration"};
 
 inline const std::unordered_set<std::string> REQUIRED_THRESHOLD_OPTIONS{
-    WATCH_COLUMN_OPTION_NAME,      THRESHOLD_COLUMN_OPTION_NAME,
+    WATCH_COLUMN_OPTION_NAME, THRESHOLD_COLUMN_OPTION_NAME,
     DEFAULT_THRESHOLD_OPTION_NAME, INCREASE_SCALE_OPTION_NAME,
-    ALERT_DURATION_OPTION_NAME,    RELAX_DURATION_OPTION_NAME};
+    ALERT_DURATION_OPTION_NAME};
 
 inline const std::unordered_map<std::string, agent::ValueType>
     THRESHOLD_OPTIONS_TYPES{{WATCH_COLUMN_OPTION_NAME, agent::STRING},
@@ -36,7 +35,6 @@ inline const std::unordered_map<std::string, agent::ValueType>
                             {DEFAULT_THRESHOLD_OPTION_NAME, agent::DOUBLE},
                             {INCREASE_SCALE_OPTION_NAME, agent::DOUBLE},
                             {ALERT_DURATION_OPTION_NAME, agent::DURATION},
-                            {RELAX_DURATION_OPTION_NAME, agent::DURATION},
                             {DECREASE_SCALE_OPTION_NAME, agent::DOUBLE},
                             {DECREASE_TRIGGER_OPTION_NAME, agent::DOUBLE},
                             {DECREASE_DURATION_OPTION_NAME, agent::DURATION}};
@@ -101,11 +99,6 @@ ThresholdStateMachine::Options parseThresholdOptions(
 
       threshold_options.alert_duration =
           std::chrono::duration_cast<std::chrono::seconds>(alert_duration);
-    } else if (option_name == RELAX_DURATION_OPTION_NAME) {
-      std::chrono::nanoseconds relax_duration(option_value.durationvalue());
-
-      threshold_options.relax_duration =
-          std::chrono::duration_cast<std::chrono::seconds>(relax_duration);
     } else if (option_name == DECREASE_DURATION_OPTION_NAME) {
       std::chrono::nanoseconds decrease_duration(
           option_value.durationvalue());

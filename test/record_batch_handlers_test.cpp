@@ -557,7 +557,6 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
         "value", "level",
         10,
         2, 5s,
-        5s,
         0.3, 0.5, 5s
     };
 
@@ -704,7 +703,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
             result.clear();
             arrowAssertNotOk(state_machine->handle(record_batch, &result));
 
-            THEN("threshold column is added and state is Relaxed") {
+            THEN("threshold column is added and state is OK") {
               REQUIRE(result.size() == 1);
 
               checkSize(result[0], 1, 3);
@@ -724,89 +723,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
                   options.threshold_column_name,
                   0);
 
-              REQUIRE(instanceOf<internal::StateRelax>(state_machine->getState().get()));
-
-              AND_WHEN("value returns back to normal") {
-                next_time += options.relax_duration.count() + 1;
-                value = 6;
-                builder.reset();
-                arrowAssertNotOk(builder.setRowNumber(1));
-
-                arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
-                    time_column_name, {next_time}, arrow::TimeUnit::SECOND));
-
-                arrowAssertNotOk(builder.buildColumn<int64_t>(options.watch_column_name,
-                                                              {value}));
-                arrowAssertNotOk(builder.getResult(&record_batch));
-
-                result.clear();
-                arrowAssertNotOk(state_machine->handle(record_batch,
-                                                       &result));
-
-                THEN("threshold keeps at old value and state is back to OK") {
-                  REQUIRE(result.size() == 1);
-
-                  checkSize(result[0], 1, 3);
-
-                  checkColumnsArePresent(result[0], {
-                      time_column_name, options.watch_column_name,
-                      options.threshold_column_name
-                  });
-
-                  checkValue<int64_t, arrow::Int64Scalar>(
-                      next_time, result[0], time_column_name, 0);
-                  checkValue<int64_t, arrow::Int64Scalar>(
-                      value, result[0], options.watch_column_name, 0);
-                  checkValue<double, arrow::DoubleScalar>(
-                      options.default_threshold,
-                      result[0],
-                      options.threshold_column_name,
-                      0);
-
-                  REQUIRE(instanceOf<internal::StateOK>(state_machine->getState().get()));
-                }
-              }
-
-              AND_WHEN("value returns back to alert") {
-                next_time += 1;
-                value = 12;
-                builder.reset();
-                arrowAssertNotOk(builder.setRowNumber(1));
-
-                arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
-                    time_column_name, {next_time}, arrow::TimeUnit::SECOND));
-
-                arrowAssertNotOk(builder.buildColumn<int64_t>(options.watch_column_name,
-                                                              {value}));
-                arrowAssertNotOk(builder.getResult(&record_batch));
-
-                result.clear();
-                arrowAssertNotOk(state_machine->handle(record_batch,
-                                                       &result));
-
-                THEN("threshold keeps at old value and state is back to Alert") {
-                  REQUIRE(result.size() == 1);
-
-                  checkSize(result[0], 1, 3);
-
-                  checkColumnsArePresent(result[0], {
-                      time_column_name, options.watch_column_name,
-                      options.threshold_column_name
-                  });
-
-                  checkValue<int64_t, arrow::Int64Scalar>(
-                      next_time, result[0], time_column_name, 0);
-                  checkValue<int64_t, arrow::Int64Scalar>(
-                      value, result[0], options.watch_column_name, 0);
-                  checkValue<double, arrow::DoubleScalar>(
-                      options.default_threshold,
-                      result[0],
-                      options.threshold_column_name,
-                      0);
-
-                  REQUIRE(instanceOf<internal::StateAlert>(state_machine->getState().get()));
-                }
-              }
+              REQUIRE(instanceOf<internal::StateOK>(state_machine->getState().get()));
             }
           }
         }

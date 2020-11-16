@@ -155,52 +155,6 @@ arrow::Status StateAlert::addThresholdForRow(
   if (value <= current_threshold_) {
     auto self = state_machine_.lock()->getState();
 
-    state_machine_.lock()->changeState(std::make_shared<StateRelax>(
-        state_machine_, current_threshold_, row_time));
-
-    return arrow::Status::OK();
-  }
-
-  return arrow::Status::OK();
-}
-
-StateRelax::StateRelax(
-    const std::shared_ptr<ThresholdStateMachine>& state_machine,
-    double current_threshold, std::time_t relax_start)
-    : state_machine_(state_machine),
-      current_threshold_(current_threshold),
-      relax_start_(relax_start) {}
-
-StateRelax::StateRelax(
-    const std::weak_ptr<ThresholdStateMachine>& state_machine,
-    double current_threshold, std::time_t relax_start)
-    : state_machine_(state_machine),
-      current_threshold_(current_threshold),
-      relax_start_(relax_start) {}
-
-arrow::Status StateRelax::addThresholdForRow(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch, int row_id,
-    arrow::DoubleBuilder* threshold_column_builder) {
-  double value;
-  auto& options = state_machine_.lock()->getOptions();
-
-  ARROW_RETURN_NOT_OK(getColumnValueAtRow(
-      record_batch, options.watch_column_name, row_id, &value));
-
-  std::time_t row_time;
-  ARROW_RETURN_NOT_OK(getTimeAtRow(record_batch, row_id, &row_time));
-
-  ARROW_RETURN_NOT_OK(threshold_column_builder->Append(current_threshold_));
-
-  if (value > current_threshold_) {
-    state_machine_.lock()->changeState(std::make_shared<StateAlert>(
-        state_machine_, current_threshold_, row_time));
-
-    return arrow::Status::OK();
-  }
-
-  if (row_time > relax_start_ &&
-      row_time - relax_start_ > options.relax_duration.count()) {
     state_machine_.lock()->changeState(
         std::make_shared<StateOK>(state_machine_, current_threshold_));
 

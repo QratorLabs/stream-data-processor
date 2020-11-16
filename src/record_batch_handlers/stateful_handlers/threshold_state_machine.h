@@ -68,24 +68,6 @@ class StateAlert : public ThresholdState {
   std::time_t alert_start_;
 };
 
-class StateRelax : public ThresholdState {
- public:
-  StateRelax(const std::shared_ptr<ThresholdStateMachine>& state_machine,
-             double current_threshold, std::time_t relax_start);
-
-  StateRelax(const std::weak_ptr<ThresholdStateMachine>& state_machine,
-             double current_threshold, std::time_t relax_start);
-
-  arrow::Status addThresholdForRow(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch, int row_id,
-      arrow::DoubleBuilder* threshold_column_builder) override;
-
- private:
-  std::weak_ptr<ThresholdStateMachine> state_machine_;
-  double current_threshold_;
-  std::time_t relax_start_;
-};
-
 class StateDecrease : public ThresholdState {
  public:
   StateDecrease(const std::shared_ptr<ThresholdStateMachine>& state_machine,
@@ -116,8 +98,6 @@ class ThresholdStateMachine : public RecordBatchHandler {
 
     double increase_scale_factor;
     std::chrono::seconds alert_duration;
-
-    std::chrono::seconds relax_duration;
 
     double decrease_trigger_factor{0};
     double decrease_scale_factor{0};

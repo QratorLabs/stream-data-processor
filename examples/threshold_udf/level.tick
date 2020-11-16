@@ -12,7 +12,6 @@ var load = stream
         .defaultLevel(default_load_level)
         .increaseScaleFactor(2.0)
         .alertDuration(5s)
-        .relaxDuration(10s)
         .decreaseTriggerFactor(0.4)
         .decreaseScaleFactor(0.5)
         .decreaseDuration(5s)
