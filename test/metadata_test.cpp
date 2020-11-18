@@ -16,10 +16,10 @@ TEST_CASE( "setting column type", "[metadata]" ) {
   std::shared_ptr<arrow::RecordBatch> record_batch;
   arrowAssertNotOk(builder.getResult(&record_batch));
 
-  REQUIRE( metadata::getColumnType(record_batch->schema()->GetFieldByName(column_name)) != metadata::FIELD );
+  REQUIRE( metadata::getColumnType(*record_batch->schema()->GetFieldByName(column_name)) != metadata::FIELD );
 
   arrowAssertNotOk(metadata::setColumnTypeMetadata(
       &record_batch, column_name, metadata::FIELD));
 
-  REQUIRE( metadata::getColumnType(record_batch->schema()->GetFieldByName(column_name)) == metadata::FIELD );
+  REQUIRE( metadata::getColumnType(*record_batch->schema()->GetFieldByName(column_name)) == metadata::FIELD );
 }

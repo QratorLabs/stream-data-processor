@@ -10,8 +10,9 @@ arrow::Status WindowHandler::handle(
   ARROW_RETURN_NOT_OK(
       convert_utils::concatenateRecordBatches(record_batches, &record_batch));
 
-  copySchemaMetadata(record_batches.front(), &record_batch);
-  ARROW_RETURN_NOT_OK(copyColumnTypes(record_batches.front(), &record_batch));
+  copySchemaMetadata(*record_batches.front(), &record_batch);
+  ARROW_RETURN_NOT_OK(
+      copyColumnTypes(*record_batches.front(), &record_batch));
   result->push_back(record_batch);
 
   return arrow::Status::OK();

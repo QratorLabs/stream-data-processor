@@ -14,12 +14,12 @@ arrow::Status GroupHandler::handle(
       grouping_columns_, record_batch, &grouped_record_batches));
 
   for (auto& group : grouped_record_batches) {
-    copySchemaMetadata(record_batch, &group);
+    copySchemaMetadata(*record_batch, &group);
 
     ARROW_RETURN_NOT_OK(
         metadata::fillGroupMetadata(&group, grouping_columns_));
 
-    ARROW_RETURN_NOT_OK(copyColumnTypes(record_batch, &group));
+    ARROW_RETURN_NOT_OK(copyColumnTypes(*record_batch, &group));
     result->push_back(group);
   }
 

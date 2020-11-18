@@ -35,6 +35,7 @@ void UnixSocketServer::start() {
 void UnixSocketServer::stop() {
   socket_handle_->close();
   for (auto& client : clients_) { client->stop(); }
+  spdlog::info("Server is stopped");
 }
 
 }  // namespace stream_data_processor

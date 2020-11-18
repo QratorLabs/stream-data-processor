@@ -17,9 +17,9 @@ GraphiteParser::GraphiteParser(const GraphiteParserOptions& parser_options)
 }
 
 arrow::Status GraphiteParser::parseRecordBatches(
-    const std::shared_ptr<arrow::Buffer>& buffer,
+    const arrow::Buffer& buffer,
     std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches) {
-  auto metric_strings = string_utils::split(buffer->ToString(), "\n");
+  auto metric_strings = string_utils::split(buffer.ToString(), "\n");
   if (metric_strings.empty()) {
     return arrow::Status::OK();
   }

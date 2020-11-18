@@ -30,7 +30,7 @@ arrow::Status JoinHandler::handle(
 
   std::string time_column_name;
   ARROW_RETURN_NOT_OK(metadata::getTimeColumnNameMetadata(
-      record_batches.front(), &time_column_name));
+      *record_batches.front(), &time_column_name));
 
   JoinKey join_key;
   for (size_t i = 0; i < record_batches.size(); ++i) {

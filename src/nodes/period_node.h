@@ -52,9 +52,9 @@ class PeriodNode : public Node {
   void pass();
 
   void removeOldBuffers();
-  arrow::Status tsLowerBound(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch,
-      const std::function<bool(std::time_t)>& pred, size_t& lower_bound);
+  arrow::Status tsLowerBound(const arrow::RecordBatch& record_batch,
+                             const std::function<bool(std::time_t)>& pred,
+                             size_t& lower_bound);
 
  private:
   uint64_t period_;

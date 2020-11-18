@@ -19,7 +19,7 @@ class GroupDispatcher : public RecordBatchHandler {
 
  private:
   std::shared_ptr<HandlerFactory> handler_factory_;
-  std::unordered_map<std::string, std::shared_ptr<RecordBatchHandler> >
+  std::unordered_map<std::string, std::shared_ptr<RecordBatchHandler>>
       groups_states_;
 };
 

@@ -21,17 +21,16 @@ namespace internal {
 class ThresholdState {
  public:
   virtual arrow::Status addThresholdForRow(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch, int row_id,
+      const arrow::RecordBatch& record_batch, int row_id,
       arrow::DoubleBuilder* threshold_column_builder) = 0;
 
  protected:
-  arrow::Status getColumnValueAtRow(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch,
-      const std::string& column_name, int row_id, double* value);
+  arrow::Status getColumnValueAtRow(const arrow::RecordBatch& record_batch,
+                                    const std::string& column_name,
+                                    int row_id, double* value);
 
-  arrow::Status getTimeAtRow(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch, int row_id,
-      std::time_t* time);
+  arrow::Status getTimeAtRow(const arrow::RecordBatch& record_batch,
+                             int row_id, std::time_t* time);
 };
 
 class StateOK : public ThresholdState {
@@ -39,11 +38,11 @@ class StateOK : public ThresholdState {
   StateOK(const std::shared_ptr<ThresholdStateMachine>& state_machine,
           double current_threshold);
 
-  StateOK(const std::weak_ptr<ThresholdStateMachine>& state_machine,
+  StateOK(std::weak_ptr<ThresholdStateMachine> state_machine,
           double current_threshold);
 
   arrow::Status addThresholdForRow(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch, int row_id,
+      const arrow::RecordBatch& record_batch, int row_id,
       arrow::DoubleBuilder* threshold_column_builder) override;
 
  private:
@@ -56,11 +55,11 @@ class StateIncrease : public ThresholdState {
   StateIncrease(const std::shared_ptr<ThresholdStateMachine>& state_machine,
                 double current_threshold, std::time_t alert_start);
 
-  StateIncrease(const std::weak_ptr<ThresholdStateMachine>& state_machine,
+  StateIncrease(std::weak_ptr<ThresholdStateMachine> state_machine,
                 double current_threshold, std::time_t alert_start);
 
   arrow::Status addThresholdForRow(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch, int row_id,
+      const arrow::RecordBatch& record_batch, int row_id,
       arrow::DoubleBuilder* threshold_column_builder) override;
 
  private:
@@ -74,11 +73,11 @@ class StateDecrease : public ThresholdState {
   StateDecrease(const std::shared_ptr<ThresholdStateMachine>& state_machine,
                 double current_threshold, std::time_t decrease_start);
 
-  StateDecrease(const std::weak_ptr<ThresholdStateMachine>& state_machine,
+  StateDecrease(std::weak_ptr<ThresholdStateMachine> state_machine,
                 double current_threshold, std::time_t decrease_start);
 
   arrow::Status addThresholdForRow(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch, int row_id,
+      const arrow::RecordBatch& record_batch, int row_id,
       arrow::DoubleBuilder* threshold_column_builder) override;
 
  private:

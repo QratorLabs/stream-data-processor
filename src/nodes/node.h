@@ -19,7 +19,7 @@ class Node {
       : name_(std::move(name)),
         logger_(
             spdlog::basic_logger_mt(name_, "logs/" + name_ + ".txt", true)) {
-    spdlog::get(name_)->info("Node created");
+    logger_->info("Node created");
   }
 
   template <typename ConsumerVectorType>
@@ -28,7 +28,7 @@ class Node {
         logger_(
             spdlog::basic_logger_mt(name_, "logs/" + name_ + ".txt", true)),
         consumers_(std::forward<ConsumerVectorType>(consumers)) {
-    spdlog::get(name_)->info("Node created");
+    logger_->info("Node created");
   }
 
   void log(const std::string& message,
@@ -40,7 +40,7 @@ class Node {
 
   [[nodiscard]] const std::string& getName() const;
 
-  void addConsumer(const std::shared_ptr<Consumer>& consumer);
+  void addConsumer(std::shared_ptr<Consumer> consumer);
 
  protected:
   void passData(const std::vector<std::shared_ptr<arrow::Buffer>>& data);

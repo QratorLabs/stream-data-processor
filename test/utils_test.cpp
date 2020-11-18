@@ -41,7 +41,7 @@ TEST_CASE( "serialization and deserialization preserves schema metadata", "[Seri
   for (size_t i = 0; i < 2; ++i) {
     arrow::RecordBatchVector deserialized;
 
-    arrowAssertNotOk(serialize_utils::deserializeRecordBatches(
+    arrowAssertNotOk(serialize_utils::deserializeRecordBatches(*
         buffers[i], &deserialized));
 
     REQUIRE( deserialized.size() == 1 );

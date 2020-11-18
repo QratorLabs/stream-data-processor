@@ -14,13 +14,19 @@
 namespace stream_data_processor {
 
 const std::unordered_map<AggregateHandler::AggregateFunctionEnumType,
-                         std::shared_ptr<AggregateFunction> >
-    AggregateHandler::TYPES_TO_FUNCTIONS{
-        {kFirst, std::make_shared<FirstAggregateFunction>()},
-        {kLast, std::make_shared<LastAggregateFunction>()},
-        {kMax, std::make_shared<MaxAggregateFunction>()},
-        {kMin, std::make_shared<MinAggregateFunction>()},
-        {kMean, std::make_shared<MeanAggregateFunction>()}};
+                         std::unique_ptr<AggregateFunction> >
+    AggregateHandler::TYPES_TO_FUNCTIONS = []() {
+      std::unordered_map<AggregateHandler::AggregateFunctionEnumType,
+                         std::unique_ptr<AggregateFunction> >
+          init_map;
+
+      init_map[kFirst] = std::make_unique<FirstAggregateFunction>();
+      init_map[kLast] = std::make_unique<LastAggregateFunction>();
+      init_map[kMax] = std::make_unique<MaxAggregateFunction>();
+      init_map[kMin] = std::make_unique<MinAggregateFunction>();
+      init_map[kMean] = std::make_unique<MeanAggregateFunction>();
+      return init_map;
+    }();
 
 AggregateHandler::AggregateHandler(
     const AggregateHandler::AggregateOptions& options)
@@ -71,12 +77,12 @@ arrow::Status AggregateHandler::handle(
     arrow::ArrayVector result_arrays;
 
     auto grouping_columns =
-        metadata::extractGroupingColumnsNames(record_batches_group.front());
+        metadata::extractGroupingColumnsNames(*record_batches_group.front());
 
     bool explicitly_add_measurement_field = true;
     bool has_measurement = false;
     std::string measurement_column_name;
-    if (!metadata::getMeasurementColumnNameMetadata(record_batches.front(),
+    if (!metadata::getMeasurementColumnNameMetadata(*record_batches.front(),
                                                     &measurement_column_name)
              .ok()) {
       explicitly_add_measurement_field = false;
@@ -214,7 +220,7 @@ arrow::Status AggregateHandler::aggregate(
     std::shared_ptr<arrow::Scalar> aggregated_value;
     ARROW_RETURN_NOT_OK(
         TYPES_TO_FUNCTIONS.at(aggregate_function)
-            ->aggregate(group, aggregate_column_name, &aggregated_value));
+            ->aggregate(*group, aggregate_column_name, &aggregated_value));
 
     ARROW_RETURN_NOT_OK(arrow_utils::appendToBuilder(
         aggregated_value, &builder, aggregate_column_field->type()->id()));
@@ -230,7 +236,7 @@ arrow::Status AggregateHandler::aggregateTimeColumn(
     arrow::ArrayVector* result_arrays, arrow::MemoryPool* pool) const {
   std::string time_column_name;
   ARROW_RETURN_NOT_OK(metadata::getTimeColumnNameMetadata(
-      record_batch_vector.front(), &time_column_name));
+      *record_batch_vector.front(), &time_column_name));
 
   auto ts_column_type =
       record_batch_vector.front()->GetColumnByName(time_column_name)->type();
@@ -243,7 +249,7 @@ arrow::Status AggregateHandler::aggregateTimeColumn(
     ARROW_RETURN_NOT_OK(
         TYPES_TO_FUNCTIONS
             .at(options_.result_time_column_rule.aggregate_function)
-            ->aggregate(group, time_column_name, &ts));
+            ->aggregate(*group, time_column_name, &ts));
 
     auto ts_cast_result = ts->CastTo(ts_column_type);
     if (!ts_cast_result.ok()) {
@@ -312,7 +318,7 @@ AggregateHandler::splitByGroups(
     const arrow::RecordBatchVector& record_batches) {
   std::unordered_map<std::string, arrow::RecordBatchVector> grouped;
   for (auto& record_batch : record_batches) {
-    auto group_string = metadata::extractGroupMetadata(record_batch);
+    auto group_string = metadata::extractGroupMetadata(*record_batch);
 
     if (grouped.find(group_string) == grouped.end()) {
       grouped[group_string] = arrow::RecordBatchVector();
@@ -330,7 +336,7 @@ arrow::Status AggregateHandler::isValid(
   for (auto& record_batch : record_batches) {
     if (time_column_name.empty()) {
       ARROW_RETURN_NOT_OK(metadata::getTimeColumnNameMetadata(
-          record_batch, &time_column_name));
+          *record_batch, &time_column_name));
     }
 
     auto time_column = record_batch->GetColumnByName(time_column_name);

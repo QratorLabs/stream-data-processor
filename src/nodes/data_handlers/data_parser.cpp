@@ -14,7 +14,7 @@ DataParser::DataParser(std::shared_ptr<Parser> parser)
     : parser_(std::move(parser)) {}
 
 arrow::Status DataParser::handle(
-    const std::shared_ptr<arrow::Buffer>& source,
+    const arrow::Buffer& source,
     std::vector<std::shared_ptr<arrow::Buffer>>* target) {
   std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
   ARROW_RETURN_NOT_OK(parser_->parseRecordBatches(source, &record_batches));

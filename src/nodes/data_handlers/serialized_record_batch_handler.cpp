@@ -11,7 +11,7 @@ SerializedRecordBatchHandler::SerializedRecordBatchHandler(
     : handler_strategy_(std::move(handler_strategy)) {}
 
 arrow::Status SerializedRecordBatchHandler::handle(
-    const std::shared_ptr<arrow::Buffer>& source,
+    const arrow::Buffer& source,
     std::vector<std::shared_ptr<arrow::Buffer>>* target) {
   std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
 

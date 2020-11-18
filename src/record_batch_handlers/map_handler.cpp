@@ -30,7 +30,7 @@ arrow::Status MapHandler::handle(
 
   ARROW_RETURN_NOT_OK(eval(&result_record_batch, projector, result_schema));
 
-  copySchemaMetadata(record_batch, &result_record_batch);
+  copySchemaMetadata(*record_batch, &result_record_batch);
   result->push_back(result_record_batch);
 
   return arrow::Status::OK();

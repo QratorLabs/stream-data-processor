@@ -11,9 +11,9 @@ namespace stream_data_processor {
 namespace internal {
 
 arrow::Status ThresholdState::getColumnValueAtRow(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch,
-    const std::string& column_name, int row_id, double* value) {
-  auto column = record_batch->GetColumnByName(column_name);
+    const arrow::RecordBatch& record_batch, const std::string& column_name,
+    int row_id, double* value) {
+  auto column = record_batch.GetColumnByName(column_name);
   if (column == nullptr) {
     return arrow::Status::KeyError(
         fmt::format("Can't get value from column {}: no such column exists",
@@ -40,14 +40,13 @@ arrow::Status ThresholdState::getColumnValueAtRow(
 }
 
 arrow::Status ThresholdState::getTimeAtRow(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch, int row_id,
-    std::time_t* time) {
+    const arrow::RecordBatch& record_batch, int row_id, std::time_t* time) {
   std::string time_column_name;
   ARROW_RETURN_NOT_OK(
       metadata::getTimeColumnNameMetadata(record_batch, &time_column_name));
 
   auto time_result =
-      record_batch->GetColumnByName(time_column_name)->GetScalar(row_id);
+      record_batch.GetColumnByName(time_column_name)->GetScalar(row_id);
 
   ARROW_RETURN_NOT_OK(time_result.status());
 
@@ -67,12 +66,13 @@ StateOK::StateOK(const std::shared_ptr<ThresholdStateMachine>& state_machine,
                  double current_threshold)
     : state_machine_(state_machine), current_threshold_(current_threshold) {}
 
-StateOK::StateOK(const std::weak_ptr<ThresholdStateMachine>& state_machine,
+StateOK::StateOK(std::weak_ptr<ThresholdStateMachine> state_machine,
                  double current_threshold)
-    : state_machine_(state_machine), current_threshold_(current_threshold) {}
+    : state_machine_(std::move(state_machine)),
+      current_threshold_(current_threshold) {}
 
 arrow::Status StateOK::addThresholdForRow(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch, int row_id,
+    const arrow::RecordBatch& record_batch, int row_id,
     arrow::DoubleBuilder* threshold_column_builder) {
   double value;
   auto& options = state_machine_.lock()->getOptions();
@@ -116,14 +116,14 @@ StateIncrease::StateIncrease(
       alert_start_(alert_start) {}
 
 StateIncrease::StateIncrease(
-    const std::weak_ptr<ThresholdStateMachine>& state_machine,
+    std::weak_ptr<ThresholdStateMachine> state_machine,
     double current_threshold, std::time_t alert_start)
-    : state_machine_(state_machine),
+    : state_machine_(std::move(state_machine)),
       current_threshold_(current_threshold),
       alert_start_(alert_start) {}
 
 arrow::Status StateIncrease::addThresholdForRow(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch, int row_id,
+    const arrow::RecordBatch& record_batch, int row_id,
     arrow::DoubleBuilder* threshold_column_builder) {
   double value;
   auto& options = state_machine_.lock()->getOptions();
@@ -176,14 +176,14 @@ StateDecrease::StateDecrease(
       decrease_start_(decrease_start) {}
 
 StateDecrease::StateDecrease(
-    const std::weak_ptr<ThresholdStateMachine>& state_machine,
+    std::weak_ptr<ThresholdStateMachine> state_machine,
     double current_threshold, std::time_t decrease_start)
-    : state_machine_(state_machine),
+    : state_machine_(std::move(state_machine)),
       current_threshold_(current_threshold),
       decrease_start_(decrease_start) {}
 
 arrow::Status StateDecrease::addThresholdForRow(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch, int row_id,
+    const arrow::RecordBatch& record_batch, int row_id,
     arrow::DoubleBuilder* threshold_column_builder) {
   double value;
   auto& options = state_machine_.lock()->getOptions();
@@ -250,7 +250,7 @@ arrow::Status ThresholdStateMachine::handle(
   arrow::DoubleBuilder threshold_builder;
   for (int i = 0; i < record_batch->num_rows(); ++i) {
     ARROW_RETURN_NOT_OK(
-        state_->addThresholdForRow(record_batch, i, &threshold_builder));
+        state_->addThresholdForRow(*record_batch, i, &threshold_builder));
   }
 
   std::shared_ptr<arrow::Array> threshold_array;

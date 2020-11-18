@@ -12,10 +12,10 @@ inline const std::string TIME_COLUMN_NAME_METADATA_KEY{"time_column_name"};
 inline const std::string MEASUREMENT_COLUMN_NAME_METADATA_KEY{
     "measurement_column_name"};
 
-arrow::Status getColumnNameMetadata(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch,
-    const std::string& metadata_key, std::string* column_name) {
-  auto metadata = record_batch->schema()->metadata();
+arrow::Status getColumnNameMetadata(const arrow::RecordBatch& record_batch,
+                                    const std::string& metadata_key,
+                                    std::string* column_name) {
+  auto metadata = record_batch.schema()->metadata();
   if (metadata == nullptr) {
     return arrow::Status::Invalid(
         "RecordBatch has no metadata to extract corresponded column name");
@@ -114,13 +114,13 @@ arrow::Status setColumnTypeMetadata(
   return arrow::Status::OK();
 }
 
-ColumnType getColumnType(const std::shared_ptr<arrow::Field>& column_field) {
+ColumnType getColumnType(const arrow::Field& column_field) {
   ColumnType type = ColumnType::UNKNOWN;
-  if (!column_field->HasMetadata()) {
+  if (!column_field.HasMetadata()) {
     return type;
   }
 
-  auto metadata = column_field->metadata();
+  auto metadata = column_field.metadata();
   if (!metadata->Contains(COLUMN_TYPE_METADATA_KEY)) {
     return type;
   }
@@ -142,8 +142,7 @@ arrow::Status setTimeColumnNameMetadata(
 }
 
 arrow::Status getTimeColumnNameMetadata(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch,
-    std::string* time_column_name) {
+    const arrow::RecordBatch& record_batch, std::string* time_column_name) {
   ARROW_RETURN_NOT_OK(getColumnNameMetadata(
       record_batch, TIME_COLUMN_NAME_METADATA_KEY, time_column_name));
 
@@ -162,7 +161,7 @@ arrow::Status setMeasurementColumnNameMetadata(
 }
 
 arrow::Status getMeasurementColumnNameMetadata(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch,
+    const arrow::RecordBatch& record_batch,
     std::string* measurement_column_name) {
   ARROW_RETURN_NOT_OK(getColumnNameMetadata(
       record_batch, MEASUREMENT_COLUMN_NAME_METADATA_KEY,

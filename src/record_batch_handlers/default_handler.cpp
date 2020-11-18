@@ -156,8 +156,8 @@ arrow::Status DefaultHandler::handle(
   ARROW_RETURN_NOT_OK(
       addMissingColumn(options_.bool_default_cases, &copy_record_batch));
 
-  copySchemaMetadata(record_batch, &copy_record_batch);
-  ARROW_RETURN_NOT_OK(copyColumnTypes(record_batch, &copy_record_batch));
+  copySchemaMetadata(*record_batch, &copy_record_batch);
+  ARROW_RETURN_NOT_OK(copyColumnTypes(*record_batch, &copy_record_batch));
   result->push_back(copy_record_batch);
 
   return arrow::Status::OK();

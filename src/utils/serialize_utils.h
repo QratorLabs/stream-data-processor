@@ -16,7 +16,7 @@ arrow::Status serializeRecordBatches(
     std::vector<std::shared_ptr<arrow::Buffer>>* target);
 
 arrow::Status deserializeRecordBatches(
-    const std::shared_ptr<arrow::Buffer>& buffer,
+    const arrow::Buffer& buffer,
     std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches);
 
 }  // namespace serialize_utils

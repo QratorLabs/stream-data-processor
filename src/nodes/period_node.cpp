@@ -15,8 +15,7 @@ void PeriodNode::handleData(const char* data, size_t length) {
 }
 
 arrow::Status PeriodNode::appendData(const char* data, size_t length) {
-  auto data_buffer = std::make_shared<arrow::Buffer>(
-      reinterpret_cast<const uint8_t*>(data), length);
+  arrow::Buffer data_buffer(reinterpret_cast<const uint8_t*>(data), length);
   arrow::RecordBatchVector record_batches;
   ARROW_RETURN_NOT_OK(serialize_utils::deserializeRecordBatches(
       data_buffer, &record_batches));
@@ -51,7 +50,7 @@ arrow::Status PeriodNode::appendData(const char* data, size_t length) {
   while (max_ts - first_ts_in_current_batch_ >= period_) {
     size_t divide_index;
     ARROW_RETURN_NOT_OK(tsLowerBound(
-        record_batch,
+        *record_batch,
         [this](std::time_t ts) {
           return ts - first_ts_in_current_batch_ >= period_;
         },
@@ -92,14 +91,14 @@ arrow::Status PeriodNode::appendData(const char* data, size_t length) {
 }
 
 arrow::Status PeriodNode::tsLowerBound(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch,
+    const arrow::RecordBatch& record_batch,
     const std::function<bool(std::time_t)>& pred, size_t& lower_bound) {
   size_t left_bound = 0;
-  size_t right_bound = record_batch->num_rows();
+  size_t right_bound = record_batch.num_rows();
   while (left_bound != right_bound - 1) {
     auto middle = (left_bound + right_bound) / 2;
     auto ts_result =
-        record_batch->GetColumnByName(time_column_name_)->GetScalar(middle);
+        record_batch.GetColumnByName(time_column_name_)->GetScalar(middle);
     if (!ts_result.ok()) {
       return ts_result.status();
     }
@@ -115,7 +114,7 @@ arrow::Status PeriodNode::tsLowerBound(
   }
 
   auto ts_result =
-      record_batch->GetColumnByName(time_column_name_)->GetScalar(left_bound);
+      record_batch.GetColumnByName(time_column_name_)->GetScalar(left_bound);
   if (!ts_result.ok()) {
     return ts_result.status();
   }

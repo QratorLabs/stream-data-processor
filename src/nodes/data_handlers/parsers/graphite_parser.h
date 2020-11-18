@@ -30,7 +30,7 @@ class GraphiteParser : public Parser {
   explicit GraphiteParser(const GraphiteParserOptions& parser_options);
 
   arrow::Status parseRecordBatches(
-      const std::shared_ptr<arrow::Buffer>& buffer,
+      const arrow::Buffer& buffer,
       std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches)
       override;
 

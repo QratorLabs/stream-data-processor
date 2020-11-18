@@ -29,7 +29,7 @@ arrow::Status serializeRecordBatches(
 }
 
 arrow::Status deserializeRecordBatches(
-    const std::shared_ptr<arrow::Buffer>& buffer,
+    const arrow::Buffer& buffer,
     std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches) {
   auto buffer_input = std::make_shared<arrow::io::BufferReader>(buffer);
 

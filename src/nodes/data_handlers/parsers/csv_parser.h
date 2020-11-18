@@ -9,7 +9,7 @@ class CSVParser : public Parser {
   explicit CSVParser(std::shared_ptr<arrow::Schema> schema = nullptr);
 
   arrow::Status parseRecordBatches(
-      const std::shared_ptr<arrow::Buffer>& buffer,
+      const arrow::Buffer& buffer,
       std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches)
       override;
 

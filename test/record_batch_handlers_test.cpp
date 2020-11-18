@@ -107,8 +107,8 @@ TEST_CASE ( "split one record batch to separate ones by grouping on column with 
   checkValue<int64_t, arrow::Int64Scalar>(1, result[1],
                                           "field_name", 0);
 
-  REQUIRE(metadata::extractGroupMetadata(result[0]) !=
-            metadata::extractGroupMetadata(result[1]) );
+  REQUIRE(metadata::extractGroupMetadata(*result[0]) !=
+            metadata::extractGroupMetadata(*result[1]) );
 }
 
 TEST_CASE( "add new columns to empty record batch with different schema", "[DefaultHandler]") {
@@ -464,7 +464,7 @@ SCENARIO( "groups aggregation", "[AggregateHandler]" ) {
         checkValue<int64_t, arrow::Int64Scalar>(101, result[0], time_field->name(), 1);
         checkValue<std::string, arrow::StringScalar>(group_1, result[0], tag_field->name(), 0);
         checkValue<std::string, arrow::StringScalar>(group_1, result[0], tag_field->name(), 1);
-        REQUIRE( !metadata::extractGroupMetadata(result[0]).empty() );
+        REQUIRE( !metadata::extractGroupMetadata(*result[0]).empty() );
       }
     }
 
@@ -483,13 +483,13 @@ SCENARIO( "groups aggregation", "[AggregateHandler]" ) {
         checkColumnsArePresent(result[0], {time_field->name(), tag_field->name()});
         checkValue<int64_t, arrow::Int64Scalar>(100, result[0], time_field->name(), 0);
         checkValue<std::string, arrow::StringScalar>(group_1, result[0], tag_field->name(), 0);
-        REQUIRE( !metadata::extractGroupMetadata(result[0]).empty() );
+        REQUIRE( !metadata::extractGroupMetadata(*result[0]).empty() );
 
         checkSize(result[1], 1, 2);
         checkColumnsArePresent(result[1], {time_field->name(), tag_field->name()});
         checkValue<int64_t, arrow::Int64Scalar>(102, result[1], time_field->name(), 0);
         checkValue<std::string, arrow::StringScalar>(group_2, result[1], tag_field->name(), 0);
-        REQUIRE( !metadata::extractGroupMetadata(result[1]).empty() );
+        REQUIRE( !metadata::extractGroupMetadata(*result[1]).empty() );
       }
     }
   }
@@ -541,7 +541,7 @@ SCENARIO( "aggregating time", "[AggregateHandler]" ) {
                                                   new_time_column_name,
                                                   0);
           std::string result_time_column_name;
-          arrowAssertNotOk(metadata::getTimeColumnNameMetadata(result[0], &result_time_column_name));
+          arrowAssertNotOk(metadata::getTimeColumnNameMetadata(*result[0], &result_time_column_name));
           REQUIRE( result_time_column_name == new_time_column_name );
         }
       }

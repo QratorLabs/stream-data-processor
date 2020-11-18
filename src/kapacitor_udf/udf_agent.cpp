@@ -66,14 +66,14 @@ template UDFAgent<uvw::PipeHandle, uv_pipe_t>::UDFAgent(
 
 template <typename UVWHandleType, typename LibuvHandleType>
 void UDFAgent<UVWHandleType, LibuvHandleType>::setHandler(
-    const std::shared_ptr<RequestHandler>& request_handler) {
-  request_handler_ = request_handler;
+    std::shared_ptr<RequestHandler> request_handler) {
+  request_handler_ = std::move(request_handler);
 }
 
 template void UDFAgent<uvw::TTYHandle, uv_tty_t>::setHandler(
-    const std::shared_ptr<RequestHandler>& request_handler);
+    std::shared_ptr<RequestHandler> request_handler);
 template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::setHandler(
-    const std::shared_ptr<RequestHandler>& request_handler);
+    std::shared_ptr<RequestHandler> request_handler);
 
 template <typename UVWHandleType, typename LibuvHandleType>
 void UDFAgent<UVWHandleType, LibuvHandleType>::start() {

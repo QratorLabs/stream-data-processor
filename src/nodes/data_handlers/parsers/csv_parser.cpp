@@ -10,7 +10,7 @@ CSVParser::CSVParser(std::shared_ptr<arrow::Schema> schema)
     : record_batches_schema_(std::move(schema)) {}
 
 arrow::Status CSVParser::parseRecordBatches(
-    const std::shared_ptr<arrow::Buffer>& buffer,
+    const arrow::Buffer& buffer,
     std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches) {
   arrow::MemoryPool* pool = arrow::default_memory_pool();
   auto buffer_input = std::make_shared<arrow::io::BufferReader>(buffer);

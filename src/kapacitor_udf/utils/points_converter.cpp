@@ -45,14 +45,14 @@ arrow::Status PointsConverter::convertToPoints(
                                       record_batch->num_rows());
 
     std::string time_column_name;
-    ARROW_RETURN_NOT_OK(
-        metadata::getTimeColumnNameMetadata(record_batch, &time_column_name));
+    ARROW_RETURN_NOT_OK(metadata::getTimeColumnNameMetadata(
+        *record_batch, &time_column_name));
 
     std::string measurement_column_name;
     ARROW_RETURN_NOT_OK(metadata::getMeasurementColumnNameMetadata(
-        record_batch, &measurement_column_name));
+        *record_batch, &measurement_column_name));
 
-    auto group = metadata::extractGroup(record_batch);
+    auto group = metadata::extractGroup(*record_batch);
     auto group_string =
         grouping_utils::encode(group, measurement_column_name);
 
@@ -60,7 +60,7 @@ arrow::Status PointsConverter::convertToPoints(
       auto& column_name = record_batch->column_name(i);
       auto column = record_batch->column(i);
       auto column_type =
-          metadata::getColumnType(record_batch->schema()->field(i));
+          metadata::getColumnType(*record_batch->schema()->field(i));
 
       for (int j = 0; j < column->length(); ++j) {
         auto get_scalar_result = column->GetScalar(j);

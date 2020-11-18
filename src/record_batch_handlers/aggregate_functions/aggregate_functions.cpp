@@ -8,14 +8,13 @@
 namespace stream_data_processor {
 
 arrow::Status FirstAggregateFunction::aggregate(
-    const std::shared_ptr<arrow::RecordBatch>& data,
-    const std::string& column_name,
+    const arrow::RecordBatch& data, const std::string& column_name,
     std::shared_ptr<arrow::Scalar>* result) const {
   std::string time_column_name;
   ARROW_RETURN_NOT_OK(
       metadata::getTimeColumnNameMetadata(data, &time_column_name));
 
-  auto ts_column = data->GetColumnByName(time_column_name);
+  auto ts_column = data.GetColumnByName(time_column_name);
   if (ts_column == nullptr) {
     return arrow::Status::Invalid(fmt::format(
         "RecordBatch has not time column with name {}", time_column_name));
@@ -25,7 +24,7 @@ arrow::Status FirstAggregateFunction::aggregate(
   ARROW_RETURN_NOT_OK(compute_utils::argMinMax(ts_column, &arg_min_max));
 
   auto get_scalar_result =
-      data->GetColumnByName(column_name)->GetScalar(arg_min_max.first);
+      data.GetColumnByName(column_name)->GetScalar(arg_min_max.first);
   if (!get_scalar_result.ok()) {
     return get_scalar_result.status();
   }
@@ -35,14 +34,13 @@ arrow::Status FirstAggregateFunction::aggregate(
 }
 
 arrow::Status LastAggregateFunction::aggregate(
-    const std::shared_ptr<arrow::RecordBatch>& data,
-    const std::string& column_name,
+    const arrow::RecordBatch& data, const std::string& column_name,
     std::shared_ptr<arrow::Scalar>* result) const {
   std::string time_column_name;
   ARROW_RETURN_NOT_OK(
       metadata::getTimeColumnNameMetadata(data, &time_column_name));
 
-  auto ts_column = data->GetColumnByName(time_column_name);
+  auto ts_column = data.GetColumnByName(time_column_name);
   if (ts_column == nullptr) {
     return arrow::Status::Invalid(fmt::format(
         "RecordBatch has not time column with name {}", time_column_name));
@@ -52,7 +50,7 @@ arrow::Status LastAggregateFunction::aggregate(
   ARROW_RETURN_NOT_OK(compute_utils::argMinMax(ts_column, &arg_min_max));
 
   auto get_scalar_result =
-      data->GetColumnByName(column_name)->GetScalar(arg_min_max.second);
+      data.GetColumnByName(column_name)->GetScalar(arg_min_max.second);
   if (!get_scalar_result.ok()) {
     return get_scalar_result.status();
   }
@@ -62,11 +60,10 @@ arrow::Status LastAggregateFunction::aggregate(
 }
 
 arrow::Status MaxAggregateFunction::aggregate(
-    const std::shared_ptr<arrow::RecordBatch>& data,
-    const std::string& column_name,
+    const arrow::RecordBatch& data, const std::string& column_name,
     std::shared_ptr<arrow::Scalar>* result) const {
   auto min_max_result =
-      arrow::compute::MinMax(data->GetColumnByName(column_name));
+      arrow::compute::MinMax(data.GetColumnByName(column_name));
   if (!min_max_result.ok()) {
     return min_max_result.status();
   }
@@ -77,10 +74,9 @@ arrow::Status MaxAggregateFunction::aggregate(
 }
 
 arrow::Status MeanAggregateFunction::aggregate(
-    const std::shared_ptr<arrow::RecordBatch>& data,
-    const std::string& column_name,
+    const arrow::RecordBatch& data, const std::string& column_name,
     std::shared_ptr<arrow::Scalar>* result) const {
-  auto mean_result = arrow::compute::Mean(data->GetColumnByName(column_name));
+  auto mean_result = arrow::compute::Mean(data.GetColumnByName(column_name));
   if (!mean_result.ok()) {
     return mean_result.status();
   }
@@ -90,11 +86,10 @@ arrow::Status MeanAggregateFunction::aggregate(
 }
 
 arrow::Status MinAggregateFunction::aggregate(
-    const std::shared_ptr<arrow::RecordBatch>& data,
-    const std::string& column_name,
+    const arrow::RecordBatch& data, const std::string& column_name,
     std::shared_ptr<arrow::Scalar>* result) const {
   auto min_max_result =
-      arrow::compute::MinMax(data->GetColumnByName(column_name));
+      arrow::compute::MinMax(data.GetColumnByName(column_name));
   if (!min_max_result.ok()) {
     return min_max_result.status();
   }

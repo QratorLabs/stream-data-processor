@@ -14,7 +14,7 @@ arrow::Status SerializedPeriodHandler::handle(
   arrow::RecordBatchVector period_vector;
   for (auto& buffer : period) {
     ARROW_RETURN_NOT_OK(
-        serialize_utils::deserializeRecordBatches(buffer, &period_vector));
+        serialize_utils::deserializeRecordBatches(*buffer, &period_vector));
   }
 
   if (period_vector.empty()) {

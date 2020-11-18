@@ -10,8 +10,7 @@ namespace stream_data_processor {
 class AggregateFunction {
  public:
   virtual arrow::Status aggregate(
-      const std::shared_ptr<arrow::RecordBatch>& data,
-      const std::string& column_name,
+      const arrow::RecordBatch& data, const std::string& column_name,
       std::shared_ptr<arrow::Scalar>* result) const = 0;
 };
 

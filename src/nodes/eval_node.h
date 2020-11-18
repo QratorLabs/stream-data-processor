@@ -29,7 +29,7 @@ class EvalNode : public Node {
 
  private:
   arrow::Status processData(
-      const std::shared_ptr<arrow::Buffer>& data_buffer,
+      const arrow::Buffer& data_buffer,
       std::vector<std::shared_ptr<arrow::Buffer>>* processed_data);
 
  private:

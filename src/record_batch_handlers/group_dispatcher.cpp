@@ -10,7 +10,7 @@ GroupDispatcher::GroupDispatcher(
 arrow::Status GroupDispatcher::handle(
     const std::shared_ptr<arrow::RecordBatch>& record_batch,
     arrow::RecordBatchVector* result) {
-  auto group_metadata = metadata::extractGroupMetadata(record_batch);
+  auto group_metadata = metadata::extractGroupMetadata(*record_batch);
 
   if (groups_states_.find(group_metadata) == groups_states_.end()) {
     groups_states_[group_metadata] = handler_factory_->createHandler();

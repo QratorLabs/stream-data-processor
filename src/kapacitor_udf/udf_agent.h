@@ -39,7 +39,7 @@ class UDFAgent : public IUDFAgent {
       std::shared_ptr<uvw::StreamHandle<UVWHandleType, LibuvHandleType>> in,
       std::shared_ptr<uvw::StreamHandle<UVWHandleType, LibuvHandleType>> out);
 
-  void setHandler(const std::shared_ptr<RequestHandler>& request_handler);
+  void setHandler(std::shared_ptr<RequestHandler> request_handler);
 
   void start() override;
   void stop() override;

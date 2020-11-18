@@ -29,8 +29,8 @@ arrow::Status FilterHandler::handle(
   }
 
   auto result_record_batch = take_result.ValueOrDie().record_batch();
-  copySchemaMetadata(record_batch, &result_record_batch);
-  ARROW_RETURN_NOT_OK(copyColumnTypes(record_batch, &result_record_batch));
+  copySchemaMetadata(*record_batch, &result_record_batch);
+  ARROW_RETURN_NOT_OK(copyColumnTypes(*record_batch, &result_record_batch));
 
   result->push_back(result_record_batch);
 

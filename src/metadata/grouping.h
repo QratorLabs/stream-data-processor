@@ -16,17 +16,14 @@ arrow::Status fillGroupMetadata(
     std::shared_ptr<arrow::RecordBatch>* record_batch,
     const std::vector<std::string>& grouping_columns);
 
-std::string extractGroupMetadata(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch);
+std::string extractGroupMetadata(const arrow::RecordBatch& record_batch);
 
-RecordBatchGroup extractGroup(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch);
+RecordBatchGroup extractGroup(const arrow::RecordBatch& record_batch);
 
 std::vector<std::string> extractGroupingColumnsNames(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch);
+    const arrow::RecordBatch& record_batch);
 
-std::string getGroupingColumnsSetKey(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch);
+std::string getGroupingColumnsSetKey(const arrow::RecordBatch& record_batch);
 
 RecordBatchGroup constructGroupFromOrderedMap(
     const std::map<std::string, std::string>& group_map);

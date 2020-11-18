@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
   double crit_host_level = 85;
 
   auto loop = uvw::Loop::getDefault();
-  auto zmq_context = std::make_shared<zmq::context_t>(1);
+  zmq::context_t zmq_context(1);
 
   std::unordered_map<std::string, sdp::NodePipeline> pipelines;
 

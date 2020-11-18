@@ -74,7 +74,7 @@ class AggregateHandler : public RecordBatchHandler {
 
  private:
   static const std::unordered_map<AggregateFunctionEnumType,
-                                  std::shared_ptr<AggregateFunction>>
+                                  std::unique_ptr<AggregateFunction>>
       TYPES_TO_FUNCTIONS;
 
   AggregateOptions options_;
