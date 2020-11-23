@@ -24,13 +24,9 @@ arrow::Status fillGroupMap(std::map<std::string, std::string>* group_map,
       continue;
     }
 
-    auto column_value_result = column->GetScalar(0);
-    if (!column_value_result.ok()) {
-      return column_value_result.status();
-    }
-
-    group_map->operator[](grouping_column_name) =
-        column_value_result.ValueOrDie()->ToString();
+    std::shared_ptr<arrow::Scalar> column_value;
+    ARROW_ASSIGN_OR_RAISE(column_value, column->GetScalar(0));
+    group_map->operator[](grouping_column_name) = column_value->ToString();
   }
 
   return arrow::Status::OK();

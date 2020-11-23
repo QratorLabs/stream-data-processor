@@ -35,9 +35,8 @@ class DefaultHandler : public RecordBatchHandler {
   explicit DefaultHandler(DefaultHandlerOptionsType&& options)
       : options_(std::forward<DefaultHandlerOptionsType>(options)) {}
 
-  arrow::Status handle(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch,
-      arrow::RecordBatchVector* result) override;
+  arrow::Result<arrow::RecordBatchVector> handle(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch) override;
 
  private:
   template <typename T>

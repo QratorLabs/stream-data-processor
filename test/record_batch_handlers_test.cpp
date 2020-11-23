@@ -38,7 +38,7 @@ TEST_CASE( "filter one of two integers based on equal function", "[FilterHandler
   std::shared_ptr<RecordBatchHandler> filter_handler = std::make_shared<FilterHandler>(std::move(conditions));
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(filter_handler->handle({record_batch}, &result));
+  arrowAssignOrRaise(result, filter_handler->handle({record_batch}));
 
   REQUIRE( result.size() == 1 );
   checkSize(result[0], 1, 1);
@@ -66,7 +66,7 @@ TEST_CASE ( "filter one of two strings based on equal function", "[FilterHandler
   std::shared_ptr<RecordBatchHandler> filter_handler = std::make_shared<FilterHandler>(std::move(conditions));
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(filter_handler->handle({record_batch}, &result));
+  arrowAssignOrRaise(result, filter_handler->handle({record_batch}));
 
   REQUIRE( result.size() == 1 );
   checkSize(result[0], 1, 1);
@@ -90,7 +90,7 @@ TEST_CASE ( "split one record batch to separate ones by grouping on column with 
   std::shared_ptr<RecordBatchHandler> filter_handler = std::make_shared<GroupHandler>(std::move(grouping_columns));
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(filter_handler->handle({record_batch}, &result));
+  arrowAssignOrRaise(result, filter_handler->handle({record_batch}));
 
   REQUIRE( result.size() == 2 );
   checkSize(result[0], 1, 1);
@@ -127,7 +127,7 @@ TEST_CASE( "add new columns to empty record batch with different schema", "[Defa
   auto record_batch = arrow::RecordBatch::Make(schema, 0, {array});
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(default_handler->handle({record_batch}, &result));
+  arrowAssignOrRaise(result, default_handler->handle({record_batch}));
 
   REQUIRE( result.size() == 1 );
   checkSize(result[0], 0, 4);
@@ -156,7 +156,7 @@ TEST_CASE( "add new columns with default values to record batch with different s
   auto record_batch = arrow::RecordBatch::Make(schema, 1, {array});
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(default_handler->handle({record_batch}, &result));
+  arrowAssignOrRaise(result, default_handler->handle({record_batch}));
 
   REQUIRE( result.size() == 1 );
   checkSize(result[0], 1, 4);
@@ -223,7 +223,7 @@ TEST_CASE( "join on timestamp and tag column", "[JoinHandler]" ) {
   std::shared_ptr<RecordBatchHandler> handler = std::make_shared<JoinHandler>(std::move(join_on_columns));
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(handler->handle(record_batches, &result));
+  arrowAssignOrRaise(result, handler->handle(record_batches));
 
   REQUIRE( result.size() == 1 );
   checkSize(result[0], 1, 4);
@@ -292,7 +292,7 @@ TEST_CASE( "assign missed values to null", "[JoinHandler]" ) {
   std::shared_ptr<RecordBatchHandler> handler = std::make_shared<JoinHandler>(std::move(join_on_columns));
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(handler->handle(record_batches, &result));
+  arrowAssignOrRaise(result, handler->handle(record_batches));
 
   REQUIRE( result.size() == 1 );
   checkSize(result[0], 3, 4);
@@ -365,7 +365,7 @@ TEST_CASE( "join depending on tolerance", "[JoinHandler]" ) {
   std::shared_ptr<RecordBatchHandler> handler = std::make_shared<JoinHandler>(std::move(join_on_columns), 5);
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(handler->handle(record_batches, &result));
+  arrowAssignOrRaise(result, handler->handle(record_batches));
 
   checkSize(result[0], 1, 4);
   checkColumnsArePresent(result[0], {
@@ -454,7 +454,7 @@ SCENARIO( "groups aggregation", "[AggregateHandler]" ) {
 
     WHEN( "applies aggregation to RecordBatches of the same group" ) {
       arrow::RecordBatchVector record_batches{record_batch_0, record_batch_1};
-      arrowAssertNotOk(handler->handle(record_batches, &result));
+      arrowAssignOrRaise(result, handler->handle(record_batches));
 
       THEN( "aggregation is applied to RecordBatches separately, but put result in the same RecordBatch" ) {
         REQUIRE( result.size() == 1 );
@@ -470,7 +470,7 @@ SCENARIO( "groups aggregation", "[AggregateHandler]" ) {
 
     WHEN( "applies aggregation to RecordBatches of different groups" ) {
       arrow::RecordBatchVector record_batches{record_batch_0, record_batch_2};
-      arrowAssertNotOk(handler->handle(record_batches, &result));
+      arrowAssignOrRaise(result, handler->handle(record_batches));
 
       THEN( "aggregation is applied to RecordBatches separately and put result in different RecordBatches" ) {
         REQUIRE( result.size() == 2 );
@@ -529,7 +529,7 @@ SCENARIO( "aggregating time", "[AggregateHandler]" ) {
 
       WHEN("applies aggregation to RecordBatch") {
         arrow::RecordBatchVector record_batches{record_batch};
-        arrowAssertNotOk(handler->handle(record_batches, &result));
+        arrowAssignOrRaise(result, handler->handle(record_batches));
 
         THEN("it changes time column name and corresponding time column name metadata") {
           REQUIRE(result.size() == 1);
@@ -541,7 +541,7 @@ SCENARIO( "aggregating time", "[AggregateHandler]" ) {
                                                   new_time_column_name,
                                                   0);
           std::string result_time_column_name;
-          arrowAssertNotOk(metadata::getTimeColumnNameMetadata(*result[0], &result_time_column_name));
+          arrowAssignOrRaise(result_time_column_name, metadata::getTimeColumnNameMetadata(*result[0]));
           REQUIRE( result_time_column_name == new_time_column_name );
         }
       }
@@ -589,7 +589,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
       arrowAssertNotOk(builder.getResult(&record_batch));
 
       WHEN("ThresholdStateMachine is applied to the RecordBatch") {
-        arrowAssertNotOk(state_machine->handle(record_batch, &result));
+        arrowAssignOrRaise(result, state_machine->handle(record_batch));
 
         THEN("threshold column is added and state is OK") {
           REQUIRE(result.size() == 1);
@@ -626,7 +626,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
       arrowAssertNotOk(builder.getResult(&record_batch));
 
       WHEN("ThresholdStateMachine is applied to the RecordBatch") {
-        arrowAssertNotOk(state_machine->handle(record_batch, &result));
+        arrowAssignOrRaise(result, state_machine->handle(record_batch));
 
         THEN("threshold column is added and state is Alert") {
           REQUIRE(result.size() == 1);
@@ -661,7 +661,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
             arrowAssertNotOk(builder.getResult(&record_batch));
 
             result.clear();
-            arrowAssertNotOk(state_machine->handle(record_batch, &result));
+            arrowAssignOrRaise(result, state_machine->handle(record_batch));
 
             THEN("increased threshold column is added and state is OK") {
               REQUIRE(result.size() == 1);
@@ -701,7 +701,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
             arrowAssertNotOk(builder.getResult(&record_batch));
 
             result.clear();
-            arrowAssertNotOk(state_machine->handle(record_batch, &result));
+            arrowAssignOrRaise(result, state_machine->handle(record_batch));
 
             THEN("threshold column is added and state is OK") {
               REQUIRE(result.size() == 1);
@@ -743,7 +743,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
       arrowAssertNotOk(builder.getResult(&record_batch));
 
       WHEN("ThresholdStateMachine is applied to the RecordBatch") {
-        arrowAssertNotOk(state_machine->handle(record_batch, &result));
+        arrowAssignOrRaise(result, state_machine->handle(record_batch));
 
         THEN("threshold column is added and state is Decrease") {
           REQUIRE(result.size() == 1);
@@ -781,7 +781,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
             arrowAssertNotOk(builder.getResult(&record_batch));
 
             result.clear();
-            arrowAssertNotOk(state_machine->handle(record_batch, &result));
+            arrowAssignOrRaise(result, state_machine->handle(record_batch));
 
             THEN("decreased threshold column is added and state returns to OK") {
               REQUIRE(result.size() == 1);
@@ -821,7 +821,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
             arrowAssertNotOk(builder.getResult(&record_batch));
 
             result.clear();
-            arrowAssertNotOk(state_machine->handle(record_batch, &result));
+            arrowAssignOrRaise(result, state_machine->handle(record_batch));
 
             THEN("threshold column is added and state returns to OK") {
               REQUIRE(result.size() == 1);
@@ -881,7 +881,7 @@ TEST_CASE( "threshold not increasing over max", "[ThresholdStateMachine]" ) {
   arrowAssertNotOk(builder.getResult(&record_batch));
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(state_machine->handle(record_batch, &result));
+  arrowAssignOrRaise(result, state_machine->handle(record_batch));
 
   REQUIRE( result.size() == 1 );
   checkSize(result[0], 2, 3);
@@ -941,7 +941,7 @@ TEST_CASE( "threshold not decreasing over min", "[ThresholdStateMachine]" ) {
   arrowAssertNotOk(builder.getResult(&record_batch));
 
   arrow::RecordBatchVector result;
-  arrowAssertNotOk(state_machine->handle(record_batch, &result));
+  arrowAssignOrRaise(result, state_machine->handle(record_batch));
 
   REQUIRE( result.size() == 1 );
   checkSize(result[0], 2, 3);

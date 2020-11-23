@@ -13,8 +13,9 @@ namespace convert_utils {
 
 using metadata::RecordBatchGroup;
 
-arrow::Status PointsConverter::convertToRecordBatches(
-    const agent::PointBatch& points, arrow::RecordBatchVector* record_batches,
+arrow::Result<arrow::RecordBatchVector>
+PointsConverter::convertToRecordBatches(
+    const agent::PointBatch& points,
     const PointsToRecordBatchesConversionOptions& options) {
   std::unordered_map<std::string, std::vector<size_t>> groups_indexes;
   for (size_t i = 0; i < points.points_size(); ++i) {
@@ -26,31 +27,32 @@ arrow::Status PointsConverter::convertToRecordBatches(
     }
   }
 
+  arrow::RecordBatchVector record_batches;
   for (auto& [group_string, group_indexes] : groups_indexes) {
-    record_batches->emplace_back();
-    ARROW_RETURN_NOT_OK(convertPointsGroup(points, group_string,
-                                           group_indexes,
-                                           &record_batches->back(), options));
+    record_batches.emplace_back();
+    ARROW_ASSIGN_OR_RAISE(
+        record_batches.back(),
+        convertPointsGroup(points, group_string, group_indexes, options));
   }
 
-  return arrow::Status::OK();
+  return record_batches;
 }
 
-arrow::Status PointsConverter::convertToPoints(
-    const arrow::RecordBatchVector& record_batches,
-    agent::PointBatch* points) {
+arrow::Result<agent::PointBatch> PointsConverter::convertToPoints(
+    const arrow::RecordBatchVector& record_batches) {
   int points_count = 0;
+  agent::PointBatch points;
   for (auto& record_batch : record_batches) {
-    points->mutable_points()->Reserve(points_count +
-                                      record_batch->num_rows());
+    points.mutable_points()->Reserve(points_count + record_batch->num_rows());
 
     std::string time_column_name;
-    ARROW_RETURN_NOT_OK(metadata::getTimeColumnNameMetadata(
-        *record_batch, &time_column_name));
+    ARROW_ASSIGN_OR_RAISE(time_column_name,
+                          metadata::getTimeColumnNameMetadata(*record_batch));
 
     std::string measurement_column_name;
-    ARROW_RETURN_NOT_OK(metadata::getMeasurementColumnNameMetadata(
-        *record_batch, &measurement_column_name));
+    ARROW_ASSIGN_OR_RAISE(
+        measurement_column_name,
+        metadata::getMeasurementColumnNameMetadata(*record_batch));
 
     auto group = metadata::extractGroup(*record_batch);
     auto group_string =
@@ -63,13 +65,11 @@ arrow::Status PointsConverter::convertToPoints(
           metadata::getColumnType(*record_batch->schema()->field(i));
 
       for (int j = 0; j < column->length(); ++j) {
-        auto get_scalar_result = column->GetScalar(j);
-        if (!get_scalar_result.ok()) {
-          return get_scalar_result.status();
-        }
+        std::shared_ptr<arrow::Scalar> scalar_value;
+        ARROW_ASSIGN_OR_RAISE(scalar_value, column->GetScalar(j));
 
         if (i == 0) {
-          auto point = points->mutable_points()->Add();
+          auto point = points.mutable_points()->Add();
           point->set_group(group_string);
           for (auto& grouping_column :
                group.group_columns_names().columns_names()) {
@@ -81,11 +81,8 @@ arrow::Status PointsConverter::convertToPoints(
           }
         }
 
-        auto& point = points->mutable_points()->operator[](points_count + j);
-        auto scalar_value = get_scalar_result.ValueOrDie();
-
+        auto& point = points.mutable_points()->operator[](points_count + j);
         bool skip_column = false;
-
         switch (column_type) {
           case metadata::MEASUREMENT:
             point.set_name(scalar_value->ToString());
@@ -151,7 +148,7 @@ arrow::Status PointsConverter::convertToPoints(
     points_count += record_batch->num_rows();
   }
 
-  return arrow::Status::OK();
+  return points;
 }
 
 template <typename T, typename BuilderType>
@@ -197,10 +194,10 @@ arrow::Status PointsConverter::buildColumnArrays(
 
   return arrow::Status::OK();
 }
-arrow::Status PointsConverter::convertPointsGroup(
+arrow::Result<std::shared_ptr<arrow::RecordBatch>>
+PointsConverter::convertPointsGroup(
     const agent::PointBatch& points, const std::string& group_string,
     const std::vector<size_t>& group_indexes,
-    std::shared_ptr<arrow::RecordBatch>* record_batch,
     const PointsToRecordBatchesConversionOptions& options) {
   auto pool = arrow::default_memory_pool();
   auto timestamp_builder =
@@ -268,7 +265,7 @@ arrow::Status PointsConverter::convertPointsGroup(
                                         &bool_fields_builders,
                                         arrow::boolean(), metadata::FIELD));
 
-  *record_batch = arrow::RecordBatch::Make(
+  auto record_batch = arrow::RecordBatch::Make(
       arrow::schema(schema_fields), group_indexes.size(), column_arrays);
 
   RecordBatchGroup group;
@@ -280,14 +277,14 @@ arrow::Status PointsConverter::convertPointsGroup(
         fmt::format("Error while parsing group string: {}", group_string));
   }
 
-  ARROW_RETURN_NOT_OK(metadata::setGroupMetadata(record_batch, group));
+  ARROW_RETURN_NOT_OK(metadata::setGroupMetadata(&record_batch, group));
 
   ARROW_RETURN_NOT_OK(metadata::setTimeColumnNameMetadata(
-      record_batch, options.time_column_name));
+      &record_batch, options.time_column_name));
   ARROW_RETURN_NOT_OK(metadata::setMeasurementColumnNameMetadata(
-      record_batch, options.measurement_column_name));
+      &record_batch, options.measurement_column_name));
 
-  return arrow::Status::OK();
+  return record_batch;
 }
 
 }  // namespace convert_utils

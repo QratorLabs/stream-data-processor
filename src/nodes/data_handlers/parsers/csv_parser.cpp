@@ -9,9 +9,8 @@ namespace stream_data_processor {
 CSVParser::CSVParser(std::shared_ptr<arrow::Schema> schema)
     : record_batches_schema_(std::move(schema)) {}
 
-arrow::Status CSVParser::parseRecordBatches(
-    const arrow::Buffer& buffer,
-    std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches) {
+arrow::Result<arrow::RecordBatchVector> CSVParser::parseRecordBatches(
+    const arrow::Buffer& buffer) {
   arrow::MemoryPool* pool = arrow::default_memory_pool();
   auto buffer_input = std::make_shared<arrow::io::BufferReader>(buffer);
 
@@ -22,29 +21,27 @@ arrow::Status CSVParser::parseRecordBatches(
   bool read_column_names = record_batches_schema_ == nullptr;
   read_options.autogenerate_column_names = !read_column_names;
 
-  auto batch_reader_result = arrow::csv::StreamingReader::Make(
-      pool, buffer_input, read_options, parse_options, convert_options);
+  std::shared_ptr<arrow::csv::StreamingReader> batch_reader;
+  ARROW_ASSIGN_OR_RAISE(batch_reader, arrow::csv::StreamingReader::Make(
+                                          pool, buffer_input, read_options,
+                                          parse_options, convert_options));
 
-  if (!batch_reader_result.ok()) {
-    return batch_reader_result.status();
-  }
+  arrow::RecordBatchVector record_batches;
+  ARROW_RETURN_NOT_OK(batch_reader->ReadAll(&record_batches));
 
-  ARROW_RETURN_NOT_OK(
-      batch_reader_result.ValueOrDie()->ReadAll(record_batches));
-
-  if (read_column_names && !record_batches->empty()) {
-    record_batches_schema_ = record_batches->front()->schema();
+  if (read_column_names && !record_batches.empty()) {
+    record_batches_schema_ = record_batches.front()->schema();
     ARROW_RETURN_NOT_OK(tryFindTimeColumn());
   }
 
-  for (auto& record_batch : *record_batches) {
+  for (auto& record_batch : record_batches) {
     record_batch = arrow::RecordBatch::Make(record_batches_schema_,
                                             record_batch->num_rows(),
                                             record_batch->columns());
   }
 
   ARROW_RETURN_NOT_OK(buffer_input->Close());
-  return arrow::Status::OK();
+  return record_batches;
 }
 
 arrow::Status CSVParser::tryFindTimeColumn() {

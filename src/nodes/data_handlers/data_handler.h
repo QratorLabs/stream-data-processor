@@ -9,9 +9,8 @@ namespace stream_data_processor {
 
 class DataHandler {
  public:
-  virtual arrow::Status handle(
-      const arrow::Buffer& source,
-      std::vector<std::shared_ptr<arrow::Buffer>>* target) = 0;
+  [[nodiscard]] virtual arrow::Result<arrow::BufferVector> handle(
+      const arrow::Buffer& source) = 0;
 };
 
 }  // namespace stream_data_processor

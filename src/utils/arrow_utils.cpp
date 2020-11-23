@@ -3,26 +3,20 @@
 namespace stream_data_processor {
 namespace arrow_utils {
 
-arrow::Status makeArrayBuilder(arrow::Type::type type,
-                               std::shared_ptr<arrow::ArrayBuilder>* builder,
-                               arrow::MemoryPool* pool) {
+arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> createArrayBuilder(
+    arrow::Type::type type, arrow::MemoryPool* pool) {
   switch (type) {
     case arrow::Type::INT64:
-      *builder = std::make_shared<arrow::Int64Builder>(pool);
-      return arrow::Status::OK();
+      return std::make_shared<arrow::Int64Builder>(pool);
     case arrow::Type::DOUBLE:
-      *builder = std::make_shared<arrow::DoubleBuilder>(pool);
-      return arrow::Status::OK();
+      return std::make_shared<arrow::DoubleBuilder>(pool);
     case arrow::Type::STRING:
-      *builder = std::make_shared<arrow::StringBuilder>(pool);
-      return arrow::Status::OK();
+      return std::make_shared<arrow::StringBuilder>(pool);
     case arrow::Type::BOOL:
-      *builder = std::make_shared<arrow::BooleanBuilder>(pool);
-      return arrow::Status::OK();
+      return std::make_shared<arrow::BooleanBuilder>(pool);
     case arrow::Type::TIMESTAMP:
-      *builder = std::make_shared<arrow::TimestampBuilder>(
+      return std::make_shared<arrow::TimestampBuilder>(
           arrow::timestamp(arrow::TimeUnit::SECOND), pool);
-      return arrow::Status::OK();
     default:
       return arrow::Status::NotImplemented(
           "Step-by-step array building currently supports one of "

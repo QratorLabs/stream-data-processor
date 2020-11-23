@@ -28,11 +28,6 @@ class EvalNode : public Node {
   void stop() override;
 
  private:
-  arrow::Status processData(
-      const arrow::Buffer& data_buffer,
-      std::vector<std::shared_ptr<arrow::Buffer>>* processed_data);
-
- private:
   std::shared_ptr<DataHandler> data_handler_;
 };
 

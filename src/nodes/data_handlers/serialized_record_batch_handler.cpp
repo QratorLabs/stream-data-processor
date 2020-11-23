@@ -10,24 +10,20 @@ SerializedRecordBatchHandler::SerializedRecordBatchHandler(
     std::shared_ptr<RecordBatchHandler> handler_strategy)
     : handler_strategy_(std::move(handler_strategy)) {}
 
-arrow::Status SerializedRecordBatchHandler::handle(
-    const arrow::Buffer& source,
-    std::vector<std::shared_ptr<arrow::Buffer>>* target) {
+arrow::Result<arrow::BufferVector> SerializedRecordBatchHandler::handle(
+    const arrow::Buffer& source) {
   std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
 
-  ARROW_RETURN_NOT_OK(
-      serialize_utils::deserializeRecordBatches(source, &record_batches));
+  ARROW_ASSIGN_OR_RAISE(record_batches,
+                        serialize_utils::deserializeRecordBatches(source));
 
   if (record_batches.empty()) {
     return arrow::Status::OK();
   }
 
   arrow::RecordBatchVector result;
-  ARROW_RETURN_NOT_OK(handler_strategy_->handle(record_batches, &result));
-
-  ARROW_RETURN_NOT_OK(
-      serialize_utils::serializeRecordBatches(result, target));
-  return arrow::Status::OK();
+  ARROW_ASSIGN_OR_RAISE(result, handler_strategy_->handle(record_batches));
+  return serialize_utils::serializeRecordBatches(result);
 }
 
 }  // namespace stream_data_processor

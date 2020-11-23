@@ -8,10 +8,8 @@ class CSVParser : public Parser {
  public:
   explicit CSVParser(std::shared_ptr<arrow::Schema> schema = nullptr);
 
-  arrow::Status parseRecordBatches(
-      const arrow::Buffer& buffer,
-      std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches)
-      override;
+  [[nodiscard]] arrow::Result<arrow::RecordBatchVector> parseRecordBatches(
+      const arrow::Buffer& buffer) override;
 
  private:
   arrow::Status tryFindTimeColumn();

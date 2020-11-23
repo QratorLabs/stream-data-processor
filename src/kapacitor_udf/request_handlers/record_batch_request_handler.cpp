@@ -3,8 +3,6 @@
 #include "kapacitor_udf/utils/grouping_utils.h"
 #include "record_batch_request_handler.h"
 
-#include "utils/convert_utils.h"
-
 namespace stream_data_processor {
 namespace kapacitor_udf {
 
@@ -28,39 +26,34 @@ void RecordBatchRequestHandler::handleBatch() {
     return;
   }
 
-  arrow::RecordBatchVector record_batches;
-  auto convert_result = PointsConverter::convertToRecordBatches(
-      batch_points_, &record_batches, to_record_batches_options_);
+  auto record_batches = PointsConverter::convertToRecordBatches(
+      batch_points_, to_record_batches_options_);
 
   batch_points_.mutable_points()->Clear();
 
-  if (!convert_result.ok()) {
-    response.mutable_error()->set_error(convert_result.message());
+  if (!record_batches.ok()) {
+    response.mutable_error()->set_error(record_batches.status().message());
     agent_.lock()->writeResponse(response);
     return;
   }
 
-  arrow::RecordBatchVector result;
-  auto handle_result = handler_->handle(record_batches, &result);
-  if (!handle_result.ok()) {
-    response.mutable_error()->set_error(handle_result.message());
+  auto result = handler_->handle(record_batches.ValueOrDie());
+  if (!result.ok()) {
+    response.mutable_error()->set_error(result.status().message());
     agent_.lock()->writeResponse(response);
     return;
   }
 
-  record_batches = std::move(result);
+  auto response_points =
+      PointsConverter::convertToPoints(result.ValueOrDie());
 
-  agent::PointBatch response_points;
-  convert_result =
-      PointsConverter::convertToPoints(record_batches, &response_points);
-
-  if (!convert_result.ok()) {
-    response.mutable_error()->set_error(convert_result.message());
+  if (!response_points.ok()) {
+    response.mutable_error()->set_error(response_points.status().message());
     agent_.lock()->writeResponse(response);
     return;
   }
 
-  for (auto& point : response_points.points()) {
+  for (auto& point : response_points.ValueOrDie().points()) {
     response.mutable_point()->CopyFrom(point);
     agent_.lock()->writeResponse(response);
   }

@@ -29,10 +29,8 @@ class GraphiteParser : public Parser {
 
   explicit GraphiteParser(const GraphiteParserOptions& parser_options);
 
-  arrow::Status parseRecordBatches(
-      const arrow::Buffer& buffer,
-      std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches)
-      override;
+  [[nodiscard]] arrow::Result<arrow::RecordBatchVector> parseRecordBatches(
+      const arrow::Buffer& buffer) override;
 
  private:
   void parseMetricStrings(const std::vector<std::string>& metric_strings);

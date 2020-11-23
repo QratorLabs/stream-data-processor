@@ -14,10 +14,10 @@
 namespace stream_data_processor {
 
 const std::unordered_map<AggregateHandler::AggregateFunctionEnumType,
-                         std::unique_ptr<AggregateFunction> >
+                         std::unique_ptr<AggregateFunction>>
     AggregateHandler::TYPES_TO_FUNCTIONS = []() {
       std::unordered_map<AggregateHandler::AggregateFunctionEnumType,
-                         std::unique_ptr<AggregateFunction> >
+                         std::unique_ptr<AggregateFunction>>
           init_map;
 
       init_map[kFirst] = std::make_unique<FirstAggregateFunction>();
@@ -36,28 +36,25 @@ AggregateHandler::AggregateHandler(
     AggregateHandler::AggregateOptions&& options)
     : options_(std::move(options)) {}
 
-arrow::Status AggregateHandler::handle(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch,
-    arrow::RecordBatchVector* result) {
+arrow::Result<arrow::RecordBatchVector> AggregateHandler::handle(
+    const std::shared_ptr<arrow::RecordBatch>& record_batch) {
   if (record_batch->num_rows() == 0) {
     return arrow::Status::OK();
   }
 
   arrow::RecordBatchVector result_vector;
-  ARROW_RETURN_NOT_OK(handle({record_batch}, &result_vector));
+  ARROW_ASSIGN_OR_RAISE(result_vector, handle({record_batch}));
   if (result_vector.size() != 1) {
     return arrow::Status::ExecutionError(
         "Aggregation of one record batch "
         "should contain only one record");
   }
 
-  result->push_back(result_vector.front());
-  return arrow::Status::OK();
+  return result_vector;
 }
 
-arrow::Status AggregateHandler::handle(
-    const arrow::RecordBatchVector& record_batches,
-    arrow::RecordBatchVector* result) {
+arrow::Result<arrow::RecordBatchVector> AggregateHandler::handle(
+    const arrow::RecordBatchVector& record_batches) {
   if (record_batches.empty()) {
     return arrow::Status::OK();
   }
@@ -66,6 +63,7 @@ arrow::Status AggregateHandler::handle(
 
   auto grouped = splitByGroups(record_batches);
 
+  arrow::RecordBatchVector result;
   for ([[maybe_unused]] auto& [_, record_batches_group] : grouped) {
     if (record_batches_group.empty()) {
       return arrow::Status::ExecutionError(
@@ -81,24 +79,30 @@ arrow::Status AggregateHandler::handle(
 
     bool explicitly_add_measurement_field = true;
     bool has_measurement = false;
+
     std::string measurement_column_name;
-    if (!metadata::getMeasurementColumnNameMetadata(*record_batches.front(),
-                                                    &measurement_column_name)
-             .ok()) {
+    auto measurement_column_name_result =
+        metadata::getMeasurementColumnNameMetadata(*record_batches.front());
+
+    if (!measurement_column_name_result.ok()) {
       explicitly_add_measurement_field = false;
     } else {
       has_measurement = true;
+      measurement_column_name =
+          std::move(measurement_column_name_result).ValueOrDie();
       for (auto& grouping_column : grouping_columns) {
         if (grouping_column == measurement_column_name) {
           explicitly_add_measurement_field = false;
+          break;
         }
       }
     }
 
-    std::shared_ptr<arrow::Schema> result_schema = nullptr;
-    ARROW_RETURN_NOT_OK(fillResultSchema(
-        record_batches, grouping_columns, &result_schema,
-        explicitly_add_measurement_field, measurement_column_name));
+    std::shared_ptr<arrow::Schema> result_schema;
+    ARROW_ASSIGN_OR_RAISE(result_schema,
+                          createResultSchema(record_batches, grouping_columns,
+                                             explicitly_add_measurement_field,
+                                             measurement_column_name));
 
     ARROW_RETURN_NOT_OK(
         aggregateTimeColumn(record_batches_group, &result_arrays, pool));
@@ -120,29 +124,28 @@ arrow::Status AggregateHandler::handle(
       }
     }
 
-    result->push_back(arrow::RecordBatch::Make(
+    result.push_back(arrow::RecordBatch::Make(
         result_schema, record_batches_group.size(), result_arrays));
 
     ARROW_RETURN_NOT_OK(
-        metadata::fillGroupMetadata(&result->back(), grouping_columns));
+        metadata::fillGroupMetadata(&result.back(), grouping_columns));
 
     ARROW_RETURN_NOT_OK(metadata::setTimeColumnNameMetadata(
-        &result->back(),
-        options_.result_time_column_rule.result_column_name));
+        &result.back(), options_.result_time_column_rule.result_column_name));
 
     if (has_measurement) {
       ARROW_RETURN_NOT_OK(metadata::setMeasurementColumnNameMetadata(
-          &result->back(), measurement_column_name));
+          &result.back(), measurement_column_name));
     }
   }
 
-  return arrow::Status::OK();
+  return result;
 }
 
-arrow::Status AggregateHandler::fillResultSchema(
+arrow::Result<std::shared_ptr<arrow::Schema>>
+AggregateHandler::createResultSchema(
     const arrow::RecordBatchVector& record_batches,
     const std::vector<std::string>& grouping_columns,
-    std::shared_ptr<arrow::Schema>* result_schema,
     bool explicitly_add_measurement,
     const std::string& measurement_column_name) const {
   arrow::FieldVector result_fields;
@@ -191,9 +194,7 @@ arrow::Status AggregateHandler::fillResultSchema(
     }
   }
 
-  *result_schema = arrow::schema(result_fields);
-
-  return arrow::Status::OK();
+  return arrow::schema(result_fields);
 }
 
 arrow::Status AggregateHandler::aggregate(
@@ -213,14 +214,15 @@ arrow::Status AggregateHandler::aggregate(
   }
 
   std::shared_ptr<arrow::ArrayBuilder> builder;
-  ARROW_RETURN_NOT_OK(arrow_utils::makeArrayBuilder(
-      aggregate_column_field->type()->id(), &builder, pool));
+  ARROW_ASSIGN_OR_RAISE(builder,
+                        arrow_utils::createArrayBuilder(
+                            aggregate_column_field->type()->id(), pool));
 
   for (auto& group : groups) {
     std::shared_ptr<arrow::Scalar> aggregated_value;
-    ARROW_RETURN_NOT_OK(
-        TYPES_TO_FUNCTIONS.at(aggregate_function)
-            ->aggregate(*group, aggregate_column_name, &aggregated_value));
+    ARROW_ASSIGN_OR_RAISE(aggregated_value,
+                          TYPES_TO_FUNCTIONS.at(aggregate_function)
+                              ->aggregate(*group, aggregate_column_name));
 
     ARROW_RETURN_NOT_OK(arrow_utils::appendToBuilder(
         aggregated_value, &builder, aggregate_column_field->type()->id()));
@@ -235,8 +237,8 @@ arrow::Status AggregateHandler::aggregateTimeColumn(
     const arrow::RecordBatchVector& record_batch_vector,
     arrow::ArrayVector* result_arrays, arrow::MemoryPool* pool) const {
   std::string time_column_name;
-  ARROW_RETURN_NOT_OK(metadata::getTimeColumnNameMetadata(
-      *record_batch_vector.front(), &time_column_name));
+  ARROW_ASSIGN_OR_RAISE(time_column_name, metadata::getTimeColumnNameMetadata(
+                                              *record_batch_vector.front()));
 
   auto ts_column_type =
       record_batch_vector.front()->GetColumnByName(time_column_name)->type();
@@ -246,20 +248,14 @@ arrow::Status AggregateHandler::aggregateTimeColumn(
   for (auto& group : record_batch_vector) {
     std::shared_ptr<arrow::Scalar> ts;
 
-    ARROW_RETURN_NOT_OK(
-        TYPES_TO_FUNCTIONS
-            .at(options_.result_time_column_rule.aggregate_function)
-            ->aggregate(*group, time_column_name, &ts));
+    ARROW_ASSIGN_OR_RAISE(
+        ts, TYPES_TO_FUNCTIONS
+                .at(options_.result_time_column_rule.aggregate_function)
+                ->aggregate(*group, time_column_name));
 
-    auto ts_cast_result = ts->CastTo(ts_column_type);
-    if (!ts_cast_result.ok()) {
-      return ts_cast_result.status();
-    }
-
-    ARROW_RETURN_NOT_OK(
-        ts_builder.Append(std::static_pointer_cast<arrow::TimestampScalar>(
-                              ts_cast_result.ValueOrDie())
-                              ->value));
+    ARROW_ASSIGN_OR_RAISE(ts, ts->CastTo(ts_column_type));
+    ARROW_RETURN_NOT_OK(ts_builder.Append(
+        std::static_pointer_cast<arrow::TimestampScalar>(ts)->value));
   }
 
   result_arrays->push_back(std::shared_ptr<arrow::TimestampArray>());
@@ -281,12 +277,9 @@ arrow::Status AggregateHandler::fillGroupingColumns(
   for (auto& column_name : grouped.front()->schema()->field_names()) {
     if (grouping_columns_set.find(column_name) ==
         grouping_columns_set.end()) {
-      auto cropped_result = cropped_record_batch->RemoveColumn(i);
-      if (!cropped_result.ok()) {
-        return cropped_result.status();
-      }
+      ARROW_ASSIGN_OR_RAISE(cropped_record_batch,
+                            cropped_record_batch->RemoveColumn(i));
 
-      cropped_record_batch = cropped_result.ValueOrDie();
       --i;
     }
 
@@ -302,8 +295,9 @@ arrow::Status AggregateHandler::fillGroupingColumns(
   }
 
   std::shared_ptr<arrow::RecordBatch> unique_record_batch;
-  ARROW_RETURN_NOT_OK(convert_utils::concatenateRecordBatches(
-      cropped_groups, &unique_record_batch));
+  ARROW_ASSIGN_OR_RAISE(
+      unique_record_batch,
+      convert_utils::concatenateRecordBatches(cropped_groups));
 
   for (auto& grouping_column : grouping_columns) {
     result_arrays->push_back(
@@ -335,8 +329,9 @@ arrow::Status AggregateHandler::isValid(
 
   for (auto& record_batch : record_batches) {
     if (time_column_name.empty()) {
-      ARROW_RETURN_NOT_OK(metadata::getTimeColumnNameMetadata(
-          *record_batch, &time_column_name));
+      ARROW_ASSIGN_OR_RAISE(
+          time_column_name,
+          metadata::getTimeColumnNameMetadata(*record_batch));
     }
 
     auto time_column = record_batch->GetColumnByName(time_column_name);
@@ -370,11 +365,12 @@ arrow::Status AggregateHandler::fillMeasurementColumn(
           "Measurement column {} is not present", measurement_column_name));
     }
 
-    auto measurement_value_result = measurement_column->GetScalar(0);
-    ARROW_RETURN_NOT_OK(measurement_value_result.status());
+    std::shared_ptr<arrow::Scalar> measurement_value;
+    ARROW_ASSIGN_OR_RAISE(measurement_value,
+                          measurement_column->GetScalar(0));
 
-    ARROW_RETURN_NOT_OK(measurement_column_builder.Append(
-        measurement_value_result.ValueOrDie()->ToString()));
+    ARROW_RETURN_NOT_OK(
+        measurement_column_builder.Append(measurement_value->ToString()));
   }
 
   result_arrays->emplace_back();

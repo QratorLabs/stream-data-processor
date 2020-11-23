@@ -22,9 +22,8 @@ class MapHandler : public RecordBatchHandler {
 
   explicit MapHandler(const std::vector<MapCase>& map_cases);
 
-  arrow::Status handle(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch,
-      arrow::RecordBatchVector* result) override;
+  arrow::Result<arrow::RecordBatchVector> handle(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch) override;
 
  private:
   static arrow::Status eval(
@@ -32,13 +31,8 @@ class MapHandler : public RecordBatchHandler {
       const std::shared_ptr<gandiva::Projector>& projector,
       const std::shared_ptr<arrow::Schema>& result_schema);
 
-  arrow::Status prepareProjector(
-      const std::shared_ptr<arrow::Schema>& input_schema,
-      std::shared_ptr<gandiva::Projector>* projector) const;
-
-  arrow::Status prepareResultSchema(
-      const std::shared_ptr<arrow::Schema>& input_schema,
-      std::shared_ptr<arrow::Schema>* result_schema) const;
+  arrow::Result<std::shared_ptr<arrow::Schema>> createResultSchema(
+      const std::shared_ptr<arrow::Schema>& input_schema) const;
 
  private:
   gandiva::ExpressionVector expressions_;

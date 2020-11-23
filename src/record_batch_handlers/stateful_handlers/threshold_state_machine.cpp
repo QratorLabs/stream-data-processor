@@ -10,9 +10,9 @@ namespace stream_data_processor {
 
 namespace internal {
 
-arrow::Status ThresholdState::getColumnValueAtRow(
+arrow::Result<double> ThresholdState::getColumnValueAtRow(
     const arrow::RecordBatch& record_batch, const std::string& column_name,
-    int row_id, double* value) {
+    int row_id) {
   auto column = record_batch.GetColumnByName(column_name);
   if (column == nullptr) {
     return arrow::Status::KeyError(
@@ -27,39 +27,27 @@ arrow::Status ThresholdState::getColumnValueAtRow(
         column->type()->ToString()));
   }
 
-  auto value_result = column->GetScalar(row_id);
-  ARROW_RETURN_NOT_OK(value_result.status());
-  auto cast_result = value_result.ValueOrDie()->CastTo(arrow::float64());
-  ARROW_RETURN_NOT_OK(cast_result.status());
-
-  *value =
-      std::static_pointer_cast<arrow::DoubleScalar>(cast_result.ValueOrDie())
-          ->value;
-
-  return arrow::Status::OK();
+  std::shared_ptr<arrow::Scalar> value;
+  ARROW_ASSIGN_OR_RAISE(value, column->GetScalar(row_id));
+  ARROW_ASSIGN_OR_RAISE(value, value->CastTo(arrow::float64()));
+  return std::static_pointer_cast<arrow::DoubleScalar>(value)->value;
 }
 
-arrow::Status ThresholdState::getTimeAtRow(
-    const arrow::RecordBatch& record_batch, int row_id, std::time_t* time) {
+arrow::Result<std::time_t> ThresholdState::getTimeAtRow(
+    const arrow::RecordBatch& record_batch, int row_id) {
   std::string time_column_name;
-  ARROW_RETURN_NOT_OK(
-      metadata::getTimeColumnNameMetadata(record_batch, &time_column_name));
+  ARROW_ASSIGN_OR_RAISE(time_column_name,
+                        metadata::getTimeColumnNameMetadata(record_batch));
 
-  auto time_result =
-      record_batch.GetColumnByName(time_column_name)->GetScalar(row_id);
+  std::shared_ptr<arrow::Scalar> time_scalar;
+  ARROW_ASSIGN_OR_RAISE(
+      time_scalar,
+      record_batch.GetColumnByName(time_column_name)->GetScalar(row_id));
+  ARROW_ASSIGN_OR_RAISE(
+      time_scalar,
+      time_scalar->CastTo(arrow::timestamp(arrow::TimeUnit::SECOND)));
 
-  ARROW_RETURN_NOT_OK(time_result.status());
-
-  auto cast_result = time_result.ValueOrDie()->CastTo(
-      arrow::timestamp(arrow::TimeUnit::SECOND));
-
-  ARROW_RETURN_NOT_OK(cast_result.status());
-
-  *time =
-      std::static_pointer_cast<arrow::Int64Scalar>(cast_result.ValueOrDie())
-          ->value;
-
-  return arrow::Status::OK();
+  return std::static_pointer_cast<arrow::Int64Scalar>(time_scalar)->value;
 }
 
 StateOK::StateOK(const std::shared_ptr<ThresholdStateMachine>& state_machine,
@@ -77,8 +65,9 @@ arrow::Status StateOK::addThresholdForRow(
   double value;
   auto& options = state_machine_.lock()->getOptions();
 
-  ARROW_RETURN_NOT_OK(getColumnValueAtRow(
-      record_batch, options.watch_column_name, row_id, &value));
+  ARROW_ASSIGN_OR_RAISE(
+      value,
+      getColumnValueAtRow(record_batch, options.watch_column_name, row_id));
 
   ARROW_RETURN_NOT_OK(threshold_column_builder->Append(current_threshold_));
 
@@ -89,7 +78,7 @@ arrow::Status StateOK::addThresholdForRow(
 
   auto self = state_machine_.lock()->getState();
   std::time_t alert_start;
-  ARROW_RETURN_NOT_OK(getTimeAtRow(record_batch, row_id, &alert_start));
+  ARROW_ASSIGN_OR_RAISE(alert_start, getTimeAtRow(record_batch, row_id));
 
   if (value > current_threshold_) {
     state_machine_.lock()->changeState(std::make_shared<StateIncrease>(
@@ -128,11 +117,12 @@ arrow::Status StateIncrease::addThresholdForRow(
   double value;
   auto& options = state_machine_.lock()->getOptions();
 
-  ARROW_RETURN_NOT_OK(getColumnValueAtRow(
-      record_batch, options.watch_column_name, row_id, &value));
+  ARROW_ASSIGN_OR_RAISE(
+      value,
+      getColumnValueAtRow(record_batch, options.watch_column_name, row_id));
 
   std::time_t row_time;
-  ARROW_RETURN_NOT_OK(getTimeAtRow(record_batch, row_id, &row_time));
+  ARROW_ASSIGN_OR_RAISE(row_time, getTimeAtRow(record_batch, row_id));
 
   if (value > current_threshold_ && row_time > alert_start_ &&
       row_time - alert_start_ > options.increase_after.count()) {
@@ -188,11 +178,12 @@ arrow::Status StateDecrease::addThresholdForRow(
   double value;
   auto& options = state_machine_.lock()->getOptions();
 
-  ARROW_RETURN_NOT_OK(getColumnValueAtRow(
-      record_batch, options.watch_column_name, row_id, &value));
+  ARROW_ASSIGN_OR_RAISE(
+      value,
+      getColumnValueAtRow(record_batch, options.watch_column_name, row_id));
 
   std::time_t row_time;
-  ARROW_RETURN_NOT_OK(getTimeAtRow(record_batch, row_id, &row_time));
+  ARROW_ASSIGN_OR_RAISE(row_time, getTimeAtRow(record_batch, row_id));
 
   if (value <= current_threshold_ * options.decrease_trigger_factor &&
       row_time > decrease_start_ &&
@@ -240,9 +231,8 @@ arrow::Status StateDecrease::addThresholdForRow(
 
 }  // namespace internal
 
-arrow::Status ThresholdStateMachine::handle(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch,
-    arrow::RecordBatchVector* result) {
+arrow::Result<arrow::RecordBatchVector> ThresholdStateMachine::handle(
+    const std::shared_ptr<arrow::RecordBatch>& record_batch) {
   if (state_ == nullptr) {
     return arrow::Status::Invalid("Threshold state is not set");
   }
@@ -256,20 +246,19 @@ arrow::Status ThresholdStateMachine::handle(
   std::shared_ptr<arrow::Array> threshold_array;
   ARROW_RETURN_NOT_OK(threshold_builder.Finish(&threshold_array));
 
-  result->push_back(record_batch);
-  auto add_column_result = result->back()->AddColumn(
-      record_batch->num_columns(),
-      arrow::field(options_.threshold_column_name, arrow::float64()),
-      threshold_array);
-
-  ARROW_RETURN_NOT_OK(add_column_result.status());
-  result->back() = add_column_result.ValueOrDie();
+  std::shared_ptr<arrow::RecordBatch> result_record_batch;
+  ARROW_ASSIGN_OR_RAISE(
+      result_record_batch,
+      record_batch->AddColumn(
+          record_batch->num_columns(),
+          arrow::field(options_.threshold_column_name, arrow::float64()),
+          threshold_array));
 
   ARROW_RETURN_NOT_OK(metadata::setColumnTypeMetadata(
-      &result->back(), options_.threshold_column_name,
+      &result_record_batch, options_.threshold_column_name,
       options_.threshold_column_type));
 
-  return arrow::Status::OK();
+  return arrow::RecordBatchVector{result_record_batch};
 }
 
 void ThresholdStateMachine::changeState(

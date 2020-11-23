@@ -59,9 +59,11 @@ void TCPConsumer::sendData(const std::shared_ptr<arrow::Buffer>& data) {
   if (is_external_) {
     wrapped_buffer = data;
   } else {
-    auto wrapping_status = TransportUtils::wrapMessage(data, &wrapped_buffer);
-    if (!wrapping_status.ok()) {
-      throw std::runtime_error(wrapping_status.message());
+    auto wrapping_result = TransportUtils::wrapMessage(data);
+    if (!wrapping_result.ok()) {
+      throw std::runtime_error(wrapping_result.status().message());
+    } else {
+      wrapped_buffer = std::move(wrapping_result).ValueOrDie();
     }
   }
 

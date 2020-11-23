@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <string>
@@ -11,13 +12,32 @@
 namespace stream_data_processor {
 namespace convert_utils {
 
-arrow::Status convertTableToRecordBatch(
-    const std::shared_ptr<arrow::Table>& table,
-    std::shared_ptr<arrow::RecordBatch>* record_batch);
+arrow::Result<std::shared_ptr<arrow::RecordBatch>> convertTableToRecordBatch(
+    const arrow::Table& table);
 
-arrow::Status concatenateRecordBatches(
-    const std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches,
-    std::shared_ptr<arrow::RecordBatch>* target);
+arrow::Result<std::shared_ptr<arrow::RecordBatch>> concatenateRecordBatches(
+    const std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches);
+
+template <typename ElementType>
+inline void append(std::vector<ElementType>& from,
+                   std::vector<ElementType>& to) {
+  if (to.empty()) {
+    to = from;
+  } else {
+    to.insert(to.end(), from.begin(), from.end());
+  }
+}
+
+template <typename ElementType>
+inline void append(std::vector<ElementType>&& from,
+                   std::vector<ElementType>& to) {
+  if (to.empty()) {
+    to = std::move(from);
+  } else {
+    to.insert(to.end(), std::make_move_iterator(from.begin()),
+              std::make_move_iterator(from.end()));
+  }
+}
 
 }  // namespace convert_utils
 }  // namespace stream_data_processor

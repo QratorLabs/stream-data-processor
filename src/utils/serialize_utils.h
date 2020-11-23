@@ -11,13 +11,11 @@
 namespace stream_data_processor {
 namespace serialize_utils {
 
-arrow::Status serializeRecordBatches(
-    const std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches,
-    std::vector<std::shared_ptr<arrow::Buffer>>* target);
+arrow::Result<arrow::BufferVector> serializeRecordBatches(
+    const std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches);
 
-arrow::Status deserializeRecordBatches(
-    const arrow::Buffer& buffer,
-    std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches);
+arrow::Result<arrow::RecordBatchVector> deserializeRecordBatches(
+    const arrow::Buffer& buffer);
 
 }  // namespace serialize_utils
 }  // namespace stream_data_processor

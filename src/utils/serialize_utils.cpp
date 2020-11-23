@@ -3,46 +3,42 @@
 namespace stream_data_processor {
 namespace serialize_utils {
 
-arrow::Status serializeRecordBatches(
-    const std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches,
-    std::vector<std::shared_ptr<arrow::Buffer>>* target) {
+arrow::Result<arrow::BufferVector> serializeRecordBatches(
+    const std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches) {
+  arrow::BufferVector result;
+
   for (auto& record_batch : record_batches) {
-    auto output_stream_result = arrow::io::BufferOutputStream::Create();
-    ARROW_RETURN_NOT_OK(output_stream_result.status());
+    std::shared_ptr<arrow::io::BufferOutputStream> output_stream;
+    ARROW_ASSIGN_OR_RAISE(output_stream,
+                          arrow::io::BufferOutputStream::Create());
 
-    auto stream_writer_result = arrow::ipc::MakeStreamWriter(
-        output_stream_result.ValueOrDie().get(), record_batch->schema());
+    std::shared_ptr<arrow::ipc::RecordBatchWriter> stream_writer;
+    ARROW_ASSIGN_OR_RAISE(
+        stream_writer, arrow::ipc::MakeStreamWriter(output_stream.get(),
+                                                    record_batch->schema()));
 
-    ARROW_RETURN_NOT_OK(stream_writer_result.status());
-
-    ARROW_RETURN_NOT_OK(
-        stream_writer_result.ValueOrDie()->WriteRecordBatch(*record_batch));
-
-    auto buffer_result = output_stream_result.ValueOrDie()->Finish();
-    ARROW_RETURN_NOT_OK(buffer_result.status());
-
-    target->push_back(buffer_result.ValueOrDie());
-    ARROW_RETURN_NOT_OK(output_stream_result.ValueOrDie()->Close());
+    ARROW_RETURN_NOT_OK(stream_writer->WriteRecordBatch(*record_batch));
+    std::shared_ptr<arrow::Buffer> buffer;
+    ARROW_ASSIGN_OR_RAISE(buffer, output_stream->Finish());
+    result.push_back(buffer);
+    ARROW_RETURN_NOT_OK(output_stream->Close());
   }
 
-  return arrow::Status::OK();
+  return result;
 }
 
-arrow::Status deserializeRecordBatches(
-    const arrow::Buffer& buffer,
-    std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches) {
+arrow::Result<arrow::RecordBatchVector> deserializeRecordBatches(
+    const arrow::Buffer& buffer) {
   auto buffer_input = std::make_shared<arrow::io::BufferReader>(buffer);
 
-  auto batch_reader_result =
-      arrow::ipc::RecordBatchStreamReader::Open(buffer_input);
+  std::shared_ptr<arrow::ipc::RecordBatchStreamReader> batch_reader;
+  ARROW_ASSIGN_OR_RAISE(
+      batch_reader, arrow::ipc::RecordBatchStreamReader::Open(buffer_input));
 
-  ARROW_RETURN_NOT_OK(batch_reader_result.status());
-
-  ARROW_RETURN_NOT_OK(
-      batch_reader_result.ValueOrDie()->ReadAll(record_batches));
-
+  arrow::RecordBatchVector record_batches;
+  ARROW_RETURN_NOT_OK(batch_reader->ReadAll(&record_batches));
   ARROW_RETURN_NOT_OK(buffer_input->Close());
-  return arrow::Status::OK();
+  return record_batches;
 }
 
 }  // namespace serialize_utils

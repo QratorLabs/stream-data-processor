@@ -6,22 +6,25 @@
 #include <arrow/api.h>
 
 #include "metadata/column_typing.h"
+#include "utils/convert_utils.h"
 
 namespace stream_data_processor {
 
 class RecordBatchHandler {
  public:
-  virtual arrow::Status handle(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch,
-      arrow::RecordBatchVector* result) = 0;
+  virtual arrow::Result<arrow::RecordBatchVector> handle(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch) = 0;
 
-  virtual arrow::Status handle(const arrow::RecordBatchVector& record_batches,
-                               arrow::RecordBatchVector* result) {
+  virtual arrow::Result<arrow::RecordBatchVector> handle(
+      const arrow::RecordBatchVector& record_batches) {
+    arrow::RecordBatchVector result;
     for (auto& record_batch : record_batches) {
-      ARROW_RETURN_NOT_OK(handle(record_batch, result));
+      arrow::RecordBatchVector batch_result;
+      ARROW_ASSIGN_OR_RAISE(batch_result, handle(record_batch));
+      convert_utils::append(std::move(batch_result), result);
     }
 
-    return arrow::Status::OK();
+    return result;
   }
 
  protected:

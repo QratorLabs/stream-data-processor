@@ -13,17 +13,18 @@ const size_t TransportUtils::MESSAGE_SIZE_STRING_LENGTH{10};
 const std::string TransportUtils::CONNECT_MESSAGE{"connect"};
 const std::string TransportUtils::END_MESSAGE{"end"};
 
-arrow::Status TransportUtils::wrapMessage(
+arrow::Result<std::shared_ptr<arrow::Buffer>> TransportUtils::wrapMessage(
     const std::shared_ptr<arrow::Buffer>&
-        buffer,  // TODO: Use ResizableBuffer
-    std::shared_ptr<arrow::Buffer>* terminated_buffer) {
+        buffer) {  // TODO: Use ResizableBuffer
   arrow::BufferBuilder builder;
   auto message_size_string = getSizeString(buffer->size());
   ARROW_RETURN_NOT_OK(builder.Append(message_size_string.c_str(),
                                      message_size_string.size()));
   ARROW_RETURN_NOT_OK(builder.Append(buffer->data(), buffer->size()));
-  ARROW_RETURN_NOT_OK(builder.Finish(terminated_buffer));
-  return arrow::Status::OK();
+
+  std::shared_ptr<arrow::Buffer> terminated_buffer;
+  ARROW_RETURN_NOT_OK(builder.Finish(&terminated_buffer));
+  return terminated_buffer;
 }
 
 std::vector<std::pair<const char*, size_t>> TransportUtils::splitMessage(

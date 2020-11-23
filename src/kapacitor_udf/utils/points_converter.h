@@ -22,21 +22,19 @@ class PointsConverter {
   };
 
  public:
-  static arrow::Status convertToRecordBatches(
+  static arrow::Result<arrow::RecordBatchVector> convertToRecordBatches(
       const agent::PointBatch& points,
-      arrow::RecordBatchVector* record_batches,
       const PointsToRecordBatchesConversionOptions& options);
 
-  static arrow::Status convertToPoints(
-      const arrow::RecordBatchVector& record_batches,
-      agent::PointBatch* points);
+  static arrow::Result<agent::PointBatch> convertToPoints(
+      const arrow::RecordBatchVector& record_batches);
 
  private:
-  static arrow::Status convertPointsGroup(
-      const agent::PointBatch& points, const std::string& group_string,
-      const std::vector<size_t>& group_indexes,
-      std::shared_ptr<arrow::RecordBatch>* record_batch,
-      const PointsToRecordBatchesConversionOptions& options);
+  static arrow::Result<std::shared_ptr<arrow::RecordBatch>>
+  convertPointsGroup(const agent::PointBatch& points,
+                     const std::string& group_string,
+                     const std::vector<size_t>& group_indexes,
+                     const PointsToRecordBatchesConversionOptions& options);
 
   template <typename T, typename BuilderType>
   static void addBuilders(

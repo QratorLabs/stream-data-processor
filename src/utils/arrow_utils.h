@@ -7,8 +7,8 @@
 namespace stream_data_processor {
 namespace arrow_utils {
 
-arrow::Status makeArrayBuilder(
-    arrow::Type::type type, std::shared_ptr<arrow::ArrayBuilder>* builder,
+arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> createArrayBuilder(
+    arrow::Type::type type,
     arrow::MemoryPool* pool = arrow::default_memory_pool());
 
 arrow::Status appendToBuilder(const std::shared_ptr<arrow::Scalar>& value,

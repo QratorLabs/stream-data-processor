@@ -13,18 +13,15 @@ namespace stream_data_processor {
 DataParser::DataParser(std::shared_ptr<Parser> parser)
     : parser_(std::move(parser)) {}
 
-arrow::Status DataParser::handle(
-    const arrow::Buffer& source,
-    std::vector<std::shared_ptr<arrow::Buffer>>* target) {
+arrow::Result<arrow::BufferVector> DataParser::handle(
+    const arrow::Buffer& source) {
   std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
-  ARROW_RETURN_NOT_OK(parser_->parseRecordBatches(source, &record_batches));
+  ARROW_ASSIGN_OR_RAISE(record_batches, parser_->parseRecordBatches(source));
   if (record_batches.empty()) {
     return arrow::Status::OK();
   }
 
-  ARROW_RETURN_NOT_OK(
-      serialize_utils::serializeRecordBatches(record_batches, target));
-  return arrow::Status::OK();
+  return serialize_utils::serializeRecordBatches(record_batches);
 }
 
 }  // namespace stream_data_processor

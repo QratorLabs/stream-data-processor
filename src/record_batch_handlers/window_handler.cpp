@@ -3,26 +3,22 @@
 
 namespace stream_data_processor {
 
-arrow::Status WindowHandler::handle(
-    const arrow::RecordBatchVector& record_batches,
-    arrow::RecordBatchVector* result) {
+arrow::Result<arrow::RecordBatchVector> WindowHandler::handle(
+    const arrow::RecordBatchVector& record_batches) {
   std::shared_ptr<arrow::RecordBatch> record_batch;
-  ARROW_RETURN_NOT_OK(
-      convert_utils::concatenateRecordBatches(record_batches, &record_batch));
+  ARROW_ASSIGN_OR_RAISE(
+      record_batch, convert_utils::concatenateRecordBatches(record_batches));
 
   copySchemaMetadata(*record_batches.front(), &record_batch);
   ARROW_RETURN_NOT_OK(
       copyColumnTypes(*record_batches.front(), &record_batch));
-  result->push_back(record_batch);
 
-  return arrow::Status::OK();
+  return arrow::RecordBatchVector{record_batch};
 }
 
-arrow::Status WindowHandler::handle(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch,
-    arrow::RecordBatchVector* result) {
-  result->push_back(record_batch);
-  return arrow::Status::OK();
+arrow::Result<arrow::RecordBatchVector> WindowHandler::handle(
+    const std::shared_ptr<arrow::RecordBatch>& record_batch) {
+  return arrow::RecordBatchVector{record_batch};
 }
 
 }  // namespace stream_data_processor

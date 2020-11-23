@@ -5,14 +5,15 @@
 
 namespace stream_data_processor {
 
-arrow::Status GroupHandler::handle(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch,
-    arrow::RecordBatchVector* result) {
+arrow::Result<arrow::RecordBatchVector> GroupHandler::handle(
+    const std::shared_ptr<arrow::RecordBatch>& record_batch) {
   arrow::RecordBatchVector grouped_record_batches;
 
-  ARROW_RETURN_NOT_OK(compute_utils::groupSortingByColumns(
-      grouping_columns_, record_batch, &grouped_record_batches));
+  ARROW_ASSIGN_OR_RAISE(
+      grouped_record_batches,
+      compute_utils::groupSortingByColumns(grouping_columns_, record_batch));
 
+  arrow::RecordBatchVector result;
   for (auto& group : grouped_record_batches) {
     copySchemaMetadata(*record_batch, &group);
 
@@ -20,10 +21,10 @@ arrow::Status GroupHandler::handle(
         metadata::fillGroupMetadata(&group, grouping_columns_));
 
     ARROW_RETURN_NOT_OK(copyColumnTypes(*record_batch, &group));
-    result->push_back(group);
+    result.push_back(group);
   }
 
-  return arrow::Status::OK();
+  return result;
 }
 
 }  // namespace stream_data_processor

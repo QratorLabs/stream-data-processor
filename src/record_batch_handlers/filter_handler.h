@@ -15,13 +15,12 @@ class FilterHandler : public RecordBatchHandler {
   explicit FilterHandler(ConditionVectorType&& conditions)
       : conditions_(std::forward<ConditionVectorType>(conditions)) {}
 
-  arrow::Status handle(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch,
-      arrow::RecordBatchVector* result) override;
+  arrow::Result<arrow::RecordBatchVector> handle(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch) override;
 
  private:
-  arrow::Status prepareFilter(const std::shared_ptr<arrow::Schema>& schema,
-                              std::shared_ptr<gandiva::Filter>* filter) const;
+  arrow::Result<std::shared_ptr<gandiva::Filter>> createFilter(
+      const std::shared_ptr<arrow::Schema>& schema) const;
 
  private:
   std::vector<gandiva::ConditionPtr> conditions_;

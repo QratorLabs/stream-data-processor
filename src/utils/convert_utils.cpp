@@ -7,38 +7,28 @@
 namespace stream_data_processor {
 namespace convert_utils {
 
-arrow::Status convertTableToRecordBatch(
-    const std::shared_ptr<arrow::Table>& table,
-    std::shared_ptr<arrow::RecordBatch>* record_batch) {
-  auto prepared_table_result = table->CombineChunks();
-  if (!prepared_table_result.ok()) {
-    return prepared_table_result.status();
-  }
-
+arrow::Result<std::shared_ptr<arrow::RecordBatch>> convertTableToRecordBatch(
+    const arrow::Table& table) {
+  std::shared_ptr<arrow::Table> prepared_table;
+  ARROW_ASSIGN_OR_RAISE(prepared_table, table.CombineChunks());
   arrow::ArrayVector table_columns;
-  if (table->num_rows() != 0) {
-    for (auto& column : prepared_table_result.ValueOrDie()->columns()) {
+  if (table.num_rows() != 0) {
+    for (auto& column : prepared_table->columns()) {
       table_columns.push_back(column->chunk(0));
     }
   }
 
-  *record_batch = arrow::RecordBatch::Make(
-      prepared_table_result.ValueOrDie()->schema(),
-      prepared_table_result.ValueOrDie()->num_rows(), table_columns);
-  return arrow::Status::OK();
+  return arrow::RecordBatch::Make(prepared_table->schema(),
+                                  prepared_table->num_rows(), table_columns);
 }
 
-arrow::Status concatenateRecordBatches(
-    const std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches,
-    std::shared_ptr<arrow::RecordBatch>* target) {
-  auto table_result = arrow::Table::FromRecordBatches(record_batches);
-  if (!table_result.ok()) {
-    return table_result.status();
-  }
+arrow::Result<std::shared_ptr<arrow::RecordBatch>> concatenateRecordBatches(
+    const std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches) {
+  std::shared_ptr<arrow::Table> table;
+  ARROW_ASSIGN_OR_RAISE(table,
+                        arrow::Table::FromRecordBatches(record_batches));
 
-  ARROW_RETURN_NOT_OK(
-      convertTableToRecordBatch(table_result.ValueOrDie(), target));
-  return arrow::Status::OK();
+  return convertTableToRecordBatch(*table);
 }
 
 }  // namespace convert_utils

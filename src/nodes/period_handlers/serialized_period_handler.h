@@ -13,9 +13,8 @@ class SerializedPeriodHandler : public PeriodHandler {
   explicit SerializedPeriodHandler(
       std::shared_ptr<RecordBatchHandler> handler_strategy);
 
-  arrow::Status handle(
-      const std::deque<std::shared_ptr<arrow::Buffer>>& period,
-      std::vector<std::shared_ptr<arrow::Buffer>>* target) override;
+  [[nodiscard]] arrow::Result<arrow::BufferVector> handle(
+      const std::deque<std::shared_ptr<arrow::Buffer>>& period) override;
 
  private:
   std::shared_ptr<RecordBatchHandler> handler_strategy_;

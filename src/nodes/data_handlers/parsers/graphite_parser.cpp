@@ -16,9 +16,8 @@ GraphiteParser::GraphiteParser(const GraphiteParserOptions& parser_options)
   }
 }
 
-arrow::Status GraphiteParser::parseRecordBatches(
-    const arrow::Buffer& buffer,
-    std::vector<std::shared_ptr<arrow::RecordBatch>>* record_batches) {
+arrow::Result<arrow::RecordBatchVector> GraphiteParser::parseRecordBatches(
+    const arrow::Buffer& buffer) {
   auto metric_strings = string_utils::split(buffer.ToString(), "\n");
   if (metric_strings.empty()) {
     return arrow::Status::OK();
@@ -174,17 +173,19 @@ arrow::Status GraphiteParser::parseRecordBatches(
         metadata::setColumnTypeMetadata(&fields.back(), metadata::FIELD));
   }
 
-  record_batches->push_back(arrow::RecordBatch::Make(
+  arrow::RecordBatchVector record_batches;
+
+  record_batches.push_back(arrow::RecordBatch::Make(
       arrow::schema(fields), parsed_metrics_.size(), column_arrays));
 
   ARROW_RETURN_NOT_OK(metadata::setTimeColumnNameMetadata(
-      &record_batches->back(), time_column_name_));
+      &record_batches.back(), time_column_name_));
 
   ARROW_RETURN_NOT_OK(metadata::setMeasurementColumnNameMetadata(
-      &record_batches->back(), measurement_column_name_));
+      &record_batches.back(), measurement_column_name_));
 
   parsed_metrics_.clear();
-  return arrow::Status::OK();
+  return record_batches;
 }
 
 arrow::Type::type GraphiteParser::determineFieldType(

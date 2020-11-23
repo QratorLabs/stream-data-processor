@@ -12,14 +12,12 @@ PrintConsumer::PrintConsumer(std::ofstream& ostrm) : ostrm_(ostrm) {}
 void PrintConsumer::start() {}
 
 void PrintConsumer::consume(std::shared_ptr<arrow::Buffer> data) {
-  arrow::RecordBatchVector record_batches;
-  auto deserialize_status =
-      serialize_utils::deserializeRecordBatches(*data, &record_batches);
-  if (!deserialize_status.ok()) {
-    throw std::runtime_error(deserialize_status.message());
+  auto record_batches = serialize_utils::deserializeRecordBatches(*data);
+  if (!record_batches.ok()) {
+    throw std::runtime_error(record_batches.status().message());
   }
 
-  for (auto& record_batch : record_batches) {
+  for (auto& record_batch : record_batches.ValueOrDie()) {
     printRecordBatch(*record_batch);
   }
 }

@@ -7,12 +7,12 @@
 
 namespace stream_data_processor {
 
-arrow::Status FirstAggregateFunction::aggregate(
-    const arrow::RecordBatch& data, const std::string& column_name,
-    std::shared_ptr<arrow::Scalar>* result) const {
+arrow::Result<std::shared_ptr<arrow::Scalar>>
+FirstAggregateFunction::aggregate(const arrow::RecordBatch& data,
+                                  const std::string& column_name) const {
   std::string time_column_name;
-  ARROW_RETURN_NOT_OK(
-      metadata::getTimeColumnNameMetadata(data, &time_column_name));
+  ARROW_ASSIGN_OR_RAISE(time_column_name,
+                        metadata::getTimeColumnNameMetadata(data));
 
   auto ts_column = data.GetColumnByName(time_column_name);
   if (ts_column == nullptr) {
@@ -21,24 +21,17 @@ arrow::Status FirstAggregateFunction::aggregate(
   }
 
   std::pair<size_t, size_t> arg_min_max;
-  ARROW_RETURN_NOT_OK(compute_utils::argMinMax(ts_column, &arg_min_max));
+  ARROW_ASSIGN_OR_RAISE(arg_min_max, compute_utils::argMinMax(ts_column));
 
-  auto get_scalar_result =
-      data.GetColumnByName(column_name)->GetScalar(arg_min_max.first);
-  if (!get_scalar_result.ok()) {
-    return get_scalar_result.status();
-  }
-
-  *result = get_scalar_result.ValueOrDie();
-  return arrow::Status::OK();
+  return data.GetColumnByName(column_name)->GetScalar(arg_min_max.first);
 }
 
-arrow::Status LastAggregateFunction::aggregate(
-    const arrow::RecordBatch& data, const std::string& column_name,
-    std::shared_ptr<arrow::Scalar>* result) const {
+arrow::Result<std::shared_ptr<arrow::Scalar>>
+LastAggregateFunction::aggregate(const arrow::RecordBatch& data,
+                                 const std::string& column_name) const {
   std::string time_column_name;
-  ARROW_RETURN_NOT_OK(
-      metadata::getTimeColumnNameMetadata(data, &time_column_name));
+  ARROW_ASSIGN_OR_RAISE(time_column_name,
+                        metadata::getTimeColumnNameMetadata(data));
 
   auto ts_column = data.GetColumnByName(time_column_name);
   if (ts_column == nullptr) {
@@ -47,56 +40,37 @@ arrow::Status LastAggregateFunction::aggregate(
   }
 
   std::pair<size_t, size_t> arg_min_max;
-  ARROW_RETURN_NOT_OK(compute_utils::argMinMax(ts_column, &arg_min_max));
+  ARROW_ASSIGN_OR_RAISE(arg_min_max, compute_utils::argMinMax(ts_column));
 
-  auto get_scalar_result =
-      data.GetColumnByName(column_name)->GetScalar(arg_min_max.second);
-  if (!get_scalar_result.ok()) {
-    return get_scalar_result.status();
-  }
-
-  *result = get_scalar_result.ValueOrDie();
-  return arrow::Status::OK();
+  return data.GetColumnByName(column_name)->GetScalar(arg_min_max.second);
 }
 
-arrow::Status MaxAggregateFunction::aggregate(
-    const arrow::RecordBatch& data, const std::string& column_name,
-    std::shared_ptr<arrow::Scalar>* result) const {
-  auto min_max_result =
-      arrow::compute::MinMax(data.GetColumnByName(column_name));
-  if (!min_max_result.ok()) {
-    return min_max_result.status();
-  }
+arrow::Result<std::shared_ptr<arrow::Scalar>> MaxAggregateFunction::aggregate(
+    const arrow::RecordBatch& data, const std::string& column_name) const {
+  arrow::Datum min_max;
+  ARROW_ASSIGN_OR_RAISE(
+      min_max, arrow::compute::MinMax(data.GetColumnByName(column_name)));
 
-  *result =
-      min_max_result.ValueOrDie().scalar_as<arrow::StructScalar>().value[1];
-  return arrow::Status::OK();
+  return min_max.scalar_as<arrow::StructScalar>().value[1];
 }
 
-arrow::Status MeanAggregateFunction::aggregate(
-    const arrow::RecordBatch& data, const std::string& column_name,
-    std::shared_ptr<arrow::Scalar>* result) const {
-  auto mean_result = arrow::compute::Mean(data.GetColumnByName(column_name));
-  if (!mean_result.ok()) {
-    return mean_result.status();
-  }
+arrow::Result<std::shared_ptr<arrow::Scalar>>
+MeanAggregateFunction::aggregate(const arrow::RecordBatch& data,
+                                 const std::string& column_name) const {
+  arrow::Datum mean;
+  ARROW_ASSIGN_OR_RAISE(
+      mean, arrow::compute::Mean(data.GetColumnByName(column_name)));
 
-  *result = mean_result.ValueOrDie().scalar();
-  return arrow::Status::OK();
+  return mean.scalar();
 }
 
-arrow::Status MinAggregateFunction::aggregate(
-    const arrow::RecordBatch& data, const std::string& column_name,
-    std::shared_ptr<arrow::Scalar>* result) const {
-  auto min_max_result =
-      arrow::compute::MinMax(data.GetColumnByName(column_name));
-  if (!min_max_result.ok()) {
-    return min_max_result.status();
-  }
+arrow::Result<std::shared_ptr<arrow::Scalar>> MinAggregateFunction::aggregate(
+    const arrow::RecordBatch& data, const std::string& column_name) const {
+  arrow::Datum min_max;
+  ARROW_ASSIGN_OR_RAISE(
+      min_max, arrow::compute::MinMax(data.GetColumnByName(column_name)));
 
-  *result =
-      min_max_result.ValueOrDie().scalar_as<arrow::StructScalar>().value[0];
-  return arrow::Status::OK();
+  return min_max.scalar_as<arrow::StructScalar>().value[0];
 }
 
 }  // namespace stream_data_processor

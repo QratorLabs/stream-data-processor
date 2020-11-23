@@ -30,12 +30,11 @@ class AggregateHandler : public RecordBatchHandler {
   explicit AggregateHandler(const AggregateOptions& options);
   explicit AggregateHandler(AggregateOptions&& options);
 
-  arrow::Status handle(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch,
-      arrow::RecordBatchVector* result) override;
+  arrow::Result<arrow::RecordBatchVector> handle(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch) override;
 
-  arrow::Status handle(const arrow::RecordBatchVector& record_batches,
-                       arrow::RecordBatchVector* result) override;
+  arrow::Result<arrow::RecordBatchVector> handle(
+      const arrow::RecordBatchVector& record_batches) override;
 
  private:
   static std::unordered_map<std::string, arrow::RecordBatchVector>
@@ -43,10 +42,9 @@ class AggregateHandler : public RecordBatchHandler {
 
   arrow::Status isValid(const arrow::RecordBatchVector& record_batches) const;
 
-  arrow::Status fillResultSchema(
+  arrow::Result<std::shared_ptr<arrow::Schema>> createResultSchema(
       const arrow::RecordBatchVector& record_batches,
       const std::vector<std::string>& grouping_columns,
-      std::shared_ptr<arrow::Schema>* result_schema,
       bool explicitly_add_measurement,
       const std::string& measurement_column_name) const;
 

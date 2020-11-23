@@ -17,12 +17,11 @@ class JoinHandler : public RecordBatchHandler {
       : join_on_columns_(std::forward<StringVectorType>(join_on_columns)),
         tolerance_(tolerance) {}
 
-  arrow::Status handle(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch,
-      arrow::RecordBatchVector* result) override;
+  arrow::Result<arrow::RecordBatchVector> handle(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch) override;
 
-  arrow::Status handle(const arrow::RecordBatchVector& record_batches,
-                       arrow::RecordBatchVector* result) override;
+  arrow::Result<arrow::RecordBatchVector> handle(
+      const arrow::RecordBatchVector& record_batches) override;
 
  private:
   struct JoinKey {
@@ -52,9 +51,9 @@ class JoinHandler : public RecordBatchHandler {
   };
 
  private:
-  arrow::Status getJoinKey(
+  arrow::Result<JoinKey> getJoinKey(
       const std::shared_ptr<arrow::RecordBatch>& record_batch, size_t row_idx,
-      JoinKey* join_key, std::string time_column_name) const;
+      std::string time_column_name) const;
 
  private:
   std::vector<std::string> join_on_columns_;

@@ -16,12 +16,11 @@ class PipelineHandler : public RecordBatchHandler {
   explicit PipelineHandler(
       std::vector<std::shared_ptr<RecordBatchHandler>>&& pipeline_handlers);
 
-  arrow::Status handle(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch,
-      arrow::RecordBatchVector* result) override;
+  arrow::Result<arrow::RecordBatchVector> handle(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch) override;
 
-  arrow::Status handle(const arrow::RecordBatchVector& record_batches,
-                       arrow::RecordBatchVector* result) override;
+  arrow::Result<arrow::RecordBatchVector> handle(
+      const arrow::RecordBatchVector& record_batches) override;
 
   template <typename HandlerType>
   void pushBackHandler(HandlerType&& handler) {

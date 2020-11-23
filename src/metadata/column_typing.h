@@ -27,16 +27,15 @@ arrow::Status setTimeColumnNameMetadata(
     std::shared_ptr<arrow::RecordBatch>* record_batch,
     const std::string& time_column_name);
 
-arrow::Status getTimeColumnNameMetadata(
-    const arrow::RecordBatch& record_batch, std::string* time_column_name);
+arrow::Result<std::string> getTimeColumnNameMetadata(
+    const arrow::RecordBatch& record_batch);
 
 arrow::Status setMeasurementColumnNameMetadata(
     std::shared_ptr<arrow::RecordBatch>* record_batch,
     const std::string& measurement_column_name);
 
-arrow::Status getMeasurementColumnNameMetadata(
-    const arrow::RecordBatch& record_batch,
-    std::string* measurement_column_name);
+arrow::Result<std::string> getMeasurementColumnNameMetadata(
+    const arrow::RecordBatch& record_batch);
 
 }  // namespace metadata
 }  // namespace stream_data_processor

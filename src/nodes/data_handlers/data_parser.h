@@ -11,9 +11,8 @@ class DataParser : public DataHandler {
  public:
   explicit DataParser(std::shared_ptr<Parser> parser);
 
-  arrow::Status handle(
-      const arrow::Buffer& source,
-      std::vector<std::shared_ptr<arrow::Buffer>>* target) override;
+  [[nodiscard]] arrow::Result<arrow::BufferVector> handle(
+      const arrow::Buffer& source) override;
 
  private:
   std::shared_ptr<Parser> parser_;

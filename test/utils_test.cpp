@@ -35,14 +35,15 @@ TEST_CASE( "serialization and deserialization preserves schema metadata", "[Seri
   arrow::RecordBatchVector record_batches{record_batch_0, record_batch_1};
   std::vector<std::shared_ptr<arrow::Buffer>> buffers;
 
-  arrowAssertNotOk(serialize_utils::serializeRecordBatches(
-      record_batches, &buffers));
+  arrowAssignOrRaise(buffers, serialize_utils::serializeRecordBatches(
+      record_batches));
 
   for (size_t i = 0; i < 2; ++i) {
     arrow::RecordBatchVector deserialized;
 
-    arrowAssertNotOk(serialize_utils::deserializeRecordBatches(*
-        buffers[i], &deserialized));
+    arrowAssignOrRaise(
+        deserialized, serialize_utils::deserializeRecordBatches(*
+        buffers[i]));
 
     REQUIRE( deserialized.size() == 1 );
     REQUIRE( deserialized[0]->Equals(*record_batches[i], true) );

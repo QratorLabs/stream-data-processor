@@ -8,8 +8,6 @@
 
 using namespace stream_data_processor;
 
-namespace fuckyou {
-
 using uvarint_utils::UVarIntCoder;
 using uvarint_utils::EOFException;
 
@@ -70,6 +68,4 @@ TEST_CASE("more uvarint tests", "[UVarIntCoder]") {
     auto value = UVarIntCoder::decode(from);
     REQUIRE(value == values[i]);
   }
-}
-
 }

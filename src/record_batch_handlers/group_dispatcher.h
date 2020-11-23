@@ -13,9 +13,8 @@ class GroupDispatcher : public RecordBatchHandler {
  public:
   explicit GroupDispatcher(std::shared_ptr<HandlerFactory> handler_factory);
 
-  arrow::Status handle(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch,
-      arrow::RecordBatchVector* result) override;
+  arrow::Result<arrow::RecordBatchVector> handle(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch) override;
 
  private:
   std::shared_ptr<HandlerFactory> handler_factory_;

@@ -68,10 +68,9 @@ class TransportUtils {
   };
 
  public:
-  static arrow::Status wrapMessage(
+  static arrow::Result<std::shared_ptr<arrow::Buffer>> wrapMessage(
       const std::shared_ptr<arrow::Buffer>&
-          buffer,  // TODO: Use ResizableBuffer
-      std::shared_ptr<arrow::Buffer>* terminated_buffer);
+          buffer);  // TODO: Use ResizableBuffer
 
   static std::vector<std::pair<const char*, size_t>> splitMessage(
       const char* message_data, size_t length);

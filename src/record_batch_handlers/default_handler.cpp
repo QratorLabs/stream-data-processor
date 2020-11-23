@@ -27,14 +27,10 @@ arrow::Status DefaultHandler::addMissingColumn<int64_t>(
     ARROW_RETURN_NOT_OK(metadata::setColumnTypeMetadata(
         &new_field, default_case.default_column_type));
 
-    auto add_column_result = record_batch->get()->AddColumn(
-        record_batch->get()->num_columns(), new_field, array);
-
-    if (!add_column_result.ok()) {
-      return add_column_result.status();
-    }
-
-    *record_batch = add_column_result.ValueOrDie();
+    ARROW_ASSIGN_OR_RAISE(
+        *record_batch,
+        record_batch->get()->AddColumn(record_batch->get()->num_columns(),
+                                       new_field, array));
   }
 
   return arrow::Status::OK();
@@ -61,13 +57,10 @@ arrow::Status DefaultHandler::addMissingColumn<double>(
     ARROW_RETURN_NOT_OK(metadata::setColumnTypeMetadata(
         &new_field, default_case.default_column_type));
 
-    auto add_column_result = record_batch->get()->AddColumn(
-        record_batch->get()->num_columns(), new_field, array);
-    if (!add_column_result.ok()) {
-      return add_column_result.status();
-    }
-
-    *record_batch = add_column_result.ValueOrDie();
+    ARROW_ASSIGN_OR_RAISE(
+        *record_batch,
+        record_batch->get()->AddColumn(record_batch->get()->num_columns(),
+                                       new_field, array));
   }
 
   return arrow::Status::OK();
@@ -95,13 +88,10 @@ arrow::Status DefaultHandler::addMissingColumn<std::string>(
     ARROW_RETURN_NOT_OK(metadata::setColumnTypeMetadata(
         &new_field, default_case.default_column_type));
 
-    auto add_column_result = record_batch->get()->AddColumn(
-        record_batch->get()->num_columns(), new_field, array);
-    if (!add_column_result.ok()) {
-      return add_column_result.status();
-    }
-
-    *record_batch = add_column_result.ValueOrDie();
+    ARROW_ASSIGN_OR_RAISE(
+        *record_batch,
+        record_batch->get()->AddColumn(record_batch->get()->num_columns(),
+                                       new_field, array));
   }
 
   return arrow::Status::OK();
@@ -128,21 +118,17 @@ arrow::Status DefaultHandler::addMissingColumn<bool>(
     ARROW_RETURN_NOT_OK(metadata::setColumnTypeMetadata(
         &new_field, default_case.default_column_type));
 
-    auto add_column_result = record_batch->get()->AddColumn(
-        record_batch->get()->num_columns(), new_field, array);
-    if (!add_column_result.ok()) {
-      return add_column_result.status();
-    }
-
-    *record_batch = add_column_result.ValueOrDie();
+    ARROW_ASSIGN_OR_RAISE(
+        *record_batch,
+        record_batch->get()->AddColumn(record_batch->get()->num_columns(),
+                                       new_field, array));
   }
 
   return arrow::Status::OK();
 }
 
-arrow::Status DefaultHandler::handle(
-    const std::shared_ptr<arrow::RecordBatch>& record_batch,
-    arrow::RecordBatchVector* result) {
+arrow::Result<arrow::RecordBatchVector> DefaultHandler::handle(
+    const std::shared_ptr<arrow::RecordBatch>& record_batch) {
   auto copy_record_batch = arrow::RecordBatch::Make(record_batch->schema(),
                                                     record_batch->num_rows(),
                                                     record_batch->columns());
@@ -158,9 +144,8 @@ arrow::Status DefaultHandler::handle(
 
   copySchemaMetadata(*record_batch, &copy_record_batch);
   ARROW_RETURN_NOT_OK(copyColumnTypes(*record_batch, &copy_record_batch));
-  result->push_back(copy_record_batch);
 
-  return arrow::Status::OK();
+  return arrow::RecordBatchVector{copy_record_batch};
 }
 
 }  // namespace stream_data_processor

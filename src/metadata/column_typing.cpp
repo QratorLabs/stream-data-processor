@@ -12,9 +12,8 @@ inline const std::string TIME_COLUMN_NAME_METADATA_KEY{"time_column_name"};
 inline const std::string MEASUREMENT_COLUMN_NAME_METADATA_KEY{
     "measurement_column_name"};
 
-arrow::Status getColumnNameMetadata(const arrow::RecordBatch& record_batch,
-                                    const std::string& metadata_key,
-                                    std::string* column_name) {
+arrow::Result<std::string> getColumnNameMetadata(
+    const arrow::RecordBatch& record_batch, const std::string& metadata_key) {
   auto metadata = record_batch.schema()->metadata();
   if (metadata == nullptr) {
     return arrow::Status::Invalid(
@@ -28,8 +27,7 @@ arrow::Status getColumnNameMetadata(const arrow::RecordBatch& record_batch,
                     metadata_key));
   }
 
-  *column_name = metadata->Get(metadata_key).ValueOrDie();
-  return arrow::Status::OK();
+  return metadata->Get(metadata_key);
 }
 
 arrow::Status setColumnNameMetadata(
@@ -91,12 +89,13 @@ arrow::Status setColumnTypeMetadata(
 
   auto field = record_batch->get()->schema()->field(i);
   ARROW_RETURN_NOT_OK(setColumnTypeMetadata(&field, type));
-  auto new_schema = record_batch->get()->schema()->SetField(i, field);
-  ARROW_RETURN_NOT_OK(new_schema.status());
+  std::shared_ptr<arrow::Schema> new_schema;
+  ARROW_ASSIGN_OR_RAISE(new_schema,
+                        record_batch->get()->schema()->SetField(i, field));
 
-  *record_batch = arrow::RecordBatch::Make(new_schema.ValueOrDie(),
-                                           record_batch->get()->num_rows(),
-                                           record_batch->get()->columns());
+  *record_batch =
+      arrow::RecordBatch::Make(new_schema, record_batch->get()->num_rows(),
+                               record_batch->get()->columns());
 
   return arrow::Status::OK();
 }
@@ -141,12 +140,9 @@ arrow::Status setTimeColumnNameMetadata(
   return arrow::Status::OK();
 }
 
-arrow::Status getTimeColumnNameMetadata(
-    const arrow::RecordBatch& record_batch, std::string* time_column_name) {
-  ARROW_RETURN_NOT_OK(getColumnNameMetadata(
-      record_batch, TIME_COLUMN_NAME_METADATA_KEY, time_column_name));
-
-  return arrow::Status::OK();
+arrow::Result<std::string> getTimeColumnNameMetadata(
+    const arrow::RecordBatch& record_batch) {
+  return getColumnNameMetadata(record_batch, TIME_COLUMN_NAME_METADATA_KEY);
 }
 
 arrow::Status setMeasurementColumnNameMetadata(
@@ -160,14 +156,10 @@ arrow::Status setMeasurementColumnNameMetadata(
   return arrow::Status::OK();
 }
 
-arrow::Status getMeasurementColumnNameMetadata(
-    const arrow::RecordBatch& record_batch,
-    std::string* measurement_column_name) {
-  ARROW_RETURN_NOT_OK(getColumnNameMetadata(
-      record_batch, MEASUREMENT_COLUMN_NAME_METADATA_KEY,
-      measurement_column_name));
-
-  return arrow::Status::OK();
+arrow::Result<std::string> getMeasurementColumnNameMetadata(
+    const arrow::RecordBatch& record_batch) {
+  return getColumnNameMetadata(record_batch,
+                               MEASUREMENT_COLUMN_NAME_METADATA_KEY);
 }
 
 }  // namespace metadata
