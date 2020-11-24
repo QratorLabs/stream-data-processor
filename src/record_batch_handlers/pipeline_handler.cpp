@@ -1,5 +1,7 @@
 #include "pipeline_handler.h"
 
+namespace stream_data_processor {
+
 PipelineHandler::PipelineHandler(
     const std::vector<std::shared_ptr<RecordBatchHandler>>& pipeline_handlers)
     : pipeline_handlers_(pipeline_handlers) {}
@@ -8,22 +10,22 @@ PipelineHandler::PipelineHandler(
     std::vector<std::shared_ptr<RecordBatchHandler>>&& pipeline_handlers)
     : pipeline_handlers_(std::move(pipeline_handlers)) {}
 
-arrow::Status PipelineHandler::handle(
-    const arrow::RecordBatchVector& record_batches,
-    arrow::RecordBatchVector* result) {
-  arrow::RecordBatchVector current_result;
-  for (auto& record_batch : record_batches) {
-    current_result.push_back(arrow::RecordBatch::Make(
-        record_batch->schema(), record_batch->num_rows(),
-        record_batch->columns()));
-  }
+arrow::Result<arrow::RecordBatchVector> PipelineHandler::handle(
+    const std::shared_ptr<arrow::RecordBatch>& record_batch) {
+  return handle(arrow::RecordBatchVector{record_batch});
+}
+
+arrow::Result<arrow::RecordBatchVector> PipelineHandler::handle(
+    const arrow::RecordBatchVector& record_batches) {
+  arrow::RecordBatchVector current_result(record_batches);
 
   for (auto& handler : pipeline_handlers_) {
-    ARROW_RETURN_NOT_OK(handler->handle(current_result, result));
-
-    current_result = *result;
+    arrow::RecordBatchVector tmp_result;
+    ARROW_ASSIGN_OR_RAISE(tmp_result, handler->handle(current_result));
+    current_result = std::move(tmp_result);
   }
 
-  *result = current_result;
-  return arrow::Status::OK();
+  return current_result;
 }
+
+}  // namespace stream_data_processor

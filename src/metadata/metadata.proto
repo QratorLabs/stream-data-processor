@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package stream_data_processor.metadata;
+
+message GroupColumnsNames {
+  repeated string columns_names = 1;
+}
+
+message RecordBatchGroup {
+  GroupColumnsNames group_columns_names = 1;
+  repeated string group_columns_values = 2;
+}
+
+enum ColumnType {
+  UNKNOWN = 0;
+  TIME = 1;
+  MEASUREMENT = 2;
+  TAG = 3;
+  FIELD = 4;
+};

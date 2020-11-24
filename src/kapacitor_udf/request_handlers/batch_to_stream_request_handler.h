@@ -7,20 +7,21 @@
 #include <arrow/api.h>
 
 #include "kapacitor_udf/udf_agent.h"
+#include "kapacitor_udf/utils/points_converter.h"
 #include "record_batch_handlers/record_batch_handler.h"
 #include "record_batch_request_handler.h"
-#include "utils/data_converter.h"
 
 #include "udf.pb.h"
+
+namespace stream_data_processor {
+namespace kapacitor_udf {
 
 class BatchToStreamRequestHandler : public RecordBatchRequestHandler {
  public:
   BatchToStreamRequestHandler(
       const std::shared_ptr<IUDFAgent>& agent,
-      const DataConverter::PointsToRecordBatchesConversionOptions&
+      const PointsConverter::PointsToRecordBatchesConversionOptions&
           to_record_batches_options,
-      const DataConverter::RecordBatchesToPointsConversionOptions&
-          to_points_options,
       const std::shared_ptr<RecordBatchHandler>& handler);
 
   [[nodiscard]] agent::Response info() const override;
@@ -36,3 +37,6 @@ class BatchToStreamRequestHandler : public RecordBatchRequestHandler {
  private:
   bool in_batch_{false};
 };
+
+}  // namespace kapacitor_udf
+}  // namespace stream_data_processor

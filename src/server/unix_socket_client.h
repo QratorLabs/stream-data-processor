@@ -4,6 +4,8 @@
 
 #include <uvw.hpp>
 
+namespace stream_data_processor {
+
 class UnixSocketClient {
  public:
   virtual void start() = 0;
@@ -15,3 +17,5 @@ class UnixSocketClientFactory {
   virtual std::shared_ptr<UnixSocketClient> createClient(
       const std::shared_ptr<uvw::PipeHandle>& pipe_handle) = 0;
 };
+
+}  // namespace stream_data_processor

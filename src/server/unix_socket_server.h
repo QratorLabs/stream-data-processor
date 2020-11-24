@@ -8,6 +8,8 @@
 
 #include "unix_socket_client.h"
 
+namespace stream_data_processor {
+
 class UnixSocketServer {
  public:
   UnixSocketServer(std::shared_ptr<UnixSocketClientFactory> client_factory,
@@ -21,3 +23,5 @@ class UnixSocketServer {
   std::shared_ptr<uvw::PipeHandle> socket_handle_;
   std::vector<std::shared_ptr<UnixSocketClient>> clients_;
 };
+
+}  // namespace stream_data_processor

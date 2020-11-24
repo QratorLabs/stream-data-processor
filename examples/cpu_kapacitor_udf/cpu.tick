@@ -1,6 +1,7 @@
 dbrp "graphite"."default"
 
-var log_url = 'http://127.0.0.1:4198'
+var log_url = 'http://172.20.0.2:7777/'
+
 var win_period = 7m
 var win_every = 2m
 
@@ -8,22 +9,36 @@ var info_core_level = 5
 var warn_core_level = 3
 var crit_core_level = 0
 
+var info_host_level = 20
+var warn_host_level = 10
+var crit_host_level = 5
+
+var info_load_level = 30
+var warn_load_level = 60
+var crit_load_level = 70
+
+var load = stream
+    |from()
+        .measurement('load')
+	    .groupBy(*)
+    |flatten().tolerance(5s)
+    |default()
+        .field('info_load_level', info_load_level)
+	    .field('warn_load_level', warn_load_level)
+	    .field('crit_load_level', crit_load_level)
+
 var cputime_all = stream
     |from()
         .measurement('cpu')
         .groupBy(*)
 // idle interrupt nice softirq steal system user wait
 
-var cputime_all_win = cputime_all
-    |groupBy('cpu', 'host', 'type')
-        .byMeasurement()
+var cputime_host = cputime_all
+    |groupBy('host', 'type')
     |flatten().tolerance(5s)
-    |window()
-        .period(win_period)
-        .every(win_every)
 
-var cputime_win_calc = cputime_all_win
-    @aggregateUDF()
+var cputime_host_calc = cputime_host
+    @streamAggregateUDF()
         .aggregate('last(idle) as idle.last')
         .aggregate('mean(idle) as idle.mean')
         .aggregate('last(interrupt) as interrupt.last')
@@ -41,7 +56,37 @@ var cputime_win_calc = cputime_all_win
         .aggregate('last(wait) as wait.last')
         .aggregate('mean(wait) as wait.mean')
         .timeAggregateRule('last')
-    |log()
+    |default()
+        .field('info_host_level', info_host_level)
+     	.field('warn_host_level', warn_host_level)
+     	.field('crit_host_level', crit_host_level)
+
+var cputime_all_win = cputime_all
+    |groupBy('cpu', 'host', 'type')
+    |flatten().tolerance(5s)
+    |window()
+        .period(win_period)
+        .every(win_every)
+
+var cputime_win_calc = cputime_all_win
+    @batchAggregateUDF()
+        .aggregate('last(idle) as idle.last')
+        .aggregate('mean(idle) as idle.mean')
+        .aggregate('last(interrupt) as interrupt.last')
+        .aggregate('mean(interrupt) as interrupt.mean')
+        .aggregate('last(nice) as nice.last')
+        .aggregate('mean(nice) as nice.mean')
+        .aggregate('last(softirq) as softirq.last')
+        .aggregate('mean(softirq) as softirq.mean')
+        .aggregate('last(steal) as steal.last')
+        .aggregate('mean(steal) as steal.mean')
+        .aggregate('last(system) as system.last')
+        .aggregate('mean(system) as system.mean')
+        .aggregate('last(user) as user.last')
+        .aggregate('mean(user) as user.mean')
+        .aggregate('last(wait) as wait.last')
+        .aggregate('mean(wait) as wait.mean')
+        .timeAggregateRule('last')
 
 cputime_win_calc
     |default()
@@ -66,3 +111,31 @@ cputime_win_calc
         .crit(lambda: "idle.mean" < "crit_core_level")
         .post(log_url)
 	    .id('{{ .Name }}/{{ .TaskName }}/cpu-idle-time-per-core:{{ .Group }}')
+
+cputime_host_calc
+    |default()
+        .field('alert-author', '@kv:qrator.net')
+        .field('incident-owners', 'nobody')
+        .field('incident-is-expected', FALSE)
+        .field('incident-comment', '')
+	    .field('alert-on', 'cpu-idle-time-mean-host')
+    |alert()
+        .info(lambda: "idle.mean" < "info_host_level")
+        .warn(lambda: "idle.mean" < "warn_host_level")
+        .crit(lambda: "idle.mean" < "crit_host_level")
+        .post(log_url)
+	    .id('{{ .Name }}/{{ .TaskName }}/cpu-idle-time-mean-host:{{ .Group }}')
+
+load
+    |default()
+        .field('alet-author', '@kv:qrator.net')
+        .field('incident-owners', 'nobody')
+        .field('incident-is-expected', FALSE)
+        .field('incident-comment', '')
+	    .field('alert-on', 'cpu-load')
+    |alert()
+        .info(lambda: "longterm" > "info_load_level")
+	    .warn(lambda: "longterm" > "warn_load_level")
+	    .crit(lambda: "longterm" > "crit_load_level")
+	    .post(log_url)
+	    .id('{{ .Name }}/{{ .TaskName }}:{{ .Group }}')

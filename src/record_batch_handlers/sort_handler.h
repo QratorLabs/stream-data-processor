@@ -8,15 +8,19 @@
 
 #include "record_batch_handler.h"
 
+namespace stream_data_processor {
+
 class SortHandler : public RecordBatchHandler {
  public:
   template <typename StringVectorType>
-  explicit SortHandler(StringVectorType&& column_names)
-      : column_names_(std::forward<StringVectorType>(column_names)) {}
+  explicit SortHandler(StringVectorType&& sort_by_columns)
+      : sort_by_columns_(std::forward<StringVectorType>(sort_by_columns)) {}
 
-  arrow::Status handle(const arrow::RecordBatchVector& record_batches,
-                       arrow::RecordBatchVector* result) override;
+  arrow::Result<arrow::RecordBatchVector> handle(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch) override;
 
  private:
-  std::vector<std::string> column_names_;
+  std::vector<std::string> sort_by_columns_;
 };
+
+}  // namespace stream_data_processor

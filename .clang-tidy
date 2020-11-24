@@ -1,4 +1,4 @@
-Checks: '-*,cppcoreguidelines-*,-cppcoreguidelines-init-variables,-cppcoreguidelines-narrowing-conversions,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-pro-type-reinterpret-cast,-cppcoreguidelines-avoid-magic-numbers'
+Checks: '-*,cppcoreguidelines-*,-cppcoreguidelines-init-variables,-cppcoreguidelines-narrowing-conversions,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-pro-type-reinterpret-cast,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-non-private-member-variables-in-classes'
 HeaderFilterRegex: '.*'
 WarningsAsErrors: ''
 CheckOptions:

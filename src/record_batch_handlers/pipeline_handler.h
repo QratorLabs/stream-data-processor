@@ -6,6 +6,8 @@
 
 #include "record_batch_handler.h"
 
+namespace stream_data_processor {
+
 class PipelineHandler : public RecordBatchHandler {
  public:
   explicit PipelineHandler(
@@ -14,8 +16,11 @@ class PipelineHandler : public RecordBatchHandler {
   explicit PipelineHandler(
       std::vector<std::shared_ptr<RecordBatchHandler>>&& pipeline_handlers);
 
-  arrow::Status handle(const arrow::RecordBatchVector& record_batches,
-                       arrow::RecordBatchVector* result) override;
+  arrow::Result<arrow::RecordBatchVector> handle(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch) override;
+
+  arrow::Result<arrow::RecordBatchVector> handle(
+      const arrow::RecordBatchVector& record_batches) override;
 
   template <typename HandlerType>
   void pushBackHandler(HandlerType&& handler) {
@@ -27,3 +32,5 @@ class PipelineHandler : public RecordBatchHandler {
  private:
   std::vector<std::shared_ptr<RecordBatchHandler>> pipeline_handlers_;
 };
+
+}  // namespace stream_data_processor

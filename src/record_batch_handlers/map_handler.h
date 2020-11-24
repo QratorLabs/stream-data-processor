@@ -9,28 +9,34 @@
 
 #include "record_batch_handler.h"
 
+#include "metadata.pb.h"
+
+namespace stream_data_processor {
+
 class MapHandler : public RecordBatchHandler {
  public:
-  template <typename ExpressionVectorType>
-  explicit MapHandler(ExpressionVectorType&& expressions)
-      : expressions_(std::forward<ExpressionVectorType>(expressions)) {}
+  struct MapCase {
+    gandiva::ExpressionPtr expression;
+    metadata::ColumnType result_column_type{metadata::FIELD};
+  };
 
-  arrow::Status handle(const arrow::RecordBatchVector& record_batches,
-                       arrow::RecordBatchVector* result) override;
+  explicit MapHandler(const std::vector<MapCase>& map_cases);
+
+  arrow::Result<arrow::RecordBatchVector> handle(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch) override;
 
  private:
   static arrow::Status eval(
-      arrow::RecordBatchVector* record_batches,
+      std::shared_ptr<arrow::RecordBatch>* record_batch,
       const std::shared_ptr<gandiva::Projector>& projector,
       const std::shared_ptr<arrow::Schema>& result_schema);
 
-  arrow::Status prepareProjector(
-      const std::shared_ptr<arrow::Schema>& input_schema,
-      std::shared_ptr<gandiva::Projector>* projector) const;
-
-  [[nodiscard]] std::shared_ptr<arrow::Schema> prepareResultSchema(
+  arrow::Result<std::shared_ptr<arrow::Schema>> createResultSchema(
       const std::shared_ptr<arrow::Schema>& input_schema) const;
 
  private:
   gandiva::ExpressionVector expressions_;
+  std::vector<metadata::ColumnType> column_types_;
 };
+
+}  // namespace stream_data_processor

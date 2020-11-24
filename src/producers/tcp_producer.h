@@ -6,6 +6,10 @@
 
 #include "utils/transport_utils.h"
 
+namespace stream_data_processor {
+
+using transport_utils::IPv4Endpoint;
+
 class TCPProducer : public Producer {
  public:
   TCPProducer(const std::shared_ptr<Node>& node,
@@ -23,3 +27,5 @@ class TCPProducer : public Producer {
   std::shared_ptr<uvw::TCPHandle> listener_;
   bool is_external_;
 };
+
+}  // namespace stream_data_processor

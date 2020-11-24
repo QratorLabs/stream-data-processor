@@ -5,10 +5,13 @@
 #include <spdlog/spdlog.h>
 
 #include "udf_agent.h"
-#include "utils/uvarint.h"
+#include "utils/uvarint_utils.h"
+
+namespace stream_data_processor {
+namespace kapacitor_udf {
 
 template <typename UVWHandleType, typename LibuvHandleType>
-UDFAgent<UVWHandleType, LibuvHandleType>::UDFAgent(uvw::Loop* loop) {
+UDFAgent<UVWHandleType, LibuvHandleType>::UDFAgent(uvw::Loop* /* unused */) {
   static_assert(std::is_same_v<UVWHandleType, uvw::TTYHandle> &&
                     std::is_same_v<LibuvHandleType, uv_tty_t>,
                 "From-loop constructor is available for "
@@ -26,8 +29,9 @@ UDFAgent<UVWHandleType, LibuvHandleType>::UDFAgent(
     std::shared_ptr<uvw::StreamHandle<UVWHandleType, LibuvHandleType>> out)
     : in_(std::move(in)), out_(std::move(out)) {
   in_->template on<uvw::DataEvent>(
-      [this](const uvw::DataEvent& event,
-             uvw::StreamHandle<UVWHandleType, LibuvHandleType>& handle) {
+      [this](
+          const uvw::DataEvent& event,
+          uvw::StreamHandle<UVWHandleType, LibuvHandleType>& /* unused */) {
         spdlog::debug("New data of size {}", event.length);
         std::istringstream data_stream(
             std::string(event.data.get(), event.length));
@@ -36,22 +40,18 @@ UDFAgent<UVWHandleType, LibuvHandleType>::UDFAgent(
         }
       });
 
-  out_->template on<uvw::WriteEvent>(
-      [](const uvw::WriteEvent& event,
-         uvw::StreamHandle<UVWHandleType, LibuvHandleType>& handle) {
-        spdlog::debug("Data has been written");
-      });
-
   in_->template once<uvw::EndEvent>(
-      [this](const uvw::EndEvent& event,
-             uvw::StreamHandle<UVWHandleType, LibuvHandleType>& handle) {
+      [this](
+          const uvw::EndEvent& event,
+          uvw::StreamHandle<UVWHandleType, LibuvHandleType>& /* unused */) {
         spdlog::info("Connection closed");
         stop();
       });
 
   in_->template once<uvw::ErrorEvent>(
-      [this](const uvw::ErrorEvent& event,
-             uvw::StreamHandle<UVWHandleType, LibuvHandleType>& handle) {
+      [this](
+          const uvw::ErrorEvent& event,
+          uvw::StreamHandle<UVWHandleType, LibuvHandleType>& /* unused */) {
         spdlog::error(std::string(event.what()));
         stop();
       });
@@ -66,14 +66,14 @@ template UDFAgent<uvw::PipeHandle, uv_pipe_t>::UDFAgent(
 
 template <typename UVWHandleType, typename LibuvHandleType>
 void UDFAgent<UVWHandleType, LibuvHandleType>::setHandler(
-    const std::shared_ptr<RequestHandler>& request_handler) {
-  request_handler_ = request_handler;
+    std::shared_ptr<RequestHandler> request_handler) {
+  request_handler_ = std::move(request_handler);
 }
 
 template void UDFAgent<uvw::TTYHandle, uv_tty_t>::setHandler(
-    const std::shared_ptr<RequestHandler>& request_handler);
+    std::shared_ptr<RequestHandler> request_handler);
 template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::setHandler(
-    const std::shared_ptr<RequestHandler>& request_handler);
+    std::shared_ptr<RequestHandler> request_handler);
 
 template <typename UVWHandleType, typename LibuvHandleType>
 void UDFAgent<UVWHandleType, LibuvHandleType>::start() {
@@ -99,7 +99,7 @@ void UDFAgent<UVWHandleType, LibuvHandleType>::writeResponse(
     const agent::Response& response) {
   auto response_data = response.SerializeAsString();
   std::ostringstream out_stream;
-  UVarIntCoder::encode(out_stream, response_data.length());
+  uvarint_utils::UVarIntCoder::encode(out_stream, response_data.length());
   out_stream << response_data;
   spdlog::debug("Response: {}", response.DebugString());
   out_->write(out_stream.str().data(), out_stream.str().length());
@@ -118,7 +118,7 @@ bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(
     try {
       uint32_t request_size;
       if (residual_request_size_ == 0) {
-        request_size = UVarIntCoder::decode(input_stream);
+        request_size = uvarint_utils::UVarIntCoder::decode(input_stream);
       } else {
         request_size = residual_request_size_;
         residual_request_size_ = 0;
@@ -177,7 +177,7 @@ bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(
           spdlog::error("received unhandled request with enum number {}",
                         request.message_case());
       }
-    } catch (const EOFException&) {
+    } catch (const uvarint_utils::EOFException&) {
       return true;
     } catch (const std::exception& exc) {
       reportError(fmt::format("error processing request: {}", exc.what()));
@@ -211,3 +211,6 @@ void AgentClient::stop() { agent_->stop(); }
 
 AgentClient::AgentClient(std::shared_ptr<IUDFAgent> agent)
     : agent_(std::move(agent)) {}
+
+}  // namespace kapacitor_udf
+}  // namespace stream_data_processor

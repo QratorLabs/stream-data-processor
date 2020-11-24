@@ -7,8 +7,14 @@
 #include <catch2/catch.hpp>
 
 inline void arrowAssertNotOk(const arrow::Status& status) {
-  INFO(status.ToString());
+  INFO(status.message());
   REQUIRE( status.ok() );
+}
+
+template <typename ResultType>
+inline void arrowAssignOrRaise(ResultType& lvalue, const arrow::Result<ResultType> result) {
+  arrowAssertNotOk(result.status());
+  lvalue = std::move(result.ValueOrDie());
 }
 
 inline void checkSize(const std::shared_ptr<arrow::RecordBatch>& record_batch, size_t num_rows, size_t num_columns) {
@@ -26,23 +32,23 @@ inline void checkColumnsArePresent(const std::shared_ptr<arrow::RecordBatch>& re
 template<typename T, typename ArrowType>
 inline void checkValue(const T& expected_value, const std::shared_ptr<arrow::RecordBatch>& record_batch,
                 const std::string& column_name, size_t i) {
-  auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
-  arrowAssertNotOk(field_result.status());
-  REQUIRE( std::static_pointer_cast<ArrowType>(field_result.ValueOrDie())->value == expected_value );
+  std::shared_ptr<arrow::Scalar> field_scalar;
+  arrowAssignOrRaise(field_scalar, record_batch->GetColumnByName(column_name)->GetScalar(i));
+  REQUIRE( std::static_pointer_cast<ArrowType>(field_scalar)->value == expected_value );
 }
 
 template<>
 inline void checkValue<std::string, arrow::StringScalar> (const std::string& expected_value,
                                                    const std::shared_ptr<arrow::RecordBatch>& record_batch,
                                                    const std::string& column_name, size_t i) {
-  auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
-  arrowAssertNotOk(field_result.status());
-  REQUIRE( std::static_pointer_cast<arrow::StringScalar>(field_result.ValueOrDie())->value->ToString() == expected_value );
+  std::shared_ptr<arrow::Scalar> field_scalar;
+  arrowAssignOrRaise(field_scalar, record_batch->GetColumnByName(column_name)->GetScalar(i));
+  REQUIRE( std::static_pointer_cast<arrow::StringScalar>(field_scalar)->value->ToString() == expected_value );
 }
 
 
 template<typename T, typename ArrowType>
-inline bool equals(const T& expected_value, const std::shared_ptr<arrow::RecordBatch>& record_batch,
+[[ nodiscard ]] inline bool equals(const T& expected_value, const std::shared_ptr<arrow::RecordBatch>& record_batch,
             const std::string& column_name, size_t i) {
   auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
   if (!field_result.ok()) {
@@ -54,7 +60,7 @@ inline bool equals(const T& expected_value, const std::shared_ptr<arrow::RecordB
 }
 
 template<>
-inline bool equals<std::string, arrow::StringScalar> (const std::string& expected_value,
+[[ nodiscard ]] inline bool equals<std::string, arrow::StringScalar> (const std::string& expected_value,
                                                const std::shared_ptr<arrow::RecordBatch>& record_batch,
                                                const std::string& column_name, size_t i) {
   auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
@@ -68,14 +74,19 @@ inline bool equals<std::string, arrow::StringScalar> (const std::string& expecte
 
 inline void checkIsNull(const std::shared_ptr<arrow::RecordBatch>& record_batch,
                  const std::string& column_name, size_t i) {
-  auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
-  arrowAssertNotOk(field_result.status());
-  REQUIRE( !field_result.ValueOrDie()->is_valid );
+  std::shared_ptr<arrow::Scalar> field_scalar;
+  arrowAssignOrRaise(field_scalar, record_batch->GetColumnByName(column_name)->GetScalar(i));
+  REQUIRE( !field_scalar->is_valid );
 }
 
 inline void checkIsValid(const std::shared_ptr<arrow::RecordBatch>& record_batch,
                   const std::string& column_name, size_t i) {
-  auto field_result = record_batch->GetColumnByName(column_name)->GetScalar(i);
-  arrowAssertNotOk(field_result.status());
-  REQUIRE( field_result.ValueOrDie()->is_valid );
+  std::shared_ptr<arrow::Scalar> field_scalar;
+  arrowAssignOrRaise(field_scalar, record_batch->GetColumnByName(column_name)->GetScalar(i));
+  REQUIRE( field_scalar->is_valid );
+}
+
+template <class ExpectedType, class ExactType>
+[[ nodiscard ]] inline bool instanceOf(ExactType* object) {
+  return dynamic_cast<const ExpectedType*>(object) != nullptr;
 }

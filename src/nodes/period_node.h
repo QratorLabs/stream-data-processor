@@ -12,14 +12,16 @@
 #include "node.h"
 #include "period_handlers/period_handler.h"
 
+namespace stream_data_processor {
+
 class PeriodNode : public Node {
  public:
   PeriodNode(const std::string& name, uint64_t range, uint64_t period,
-             std::string ts_column_name,
+             std::string time_column_name,
              std::shared_ptr<PeriodHandler> period_handler)
       : Node(name),
         period_(period),
-        ts_column_name_(std::move(ts_column_name)),
+        time_column_name_(std::move(time_column_name)),
         period_handler_(std::move(period_handler))
         /* Not quite fair window range. Actually it considers to be a multiple
            of window period */
@@ -29,11 +31,11 @@ class PeriodNode : public Node {
 
   template <typename ConsumerVectorType>
   PeriodNode(const std::string& name, ConsumerVectorType&& consumers,
-             uint64_t range, uint64_t period, std::string ts_column_name,
+             uint64_t range, uint64_t period, std::string time_column_name,
              std::shared_ptr<PeriodHandler> period_handler)
       : Node(name, std::forward<ConsumerVectorType>(consumers)),
         period_(period),
-        ts_column_name_(std::move(ts_column_name)),
+        time_column_name_(std::move(time_column_name)),
         period_handler_(std::move(period_handler))
         /* Not quite fair window range. Actually it considers to be a multiple
            of window period */
@@ -50,15 +52,17 @@ class PeriodNode : public Node {
   void pass();
 
   void removeOldBuffers();
-  arrow::Status tsLowerBound(
-      const std::shared_ptr<arrow::RecordBatch>& record_batch,
-      const std::function<bool(std::time_t)>& pred, size_t& lower_bound);
+  arrow::Status tsLowerBound(const arrow::RecordBatch& record_batch,
+                             const std::function<bool(std::time_t)>& pred,
+                             size_t& lower_bound);
 
  private:
   uint64_t period_;
-  std::string ts_column_name_;
+  std::string time_column_name_;
   std::shared_ptr<PeriodHandler> period_handler_;
   std::vector<size_t> separation_idx_;
   std::deque<std::shared_ptr<arrow::Buffer>> data_buffers_;
   std::time_t first_ts_in_current_batch_{0};
 };
+
+}  // namespace stream_data_processor

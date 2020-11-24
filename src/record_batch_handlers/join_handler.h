@@ -7,22 +7,26 @@
 
 #include "record_batch_handler.h"
 
+namespace stream_data_processor {
+
 class JoinHandler : public RecordBatchHandler {
  public:
   template <typename StringVectorType>
   explicit JoinHandler(StringVectorType&& join_on_columns,
-                       std::string ts_column_name = "", int64_t tolerance = 0)
+                       int64_t tolerance = 0)
       : join_on_columns_(std::forward<StringVectorType>(join_on_columns)),
-        ts_column_name_(std::move(ts_column_name)),
         tolerance_(tolerance) {}
 
-  arrow::Status handle(const arrow::RecordBatchVector& record_batches,
-                       arrow::RecordBatchVector* result) override;
+  arrow::Result<arrow::RecordBatchVector> handle(
+      const std::shared_ptr<arrow::RecordBatch>& record_batch) override;
+
+  arrow::Result<arrow::RecordBatchVector> handle(
+      const arrow::RecordBatchVector& record_batches) override;
 
  private:
   struct JoinKey {
     std::string key_string;
-    int64_t time{0};
+    int64_t time;
   };
 
   struct JoinValue {
@@ -47,12 +51,13 @@ class JoinHandler : public RecordBatchHandler {
   };
 
  private:
-  arrow::Status getJoinKey(
+  arrow::Result<JoinKey> getJoinKey(
       const std::shared_ptr<arrow::RecordBatch>& record_batch, size_t row_idx,
-      JoinKey* join_key) const;
+      std::string time_column_name) const;
 
  private:
   std::vector<std::string> join_on_columns_;
-  std::string ts_column_name_;
   int64_t tolerance_;
 };
+
+}  // namespace stream_data_processor

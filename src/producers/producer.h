@@ -6,6 +6,8 @@
 
 #include "nodes/node.h"
 
+namespace stream_data_processor {
+
 class Producer {
  public:
   explicit Producer(const std::shared_ptr<Node>& node) : node_(node) {}
@@ -16,3 +18,5 @@ class Producer {
  protected:
   std::shared_ptr<Node> node_;
 };
+
+}  // namespace stream_data_processor

@@ -2,6 +2,8 @@
 
 #include "unix_socket_server.h"
 
+namespace stream_data_processor {
+
 UnixSocketServer::UnixSocketServer(
     std::shared_ptr<UnixSocketClientFactory> client_factory,
     const std::string& socket_path, uvw::Loop* loop)
@@ -25,9 +27,15 @@ UnixSocketServer::UnixSocketServer(
   socket_handle_->bind(socket_path);
 }
 
-void UnixSocketServer::start() { socket_handle_->listen(); }
+void UnixSocketServer::start() {
+  socket_handle_->listen();
+  spdlog::info("Server is started");
+}
 
 void UnixSocketServer::stop() {
   socket_handle_->close();
   for (auto& client : clients_) { client->stop(); }
+  spdlog::info("Server is stopped");
 }
+
+}  // namespace stream_data_processor

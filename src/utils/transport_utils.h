@@ -12,6 +12,9 @@
 #include "nodes/node.h"
 #include "producers/producer.h"
 
+namespace stream_data_processor {
+namespace transport_utils {
+
 struct IPv4Endpoint {
   std::string host;
   uint16_t port;
@@ -65,10 +68,9 @@ class TransportUtils {
   };
 
  public:
-  static arrow::Status wrapMessage(
+  static arrow::Result<std::shared_ptr<arrow::Buffer>> wrapMessage(
       const std::shared_ptr<arrow::Buffer>&
-          buffer,  // TODO: Use ResizableBuffer
-      std::shared_ptr<arrow::Buffer>* terminated_buffer);
+          buffer);  // TODO: Use ResizableBuffer
 
   static std::vector<std::pair<const char*, size_t>> splitMessage(
       const char* message_data, size_t length);
@@ -84,3 +86,6 @@ class TransportUtils {
   static std::string getSizeString(size_t size);
   static size_t parseMessageSize(const std::string& size_string);
 };
+
+}  // namespace transport_utils
+}  // namespace stream_data_processor

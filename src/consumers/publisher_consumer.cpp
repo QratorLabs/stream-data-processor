@@ -1,5 +1,9 @@
 #include "publisher_consumer.h"
 
+namespace stream_data_processor {
+
+using transport_utils::TransportUtils;
+
 const std::chrono::duration<uint64_t, std::milli>
     PublisherConsumer::CONNECT_TIMEOUT{1000};
 
@@ -15,9 +19,8 @@ void PublisherConsumer::start() {
   connect_timer_->start(CONNECT_TIMEOUT, CONNECT_TIMEOUT);
 }
 
-void PublisherConsumer::consume(const char* data, size_t length) {
-  data_buffers_.push(std::make_shared<arrow::Buffer>(
-      reinterpret_cast<const uint8_t*>(data), length));
+void PublisherConsumer::consume(std::shared_ptr<arrow::Buffer> data) {
+  data_buffers_.push(std::move(data));
 }
 
 void PublisherConsumer::stop() {
@@ -97,3 +100,5 @@ void PublisherConsumer::flushBuffer() {
                              std::to_string(zmq_errno()));
   }
 }
+
+}  // namespace stream_data_processor

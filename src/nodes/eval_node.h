@@ -10,6 +10,8 @@
 #include "data_handlers/data_handler.h"
 #include "node.h"
 
+namespace stream_data_processor {
+
 class EvalNode : public Node {
  public:
   EvalNode(const std::string& name, std::shared_ptr<DataHandler> data_handler)
@@ -26,9 +28,7 @@ class EvalNode : public Node {
   void stop() override;
 
  private:
-  arrow::Status processData(const std::shared_ptr<arrow::Buffer>& data_buffer,
-                            std::shared_ptr<arrow::Buffer>& processed_data);
-
- private:
   std::shared_ptr<DataHandler> data_handler_;
 };
+
+}  // namespace stream_data_processor

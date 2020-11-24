@@ -12,13 +12,17 @@
 #include "consumer.h"
 #include "utils/transport_utils.h"
 
+namespace stream_data_processor {
+
+using transport_utils::IPv4Endpoint;
+
 class TCPConsumer : public Consumer {
  public:
   TCPConsumer(const std::vector<IPv4Endpoint>& target_endpoints,
               uvw::Loop* loop, bool is_external = false);
 
   void start() override;
-  void consume(const char* data, size_t length) override;
+  void consume(std::shared_ptr<arrow::Buffer> data) override;
   void stop() override;
 
  private:
@@ -37,3 +41,5 @@ class TCPConsumer : public Consumer {
   size_t connected_targets_{0};
   std::queue<std::shared_ptr<arrow::Buffer>> data_buffers_;
 };
+
+}  // namespace stream_data_processor

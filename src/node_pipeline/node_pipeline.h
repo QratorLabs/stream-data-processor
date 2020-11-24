@@ -10,6 +10,10 @@
 #include "producers/producer.h"
 #include "utils/transport_utils.h"
 
+namespace stream_data_processor {
+
+using transport_utils::TransportUtils;
+
 class NodePipeline {
  public:
   NodePipeline() = default;
@@ -21,14 +25,14 @@ class NodePipeline {
         node_(std::move(node)),
         producer_(std::move(producer)) {}
 
-  void addConsumer(const std::shared_ptr<Consumer>& consumer);
-  void setNode(const std::shared_ptr<Node>& node);
-  void setProducer(const std::shared_ptr<Producer>& producer);
+  void addConsumer(std::shared_ptr<Consumer> consumer);
+  void setNode(std::shared_ptr<Node> node);
+  void setProducer(std::shared_ptr<Producer> producer);
 
   void start();
 
   void subscribeTo(NodePipeline* other_pipeline, uvw::Loop* loop,
-                   const std::shared_ptr<zmq::context_t>& zmq_context,
+                   zmq::context_t& zmq_context,
                    TransportUtils::ZMQTransportType transport_type =
                        TransportUtils::ZMQTransportType::INPROC);
 
@@ -39,3 +43,5 @@ class NodePipeline {
   std::shared_ptr<Node> node_{nullptr};
   std::shared_ptr<Producer> producer_{nullptr};
 };
+
+}  // namespace stream_data_processor

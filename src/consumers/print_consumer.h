@@ -7,12 +7,14 @@
 
 #include "consumer.h"
 
+namespace stream_data_processor {
+
 class PrintConsumer : public Consumer {
  public:
   explicit PrintConsumer(std::ofstream& ostrm);
 
   void start() override;
-  void consume(const char* data, size_t length) override;
+  void consume(std::shared_ptr<arrow::Buffer> data) override;
   void stop() override;
 
  private:
@@ -30,8 +32,17 @@ class PrintConsumer : public Consumer {
 class FilePrintConsumer : public PrintConsumer {
  public:
   explicit FilePrintConsumer(const std::string& file_name);
+
+  FilePrintConsumer(const FilePrintConsumer&) = delete;
+  FilePrintConsumer& operator=(const FilePrintConsumer&) = delete;
+
+  FilePrintConsumer(FilePrintConsumer&&) = delete;
+  FilePrintConsumer& operator=(FilePrintConsumer&&) = delete;
+
   ~FilePrintConsumer();
 
  private:
   std::ofstream ostrm_obj_;
 };
+
+}  // namespace stream_data_processor

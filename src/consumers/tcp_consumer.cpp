@@ -1,5 +1,10 @@
 #include "tcp_consumer.h"
 
+namespace stream_data_processor {
+
+using transport_utils::IPv4Endpoint;
+using transport_utils::TransportUtils;
+
 const std::chrono::duration<uint64_t, std::milli> TCPConsumer::RETRY_DELAY(
     100);
 
@@ -54,9 +59,11 @@ void TCPConsumer::sendData(const std::shared_ptr<arrow::Buffer>& data) {
   if (is_external_) {
     wrapped_buffer = data;
   } else {
-    auto wrapping_status = TransportUtils::wrapMessage(data, &wrapped_buffer);
-    if (!wrapping_status.ok()) {
-      throw std::runtime_error(wrapping_status.message());
+    auto wrapping_result = TransportUtils::wrapMessage(data);
+    if (!wrapping_result.ok()) {
+      throw std::runtime_error(wrapping_result.status().message());
+    } else {
+      wrapped_buffer = std::move(wrapping_result).ValueOrDie();
     }
   }
 
@@ -71,9 +78,8 @@ void TCPConsumer::sendData(const std::shared_ptr<arrow::Buffer>& data) {
 
 void TCPConsumer::start() {}
 
-void TCPConsumer::consume(const char* data, size_t length) {
-  data_buffers_.push(std::make_shared<arrow::Buffer>(
-      reinterpret_cast<const uint8_t*>(data), length));
+void TCPConsumer::consume(std::shared_ptr<arrow::Buffer> data) {
+  data_buffers_.push(std::move(data));
   if (connected_targets_ == targets_.size()) {
     flushBuffers();
   }
@@ -94,3 +100,5 @@ void TCPConsumer::flushBuffers() {
     data_buffers_.pop();
   }
 }
+
+}  // namespace stream_data_processor

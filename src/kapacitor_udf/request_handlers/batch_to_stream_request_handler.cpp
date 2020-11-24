@@ -2,18 +2,17 @@
 
 #include "batch_to_stream_request_handler.h"
 
-#include "utils/data_converter.h"
-#include "utils/serializer.h"
+#include "utils/serialize_utils.h"
+
+namespace stream_data_processor {
+namespace kapacitor_udf {
 
 BatchToStreamRequestHandler::BatchToStreamRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent,
-    const DataConverter::PointsToRecordBatchesConversionOptions&
+    const PointsConverter::PointsToRecordBatchesConversionOptions&
         to_record_batches_options,
-    const DataConverter::RecordBatchesToPointsConversionOptions&
-        to_points_options,
     const std::shared_ptr<RecordBatchHandler>& handler)
-    : RecordBatchRequestHandler(agent, to_record_batches_options,
-                                to_points_options, handler) {}
+    : RecordBatchRequestHandler(agent, to_record_batches_options, handler) {}
 
 agent::Response BatchToStreamRequestHandler::info() const {
   agent::Response response;
@@ -79,3 +78,6 @@ void BatchToStreamRequestHandler::endBatch(const agent::EndBatch& batch) {
   in_batch_ = false;
   handleBatch();
 }
+
+}  // namespace kapacitor_udf
+}  // namespace stream_data_processor

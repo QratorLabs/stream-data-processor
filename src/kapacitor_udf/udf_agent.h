@@ -12,6 +12,9 @@
 
 #include "udf.pb.h"
 
+namespace stream_data_processor {
+namespace kapacitor_udf {
+
 class IUDFAgent {
  public:
   IUDFAgent() = default;
@@ -36,7 +39,7 @@ class UDFAgent : public IUDFAgent {
       std::shared_ptr<uvw::StreamHandle<UVWHandleType, LibuvHandleType>> in,
       std::shared_ptr<uvw::StreamHandle<UVWHandleType, LibuvHandleType>> out);
 
-  void setHandler(const std::shared_ptr<RequestHandler>& request_handler);
+  void setHandler(std::shared_ptr<RequestHandler> request_handler);
 
   void start() override;
   void stop() override;
@@ -67,3 +70,6 @@ class AgentClient : public UnixSocketClient {
  private:
   std::shared_ptr<IUDFAgent> agent_;
 };
+
+}  // namespace kapacitor_udf
+}  // namespace stream_data_processor

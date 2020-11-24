@@ -11,6 +11,10 @@
 #include "consumer.h"
 #include "utils/transport_utils.h"
 
+namespace stream_data_processor {
+
+using transport_utils::TransportUtils;
+
 class PublisherConsumer : public Consumer {
  public:
   template <typename PublisherType>
@@ -28,7 +32,7 @@ class PublisherConsumer : public Consumer {
   };
 
   void start() override;
-  void consume(const char* data, size_t length) override;
+  void consume(std::shared_ptr<arrow::Buffer> data) override;
   void stop() override;
 
  private:
@@ -47,3 +51,5 @@ class PublisherConsumer : public Consumer {
   std::queue<std::shared_ptr<arrow::Buffer>> data_buffers_;
   bool socket_is_writeable_{false};
 };
+
+}  // namespace stream_data_processor
