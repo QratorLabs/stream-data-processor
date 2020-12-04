@@ -6,14 +6,14 @@
 
 namespace stream_data_processor {
 
-void EvalNode::start() { spdlog::get(name_)->info("Node started"); }
+void EvalNode::start() { log("Node started"); }
 
 void EvalNode::handleData(const char* data, size_t length) {
-  spdlog::get(name_)->debug("Process data of size {}", length);
+  log(fmt::format("Process data of size {}", length), spdlog::level::debug);
   arrow::Buffer data_buffer(reinterpret_cast<const uint8_t*>(data), length);
   auto processed_data = data_handler_->handle(data_buffer);
   if (!processed_data.ok()) {
-    spdlog::get(name_)->error(processed_data.status().message());
+    log(processed_data.status().message(), spdlog::level::err);
     return;
   }
 
@@ -21,8 +21,8 @@ void EvalNode::handleData(const char* data, size_t length) {
 }
 
 void EvalNode::stop() {
-  spdlog::get(name_)->info("Stopping node");
-  for (auto& consumer : consumers_) { consumer->stop(); }
+  log("Stopping node");
+  stopConsumers();
 }
 
 }  // namespace stream_data_processor

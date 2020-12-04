@@ -19,6 +19,8 @@ class UVarIntCoder {
   static const uint8_t SHIFT_SIZE;
   static const uint8_t VARINT_MORE_MASK;
   static const uint8_t VARINT_MASK;
+  static const uint32_t MAX_SHIFT_FOR_UINT32{32};
+  static const uint32_t PREVENT_MAX_SHIFT{28};
 };
 
 }  // namespace uvarint_utils

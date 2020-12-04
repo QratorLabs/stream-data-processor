@@ -15,7 +15,15 @@ class Producer {
   virtual void start() = 0;
   virtual void stop() = 0;
 
- protected:
+  void log(const std::string& message,
+           spdlog::level::level_enum level =
+               spdlog::level::level_enum::info) const {
+    node_->log(message, level);
+  }
+
+  std::shared_ptr<Node> getNode() const { return node_; }
+
+ private:
   std::shared_ptr<Node> node_;
 };
 

@@ -27,10 +27,9 @@ inline const std::string MIN_LEVEL_OPTION_NAME{"minLevel"};
 inline const std::string MAX_LEVEL_OPTION_NAME{"maxLevel"};
 
 inline const std::unordered_set<std::string> REQUIRED_THRESHOLD_OPTIONS{
-    WATCH_COLUMN_OPTION_NAME,      THRESHOLD_COLUMN_OPTION_NAME,
+    WATCH_COLUMN_OPTION_NAME, THRESHOLD_COLUMN_OPTION_NAME,
     DEFAULT_THRESHOLD_OPTION_NAME, INCREASE_SCALE_OPTION_NAME,
-    INCREASE_AFTER_OPTION_NAME,    MIN_LEVEL_OPTION_NAME,
-    MAX_LEVEL_OPTION_NAME};
+    INCREASE_AFTER_OPTION_NAME};
 
 inline const std::unordered_map<std::string, agent::ValueType>
     THRESHOLD_OPTIONS_TYPES{{WATCH_COLUMN_OPTION_NAME, agent::STRING},
@@ -124,6 +123,13 @@ ThresholdStateMachine::Options parseThresholdOptions(
     }
   }
 
+  for (auto& required_option : REQUIRED_THRESHOLD_OPTIONS) {
+    if (parsed_options.find(required_option) == parsed_options.end()) {
+      throw InvalidOptionException(
+          fmt::format("Missed required option: {}", required_option));
+    }
+  }
+
   threshold_options.threshold_column_type = metadata::FIELD;
 
   return threshold_options;
@@ -162,17 +168,16 @@ agent::Response StatefulThresholdRequestHandler::init(
     return response;
   }
 
-  handler_ = std::make_shared<GroupDispatcher>(
+  setHandler(std::make_shared<GroupDispatcher>(
       std::make_shared<ThresholdStateMachineFactory>(
-          std::move(threshold_options)));
+          std::move(threshold_options))));
 
   response.mutable_init()->set_success(true);
   return response;
 }
 
 void StatefulThresholdRequestHandler::point(const agent::Point& point) {
-  auto new_point = batch_points_.mutable_points()->Add();
-  new_point->CopyFrom(point);
+  addPoint(point);
   handleBatch();
 }
 

@@ -62,7 +62,7 @@ StateOK::StateOK(std::weak_ptr<ThresholdStateMachine> state_machine,
 arrow::Status StateOK::addThresholdForRow(
     const arrow::RecordBatch& record_batch, int row_id,
     arrow::DoubleBuilder* threshold_column_builder) {
-  double value;
+  double value = 0;
   auto& options = state_machine_.lock()->getOptions();
 
   ARROW_ASSIGN_OR_RAISE(
@@ -77,7 +77,7 @@ arrow::Status StateOK::addThresholdForRow(
   }
 
   auto self = state_machine_.lock()->getState();
-  std::time_t alert_start;
+  std::time_t alert_start = 0;
   ARROW_ASSIGN_OR_RAISE(alert_start, getTimeAtRow(record_batch, row_id));
 
   if (value > current_threshold_) {
@@ -114,14 +114,14 @@ StateIncrease::StateIncrease(
 arrow::Status StateIncrease::addThresholdForRow(
     const arrow::RecordBatch& record_batch, int row_id,
     arrow::DoubleBuilder* threshold_column_builder) {
-  double value;
+  double value = 0;
   auto& options = state_machine_.lock()->getOptions();
 
   ARROW_ASSIGN_OR_RAISE(
       value,
       getColumnValueAtRow(record_batch, options.watch_column_name, row_id));
 
-  std::time_t row_time;
+  std::time_t row_time = 0;
   ARROW_ASSIGN_OR_RAISE(row_time, getTimeAtRow(record_batch, row_id));
 
   if (value > current_threshold_ && row_time > alert_start_ &&
@@ -175,14 +175,14 @@ StateDecrease::StateDecrease(
 arrow::Status StateDecrease::addThresholdForRow(
     const arrow::RecordBatch& record_batch, int row_id,
     arrow::DoubleBuilder* threshold_column_builder) {
-  double value;
+  double value = 0;
   auto& options = state_machine_.lock()->getOptions();
 
   ARROW_ASSIGN_OR_RAISE(
       value,
       getColumnValueAtRow(record_batch, options.watch_column_name, row_id));
 
-  std::time_t row_time;
+  std::time_t row_time = 0;
   ARROW_ASSIGN_OR_RAISE(row_time, getTimeAtRow(record_batch, row_id));
 
   if (value <= current_threshold_ * options.decrease_trigger_factor &&

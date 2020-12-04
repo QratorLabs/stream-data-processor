@@ -3,9 +3,16 @@ project(stream-data-processor)
 
 set(CMAKE_CXX_STANDARD 17)
 
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
 option(ENABLE_TESTS "enables tests building" OFF)
 option(BUILD_SHARED_LIBS "enables building shared libraries" OFF)
 option(CLANG_TIDY_LINT "enables clang-tidy linter" OFF)
+
+if(NOT BUILD_SHARED_LIBS)
+  message(STATUS "Building static version")
+endif ()
 
 find_package(PkgConfig)
 pkg_check_modules(PC_ZeroMQ QUIET zmq)
@@ -17,11 +24,24 @@ find_library(ZeroMQ_LIBRARY
   NAMES zmq
   PATHS ${PC_ZeroMQ_LIBRARY_DIRS}
   )
+
+if(BUILD_SHARED_LIBS)
+  find_library(ZeroMQ_LIBRARY
+    NAMES "${CMAKE_SHARED_LIBRARY_PREFIX}zmq${CMAKE_SHARED_LIBRARY_SUFFIX}"
+    PATHS ${PC_ZeroMQ_LIBRARY_DIRS}
+    )
+else()
+  find_library(ZeroMQ_LIBRARY
+    NAMES "${CMAKE_STATIC_LIBRARY_PREFIX}zmq${CMAKE_STATIC_LIBRARY_SUFFIX}"
+    PATHS ${PC_ZeroMQ_LIBRARY_DIRS}
+    )
+endif ()
+
 add_library(dependency_zmq UNKNOWN IMPORTED GLOBAL)
 set_property(TARGET dependency_zmq PROPERTY IMPORTED_LOCATION "${ZeroMQ_LIBRARY}")
 #add_library(dependencies::zmq ALIAS dependency_zmq)      # Introduced in cmake 3.15
 message(STATUS "ZeroMQ include dir: ${ZeroMQ_INCLUDE_DIR}")
-message(STATUS "ZeroMQ lib dir: ${ZeroMQ_LIBRARY}")
+message(STATUS "ZeroMQ lib: ${ZeroMQ_LIBRARY}")
 
 find_package(Arrow REQUIRED)
 message(STATUS "Arrow cmake dir: ${Arrow_DIR}")
@@ -29,11 +49,6 @@ message(STATUS "Arrow cmake dir: ${Arrow_DIR}")
 set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${Arrow_DIR}")
 find_package(Gandiva REQUIRED)
 message(STATUS "Gandiva cmake dir: ${Gandiva_DIR}")
-
-if(NOT BUILD_SHARED_LIBS)
-  set(THREADS_PREFER_PTHREAD_FLAG ON)
-  find_package(Threads REQUIRED)
-endif ()
 
 find_package(spdlog REQUIRED)
 

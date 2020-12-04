@@ -18,8 +18,7 @@ void SubscriberProducer::start() {
 void SubscriberProducer::configurePollers() {
   poller_->on<uvw::PollEvent>([this](const uvw::PollEvent& event,
                                      uvw::PollHandle& poller) {
-    node_->log(
-        "Polled socket with events: " +
+    log("Polled socket with events: " +
             std::to_string(
                 subscriber_.subscriber_socket().getsockopt<int>(ZMQ_EVENTS)),
         spdlog::level::debug);
@@ -27,7 +26,7 @@ void SubscriberProducer::configurePollers() {
            ZMQ_POLLIN) {
       auto message = readMessage();
       if (message.to_string() == TransportUtils::END_MESSAGE) {
-        node_->log("Closing connection with publisher", spdlog::level::info);
+        log("Closing connection with publisher", spdlog::level::info);
         stop();
         break;
       } else if (!subscriber_.isReady()) {
@@ -36,15 +35,15 @@ void SubscriberProducer::configurePollers() {
           confirmConnection();
         }
 
-        node_->log("Connected to publisher", spdlog::level::info);
+        log("Connected to publisher", spdlog::level::info);
       } else if (message.to_string() != TransportUtils::CONNECT_MESSAGE) {
-        node_->handleData(static_cast<const char*>(message.data()),
-                          message.size());
+        getNode()->handleData(static_cast<const char*>(message.data()),
+                              message.size());
       }
     }
 
     if (event.flags & uvw::PollHandle::Event::DISCONNECT) {
-      node_->log("Closing connection with publisher", spdlog::level::info);
+      log("Closing connection with publisher", spdlog::level::info);
       stop();
     }
   });
@@ -66,28 +65,24 @@ void SubscriberProducer::configurePollers() {
 void SubscriberProducer::stop() {
   poller_->close();
   synchronize_poller_->close();
-  node_->stop();
+  getNode()->stop();
 }
 
 zmq::message_t SubscriberProducer::readMessage() {
   zmq::message_t message;
   try {
     message = TransportUtils::readMessage(subscriber_.subscriber_socket());
-  } catch (const std::exception& e) {
-    node_->log(e.what(), spdlog::level::err);
-  }
+  } catch (const std::exception& e) { log(e.what(), spdlog::level::err); }
 
-  node_->log("Data received, size: " + std::to_string(message.size()),
-             spdlog::level::info);
+  log("Data received, size: " + std::to_string(message.size()),
+      spdlog::level::info);
   return message;
 }
 
 void SubscriberProducer::confirmConnection() {
   try {
     TransportUtils::send(subscriber_.synchronize_socket(), "");
-  } catch (const std::exception& e) {
-    node_->log(e.what(), spdlog::level::err);
-  }
+  } catch (const std::exception& e) { log(e.what(), spdlog::level::err); }
 
   synchronize_poller_->close();
 }

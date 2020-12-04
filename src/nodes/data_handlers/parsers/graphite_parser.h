@@ -103,6 +103,9 @@ class GraphiteParser : public Parser {
     bool multiple_last_part_{false};
   };
 
+ private:
+  const static int NUMBER_PARSING_BASE{10};
+
   std::string separator_;
   std::string time_column_name_;
   std::string measurement_column_name_;

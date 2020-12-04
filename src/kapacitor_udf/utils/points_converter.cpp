@@ -43,7 +43,8 @@ arrow::Result<agent::PointBatch> PointsConverter::convertToPoints(
   int points_count = 0;
   agent::PointBatch points;
   for (auto& record_batch : record_batches) {
-    points.mutable_points()->Reserve(points_count + record_batch->num_rows());
+    points.mutable_points()->Reserve(
+        static_cast<int>(points_count + record_batch->num_rows()));
 
     std::string time_column_name;
     ARROW_ASSIGN_OR_RAISE(time_column_name,
@@ -209,7 +210,7 @@ PointsConverter::convertPointsGroup(
   std::map<std::string, arrow::StringBuilder> string_fields_builders;
   std::map<std::string, arrow::BooleanBuilder> bool_fields_builders;
   for (auto& i : group_indexes) {
-    auto& point = points.points(i);
+    auto& point = points.points(static_cast<int>(i));
     addBuilders(point.tags(), &tags_builders, pool);
     addBuilders(point.fieldsint(), &int_fields_builders, pool);
     addBuilders(point.fieldsdouble(), &double_fields_builders, pool);
@@ -218,7 +219,7 @@ PointsConverter::convertPointsGroup(
   }
 
   for (auto& i : group_indexes) {
-    auto& point = points.points(i);
+    auto& point = points.points(static_cast<int>(i));
     ARROW_RETURN_NOT_OK(timestamp_builder.Append(point.time()));
     ARROW_RETURN_NOT_OK(measurement_builder.Append(point.name()));
     ARROW_RETURN_NOT_OK(appendValues(point.tags(), &tags_builders));

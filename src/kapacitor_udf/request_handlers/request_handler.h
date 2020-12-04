@@ -38,6 +38,9 @@ class RequestHandler {
   virtual void stop() {}
 
  protected:
+  std::shared_ptr<IUDFAgent> getAgent() const { return agent_.lock(); }
+
+ private:
   std::weak_ptr<IUDFAgent> agent_;
 };
 

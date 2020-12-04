@@ -116,7 +116,7 @@ bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(
   agent::Request request;
   while (true) {
     try {
-      uint32_t request_size;
+      uint32_t request_size = 0;
       if (residual_request_size_ == 0) {
         request_size = uvarint_utils::UVarIntCoder::decode(input_stream);
       } else {

@@ -10,7 +10,7 @@ namespace stream_data_processor {
 void PeriodNode::handleData(const char* data, size_t length) {
   auto append_result = appendData(data, length);
   if (!append_result.ok()) {
-    spdlog::get(name_)->error(append_result.message());
+    log(append_result.message(), spdlog::level::err);
   }
 }
 
@@ -45,7 +45,7 @@ arrow::Status PeriodNode::appendData(const char* data, size_t length) {
       std::static_pointer_cast<arrow::Int64Scalar>(max_ts_scalar)->value);
 
   while (max_ts - first_ts_in_current_batch_ >= period_) {
-    size_t divide_index;
+    size_t divide_index = 0;
     ARROW_RETURN_NOT_OK(tsLowerBound(
         *record_batch,
         [this](std::time_t ts) {
@@ -128,7 +128,7 @@ arrow::Status PeriodNode::tsLowerBound(
 void PeriodNode::pass() {
   auto period_data = period_handler_->handle(data_buffers_);
   if (!period_data.ok()) {
-    spdlog::get(name_)->debug(period_data.status().message());
+    log(period_data.status().message(), spdlog::level::debug);
     return;
   }
 
@@ -136,12 +136,12 @@ void PeriodNode::pass() {
   removeOldBuffers();
 }
 
-void PeriodNode::start() { spdlog::get(name_)->info("Node started"); }
+void PeriodNode::start() { log("Node started"); }
 
 void PeriodNode::stop() {
   pass();
-  spdlog::get(name_)->info("Stopping node");
-  for (auto& consumer : consumers_) { consumer->stop(); }
+  log("Stopping node");
+  stopConsumers();
 }
 
 void PeriodNode::removeOldBuffers() {

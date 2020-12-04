@@ -22,7 +22,7 @@ void RecordBatchRequestHandler::handleBatch() {
 
   if (handler_ == nullptr) {
     response.mutable_error()->set_error("RecordBatchHandler is not provided");
-    agent_.lock()->writeResponse(response);
+    getAgent()->writeResponse(response);
     return;
   }
 
@@ -33,14 +33,14 @@ void RecordBatchRequestHandler::handleBatch() {
 
   if (!record_batches.ok()) {
     response.mutable_error()->set_error(record_batches.status().message());
-    agent_.lock()->writeResponse(response);
+    getAgent()->writeResponse(response);
     return;
   }
 
   auto result = handler_->handle(record_batches.ValueOrDie());
   if (!result.ok()) {
     response.mutable_error()->set_error(result.status().message());
-    agent_.lock()->writeResponse(response);
+    getAgent()->writeResponse(response);
     return;
   }
 
@@ -49,13 +49,39 @@ void RecordBatchRequestHandler::handleBatch() {
 
   if (!response_points.ok()) {
     response.mutable_error()->set_error(response_points.status().message());
-    agent_.lock()->writeResponse(response);
+    getAgent()->writeResponse(response);
     return;
   }
 
   for (auto& point : response_points.ValueOrDie().points()) {
     response.mutable_point()->CopyFrom(point);
-    agent_.lock()->writeResponse(response);
+    getAgent()->writeResponse(response);
+  }
+}
+
+std::shared_ptr<RecordBatchHandler> RecordBatchRequestHandler::getHandler()
+    const {
+  return handler_;
+}
+
+const agent::PointBatch& RecordBatchRequestHandler::getPoints() const {
+  return batch_points_;
+}
+
+void RecordBatchRequestHandler::restorePointsFromSnapshotData(
+    const std::string& data) {
+  batch_points_.mutable_points()->Clear();
+  batch_points_.ParseFromString(data);
+}
+
+void RecordBatchRequestHandler::addPoint(const agent::Point& point) {
+  auto new_point = batch_points_.mutable_points()->Add();
+  new_point->CopyFrom(point);
+}
+
+void RecordBatchRequestHandler::setPointsName(const std::string& name) {
+  for (auto& point : *batch_points_.mutable_points()) {
+    point.set_name(name);
   }
 }
 
@@ -69,8 +95,7 @@ StreamRecordBatchRequestHandlerBase::StreamRecordBatchRequestHandlerBase(
 agent::Response StreamRecordBatchRequestHandlerBase::snapshot() const {
   agent::Response response;
 
-  response.mutable_snapshot()->set_snapshot(
-      batch_points_.SerializeAsString());
+  response.mutable_snapshot()->set_snapshot(getPoints().SerializeAsString());
 
   return response;
 }
@@ -85,8 +110,7 @@ agent::Response StreamRecordBatchRequestHandlerBase::restore(
     return response;
   }
 
-  batch_points_.mutable_points()->Clear();
-  batch_points_.ParseFromString(restore_request.snapshot());
+  restorePointsFromSnapshotData(restore_request.snapshot());
   response.mutable_restore()->set_success(true);
   return response;
 }
@@ -96,7 +120,7 @@ void StreamRecordBatchRequestHandlerBase::beginBatch(
   agent::Response response;
   response.mutable_error()->set_error(
       "Invalid BeginBatch request, UDF wants stream data");
-  agent_.lock()->writeResponse(response);
+  getAgent()->writeResponse(response);
 }
 
 void StreamRecordBatchRequestHandlerBase::endBatch(
@@ -104,7 +128,7 @@ void StreamRecordBatchRequestHandlerBase::endBatch(
   agent::Response response;
   response.mutable_error()->set_error(
       "Invalid EndBatch request, UDF wants stream data");
-  agent_.lock()->writeResponse(response);
+  getAgent()->writeResponse(response);
 }
 
 }  // namespace kapacitor_udf

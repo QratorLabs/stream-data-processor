@@ -30,7 +30,7 @@ uint32_t UVarIntCoder::decode(std::istream& reader) {
       throw EOFException();
     }
 
-    if (shift >= 28 && ((byte & VARINT_MASK) >> 4) != 0) {
+    if (shift >= PREVENT_MAX_SHIFT && ((byte & VARINT_MASK) >> 4) != 0) {
       throw std::runtime_error("decoding value is larger than 32bit uint");
     }
 
@@ -41,7 +41,7 @@ uint32_t UVarIntCoder::decode(std::istream& reader) {
     }
 
     shift += SHIFT_SIZE;
-    if (shift >= 32) {
+    if (shift >= MAX_SHIFT_FOR_UINT32) {
       throw std::runtime_error(
           "too many bytes when decoding varint, larger than 32bit uint");
     }

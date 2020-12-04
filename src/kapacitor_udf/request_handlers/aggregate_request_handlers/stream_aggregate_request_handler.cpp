@@ -2,7 +2,6 @@
 
 #include "aggregate_options_parser.h"
 #include "kapacitor_udf/request_handlers/invalid_option_exception.h"
-#include "record_batch_handlers/record_batch_handlers.h"
 #include "stream_aggregate_request_handler.h"
 
 namespace stream_data_processor {
@@ -52,7 +51,8 @@ agent::Response StreamAggregateRequestHandler::init(
     return response;
   }
 
-  handler_ = std::make_shared<AggregateHandler>(std::move(aggregate_options));
+  setHandler(
+      std::make_shared<AggregateHandler>(std::move(aggregate_options)));
   response.mutable_init()->set_success(true);
   return response;
 }
@@ -62,8 +62,7 @@ void StreamAggregateRequestHandler::point(const agent::Point& point) {
     handleBatch();
   }
 
-  auto new_point = batch_points_.mutable_points()->Add();
-  new_point->CopyFrom(point);
+  addPoint(point);
 }
 
 void StreamAggregateRequestHandler::parseToleranceOption(
@@ -93,16 +92,16 @@ void StreamAggregateRequestHandler::parseToleranceOption(
 
 bool StreamAggregateRequestHandler::needHandleBefore(
     const agent::Point& point) const {
-  if (batch_points_.points().empty()) {
+  if (getPoints().points().empty()) {
     return false;
   }
 
-  if (batch_points_.points(0).time() >= point.time()) {
+  if (getPoints().points(0).time() >= point.time()) {
     return false;
   }
 
-  if (std::chrono::milliseconds(
-          point.time() - batch_points_.points(0).time()) < tolerance_) {
+  if (std::chrono::milliseconds(point.time() - getPoints().points(0).time()) <
+      tolerance_) {
     return false;
   }
 

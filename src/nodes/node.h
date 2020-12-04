@@ -44,8 +44,9 @@ class Node {
 
  protected:
   void passData(const std::vector<std::shared_ptr<arrow::Buffer>>& data);
+  void stopConsumers();
 
- protected:
+ private:
   std::string name_;
   std::shared_ptr<spdlog::logger> logger_;
   std::vector<std::shared_ptr<Consumer>> consumers_;

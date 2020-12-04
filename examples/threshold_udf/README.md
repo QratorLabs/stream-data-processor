@@ -15,7 +15,7 @@ Firstly, you should build a docker image using [Dockerfile](../../Dockerfile)
 from the [root directory](../..). For example, call from the root directory:
 
 ```terminal
-host$ docker image build --build-arg GCC_IMAGE_VERSION=10.2.0 \
+host$ docker image build --build-arg ALPINE_IMAGE_VERSION=3.12.1 \
         -t qevent_intership_stream_data_processor_image .
 ```
 
@@ -40,7 +40,7 @@ udf-docker$ make threshold_udf
 Now, start the UDF:
 
 ```terminal
-udf-docker$ ./examples/threshold_udf --socket /var/run/adjustLevelUDF.sock
+udf-docker$ ./bin/threshold_udf --socket /var/run/adjustLevelUDF.sock
 ```
 
 ### Kapacitor container

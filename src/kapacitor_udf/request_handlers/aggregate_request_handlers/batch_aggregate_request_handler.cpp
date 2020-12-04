@@ -1,7 +1,8 @@
-#include "batch_aggregate_request_handler.h"
+#include <sstream>
+
 #include "aggregate_options_parser.h"
+#include "batch_aggregate_request_handler.h"
 #include "kapacitor_udf/request_handlers/invalid_option_exception.h"
-#include "record_batch_handlers/record_batch_handlers.h"
 
 namespace stream_data_processor {
 namespace kapacitor_udf {
@@ -37,20 +38,23 @@ agent::Response BatchAggregateRequestHandler::init(
     return response;
   }
 
-  auto aggregate_handler =
-      std::make_shared<AggregateHandler>(std::move(aggregate_options));
-  handler_ = std::make_shared<PipelineHandler>();
-  std::static_pointer_cast<PipelineHandler>(handler_)->pushBackHandler(
-      std::move(aggregate_handler));
-
+  setHandler(
+      std::make_shared<AggregateHandler>(std::move(aggregate_options)));
   response.mutable_init()->set_success(true);
   return response;
 }
 
 agent::Response BatchAggregateRequestHandler::snapshot() const {
   agent::Response response;
-  response.mutable_snapshot()->set_snapshot(
-      (in_batch_ ? "1" : "0") + batch_points_.SerializeAsString());
+  std::stringstream snapshot_builder;
+  if (in_batch_) {
+    snapshot_builder << '1';
+  } else {
+    snapshot_builder << '0';
+  }
+
+  snapshot_builder << getPoints().SerializeAsString();
+  response.mutable_snapshot()->set_snapshot(snapshot_builder.str());
   return response;
 }
 
@@ -72,8 +76,7 @@ agent::Response BatchAggregateRequestHandler::restore(
   }
 
   in_batch_ = restore_request.snapshot()[0] == '1';
-  batch_points_.mutable_points()->Clear();
-  batch_points_.ParseFromString(restore_request.snapshot().substr(1));
+  restorePointsFromSnapshotData(restore_request.snapshot().substr(1));
   response.mutable_restore()->set_success(true);
   return response;
 }
@@ -85,21 +88,17 @@ void BatchAggregateRequestHandler::beginBatch(
 
 void BatchAggregateRequestHandler::point(const agent::Point& point) {
   if (in_batch_) {
-    auto new_point = batch_points_.mutable_points()->Add();
-    new_point->CopyFrom(point);
+    addPoint(point);
   } else {
     agent::Response response;
     response.mutable_error()->set_error("Can't add point: not in batch");
-    agent_.lock()->writeResponse(response);
+    getAgent()->writeResponse(response);
   }
 }
 
 void BatchAggregateRequestHandler::endBatch(const agent::EndBatch& batch) {
   in_batch_ = false;
-  for (auto& point : *batch_points_.mutable_points()) {
-    point.set_name(batch.name());
-  }
-
+  setPointsName(batch.name());
   handleBatch();
 }
 

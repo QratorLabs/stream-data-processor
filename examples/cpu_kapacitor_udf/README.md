@@ -16,7 +16,7 @@ Firstly, you should build a docker image using [Dockerfile](../../Dockerfile)
 from the [root directory](../..). For example, call from the root directory:
 
 ```terminal
-host$ docker image build --build-arg GCC_IMAGE_VERSION=10.2.0 \
+host$ docker image build --build-arg ALPINE_IMAGE_VERSION=3.12.1 \
         -t qevent_intership_stream_data_processor_image .
 ```
 
@@ -41,7 +41,7 @@ udf-docker$ make cpu_kapacitor_udf
 Now, start the UDF:
 
 ```terminal
-udf-docker$ ./examples/cpu_kapacitor_udf \
+udf-docker$ ./bin/cpu_kapacitor_udf \
                 --batch /var/run/batchAggregateUDF.sock \
                 --stream /var/run/streamAggregateUDF.sock
 ```

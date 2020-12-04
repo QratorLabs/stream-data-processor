@@ -34,8 +34,7 @@ agent::Response StreamToStreamRequestHandler::init(
 }
 
 void StreamToStreamRequestHandler::point(const agent::Point& point) {
-  auto new_point = batch_points_.mutable_points()->Add();
-  new_point->CopyFrom(point);
+  addPoint(point);
   if (!batch_timer_->active()) {
     batch_timer_->start(batch_interval_, batch_interval_);
   }

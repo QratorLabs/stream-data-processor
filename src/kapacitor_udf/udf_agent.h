@@ -17,16 +17,9 @@ namespace kapacitor_udf {
 
 class IUDFAgent {
  public:
-  IUDFAgent() = default;
-
-  IUDFAgent(const IUDFAgent&) = delete;
-  IUDFAgent& operator=(const IUDFAgent&) = delete;
-
   virtual void start() = 0;
   virtual void stop() = 0;
   virtual void writeResponse(const agent::Response& response) = 0;
-
-  virtual ~IUDFAgent() = default;
 };
 
 class RequestHandler;

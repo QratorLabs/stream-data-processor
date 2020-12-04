@@ -26,7 +26,19 @@ class RecordBatchRequestHandler : public RequestHandler {
  protected:
   void handleBatch();
 
- protected:
+  template <class HandlerType>
+  void setHandler(HandlerType&& handler) {
+    handler_ = std::forward<HandlerType>(handler);
+  }
+
+  std::shared_ptr<RecordBatchHandler> getHandler() const;
+
+  const agent::PointBatch& getPoints() const;
+  void restorePointsFromSnapshotData(const std::string& data);
+  void addPoint(const agent::Point& point);
+  void setPointsName(const std::string& name);
+
+ private:
   std::shared_ptr<RecordBatchHandler> handler_;
   PointsConverter::PointsToRecordBatchesConversionOptions
       to_record_batches_options_;

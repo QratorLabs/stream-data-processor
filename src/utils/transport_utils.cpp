@@ -76,9 +76,9 @@ size_t TransportUtils::parseMessageSize(const std::string& size_string) {
     return 0;
   }
 
-  char* str_end;
-  auto message_size =
-      std::strtol(size_string.substr(start).c_str(), &str_end, 10);
+  char* str_end = nullptr;
+  auto message_size = std::strtol(size_string.substr(start).c_str(), &str_end,
+                                  NUMBER_PARSING_BASE);
   if (errno == ERANGE) {
     return 0;
   }
