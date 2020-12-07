@@ -38,4 +38,5 @@ RUN if [ "${CMAKE_BUILD_BINARY_TARGET}" = "test_main" ]; then cmake .. -DENABLE_
 
 FROM alpine:${ALPINE_IMAGE_VERSION} AS app
 COPY --from=builder "/stream-data-processor/build/bin/${CMAKE_BUILD_BINARY_TARGET}" ./app/
-RUN apk add --no-cache libstdc++ spdlog libprotobuf zeromq yaml-cpp catch2 re2
+RUN apk add --no-cache bash libstdc++ spdlog libprotobuf zeromq yaml-cpp catch2 re2
+SHELL ["bash", "-c"]
