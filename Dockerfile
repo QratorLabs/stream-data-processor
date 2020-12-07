@@ -11,7 +11,7 @@ RUN if [ "${ENV_ARROW_SHA256}" = "" ]; then echo "Arrow sha256 hash sum environm
     && echo "${ENV_ARROW_SHA256}  ${ARROW_DIR_NAME}.tar.gz" | sha256sum -c \
     && tar -xvzf "${ARROW_DIR_NAME}.tar.gz" \
     && mkdir "${ARROW_DIR_NAME}/cpp/release" && pushd "${ARROW_DIR_NAME}/cpp/release" \
-    && cmake .. -DARROW_COMPUTE=ON -DARROW_CSV=ON -DARROW_IPC=ON -DARROW_GANDIVA=ON && make install -j$(($(nproc) - 1))
+    && cmake .. -DARROW_COMPUTE=ON -DARROW_CSV=ON -DARROW_IPC=ON -DARROW_GANDIVA=ON && make install
 
 
 FROM arrow-base AS system-config
