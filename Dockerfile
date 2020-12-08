@@ -15,7 +15,7 @@ RUN if [ "${ENV_ARROW_SHA256}" = "" ]; then echo "Arrow sha256 hash sum environm
 
 
 FROM arrow-base AS system-config
-RUN apk add --no-cache ninja spdlog-dev git zeromq-dev yaml-cpp-dev catch2 clang-extra-tools
+RUN apk add --no-cache ninja spdlog-dev git zeromq-dev catch2 clang-extra-tools
 ENV CPPZMQ_VERSION=4.6.0
 ENV CPPZMQ_DIR_NAME="cppzmq-${CPPZMQ_VERSION}"
 ENV ENV_CPPZMQ_SHA256="e9203391a0b913576153a2ad22a2dc1479b1ec325beb6c46a3237c669aef5a52"
@@ -38,4 +38,4 @@ RUN if [ "${CMAKE_BUILD_BINARY_TARGET}" = "test_main" ]; then cmake .. -DENABLE_
 
 FROM alpine:${ALPINE_IMAGE_VERSION} AS app
 COPY --from=builder "/stream-data-processor/build/bin/${CMAKE_BUILD_BINARY_TARGET}" ./app/
-RUN apk add --no-cache bash libstdc++ spdlog libprotobuf zeromq yaml-cpp catch2 re2
+RUN apk add --no-cache bash libstdc++ spdlog libprotobuf zeromq catch2 re2

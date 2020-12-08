@@ -16,10 +16,9 @@ to create very flexible and configurable computation graph.
 
 ## `Node`
 
-Currently there are only two types of nodes:
+Currently there are only one types of nodes:
  - EvalNode
- - PeriodNode
- 
+
 ### `EvalNode`
 
 This node type is used to mutate data as soon as it arrives. It doesn't have any internal state so it is easy to
@@ -28,15 +27,7 @@ two types of data handlers that are currently implemented:
  - `DataParser` - parses data arriving in the certain format. For example, CSV or Graphite output data format.
  - `SerializedRecordBatchHandler` - deserialize arriving data from `arrow::Buffer` to the vector of `arrow::RecordBatch`
     that can be handled by provided `RecordBatchHandler`.
- 
-### `PeriodNode`
 
-This node type (just like `EvalNode`) takes `PeriodHandler` as strategy to handle record batches belonging to the
-certain period of time. It also takes three additional arguments: `range`, `period` and `ts_column_name`. `range` and
-`period` arguments defines how long time period will be and how often it will be handled respectively. `ts_column_name`
-argument is used to determine which column of record batch contains timestamps. There is only one `PariodHandler` -- 
-`SerializedPeriodHandler`, which acts like `SerializedRecordBatchHandler`: deserialize data and pass it to the handler.
- 
 ### `RecordBatchHandler`
 There is a full list of currently available handlers:
  - `AggregateHandler` - aggregates data using provided aggregate functions (*first*, *last*, *mean*, *min*, *max*).
@@ -47,7 +38,7 @@ There is a full list of currently available handlers:
    library to create expressions.
  - `SortHandler` - sorts rows by the certain column.
  - `JoinHandler` - joins received record batches on the set of columns;
- - `WindowHandler` - concatenates received record batches.
+ - `WindowHandler` - analogue of Kapacitor WindowNode.
  
 ## `Producer`
 

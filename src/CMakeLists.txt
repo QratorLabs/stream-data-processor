@@ -98,7 +98,6 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_DEPENDENCIES"
   bprinter
   dependency_zmq
   protobuf::libprotobuf
-  yaml-cpp
   )
 add_gandiva_dependency("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_DEPENDENCIES")
 add_arrow_dependency("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_DEPENDENCIES")
@@ -111,12 +110,11 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_SOURCES"
   metadata/grouping.cpp
   nodes/node.cpp
   nodes/eval_node.cpp
-  nodes/period_node.cpp
   nodes/data_handlers/data_parser.cpp
   nodes/data_handlers/serialized_record_batch_handler.cpp
   nodes/data_handlers/parsers/csv_parser.cpp
   nodes/data_handlers/parsers/graphite_parser.cpp
-  nodes/period_handlers/serialized_period_handler.cpp
+  record_batch_handlers/record_batch_handler.cpp
   record_batch_handlers/aggregate_functions/aggregate_functions.cpp
   record_batch_handlers/stateful_handlers/threshold_state_machine.cpp
   record_batch_handlers/aggregate_handler.cpp
@@ -127,7 +125,7 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_SOURCES"
   record_batch_handlers/map_handler.cpp
   record_batch_handlers/pipeline_handler.cpp
   record_batch_handlers/sort_handler.cpp
-  record_batch_handlers/window_handler.cpp
+  record_batch_handlers/stateful_handlers/window_handler.cpp
   record_batch_handlers/join_handler.cpp
   server/unix_socket_server.cpp
   producers/tcp_producer.cpp
@@ -170,6 +168,7 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   kapacitor_udf/request_handlers/stream_to_stream_request_handler.cpp
   metadata/column_typing.cpp
   metadata/grouping.cpp
+  record_batch_handlers/record_batch_handler.cpp
   record_batch_handlers/aggregate_functions/aggregate_functions.cpp
   record_batch_handlers/stateful_handlers/threshold_state_machine.cpp
   record_batch_handlers/aggregate_handler.cpp
@@ -180,7 +179,7 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   record_batch_handlers/map_handler.cpp
   record_batch_handlers/pipeline_handler.cpp
   record_batch_handlers/sort_handler.cpp
-  record_batch_handlers/window_handler.cpp
+  record_batch_handlers/stateful_handlers/window_handler.cpp
   record_batch_handlers/join_handler.cpp
   server/unix_socket_server.cpp
   utils/arrow_utils.cpp

@@ -970,3 +970,138 @@ TEST_CASE( "threshold not decreasing over min", "[ThresholdStateMachine]" ) {
       options.threshold_column_name,
       1);
 }
+
+SCENARIO( "WindowHandler behaviour with true fill_period flag", "[WindowHandler]" ) {
+  GIVEN( "WindowHandler with fill_period flag set to true" ) {
+    WindowHandler::Options options{5s, 3s, true};
+
+    std::unique_ptr<RecordBatchHandler> handler =
+        std::make_unique<WindowHandler>(std::move(options));
+
+    RecordBatchBuilder builder;
+    std::string time_column_name{"time"};
+    std::shared_ptr<arrow::RecordBatch> record_batch;
+    arrow::RecordBatchVector result;
+    WHEN( "pass batch with part of window" ) {
+      builder.reset();
+      arrowAssertNotOk(builder.setRowNumber(2));
+
+      arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+          time_column_name, {0, 4}, arrow::TimeUnit::SECOND));
+
+      arrowAssertNotOk(builder.getResult(&record_batch));
+      arrowAssignOrRaise(result, handler->handle(record_batch));
+
+      THEN( "handler returns empty result" ) {
+        REQUIRE(result.size() == 0);
+
+        AND_WHEN( "pass batch with bigger timestamps" ) {
+          builder.reset();
+          arrowAssertNotOk(builder.setRowNumber(2));
+
+          arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+              time_column_name, {5, 6}, arrow::TimeUnit::SECOND));
+
+          arrowAssertNotOk(builder.getResult(&record_batch));
+          arrowAssignOrRaise(result, handler->handle(record_batch));
+
+          THEN( "window is emitted" ) {
+            REQUIRE(result.size() == 1);
+            checkSize(result[0], 2, 1);
+            checkColumnsArePresent(result[0], {time_column_name});
+
+            checkValue<int64_t, arrow::Int64Scalar>(
+                0, result[0], time_column_name, 0);
+            checkValue<int64_t, arrow::Int64Scalar>(
+                4, result[0], time_column_name, 1);
+          }
+        }
+      }
+    }
+
+    WHEN( "record batch contains several windows" ) {
+      builder.reset();
+      arrowAssertNotOk(builder.setRowNumber(4));
+
+      arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+          time_column_name, {0, 4, 6, 8}, arrow::TimeUnit::SECOND));
+
+      arrowAssertNotOk(builder.getResult(&record_batch));
+      arrowAssignOrRaise(result, handler->handle(record_batch));
+
+      THEN( "all of them are emitted" ) {
+        REQUIRE( result.size() == 2 );
+
+        checkSize(result[0], 2, 1);
+        checkColumnsArePresent(result[0], {time_column_name});
+        checkValue<int64_t, arrow::Int64Scalar>(
+            0, result[0], time_column_name, 0);
+        checkValue<int64_t, arrow::Int64Scalar>(
+            4, result[0], time_column_name, 1);
+
+        checkSize(result[1], 2, 1);
+        checkColumnsArePresent(result[1], {time_column_name});
+        checkValue<int64_t, arrow::Int64Scalar>(
+            4, result[1], time_column_name, 0);
+        checkValue<int64_t, arrow::Int64Scalar>(
+            6, result[1], time_column_name, 1);
+      }
+    }
+  }
+}
+
+SCENARIO( "WindowHandler behaviour with false fill_period flag", "[WindowHandler]" ) {
+  GIVEN( "WindowHandler with fill_period flag set to false" ) {
+    WindowHandler::Options options{5s, 3s, false};
+
+    std::unique_ptr<RecordBatchHandler> handler =
+        std::make_unique<WindowHandler>(std::move(options));
+
+    RecordBatchBuilder builder;
+    std::string time_column_name{"time"};
+    std::shared_ptr<arrow::RecordBatch> record_batch;
+    arrow::RecordBatchVector result;
+    WHEN( "pass batch with part of window" ) {
+      builder.reset();
+      arrowAssertNotOk(builder.setRowNumber(2));
+
+      arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+          time_column_name, {0, 4}, arrow::TimeUnit::SECOND));
+
+      arrowAssertNotOk(builder.getResult(&record_batch));
+      arrowAssignOrRaise(result, handler->handle(record_batch));
+
+      THEN( "handler emits truncated window" ) {
+        REQUIRE(result.size() == 1);
+
+        checkSize(result[0], 1, 1);
+        checkColumnsArePresent(result[0], {time_column_name});
+
+        checkValue<int64_t, arrow::Int64Scalar>(
+            0, result[0], time_column_name, 0);
+
+        AND_WHEN( "pass batch with bigger timestamps" ) {
+          builder.reset();
+          arrowAssertNotOk(builder.setRowNumber(2));
+
+          arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+              time_column_name, {5, 6}, arrow::TimeUnit::SECOND));
+
+          arrowAssertNotOk(builder.getResult(&record_batch));
+          arrowAssignOrRaise(result, handler->handle(record_batch));
+
+          THEN( "another window is emitted" ) {
+            REQUIRE(result.size() == 1);
+            checkSize(result[0], 2, 1);
+            checkColumnsArePresent(result[0], {time_column_name});
+
+            checkValue<int64_t, arrow::Int64Scalar>(
+                4, result[0], time_column_name, 0);
+            checkValue<int64_t, arrow::Int64Scalar>(
+                5, result[0], time_column_name, 1);
+          }
+        }
+      }
+    }
+  }
+}

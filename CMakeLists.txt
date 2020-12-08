@@ -52,8 +52,6 @@ message(STATUS "Gandiva cmake dir: ${Gandiva_DIR}")
 
 find_package(spdlog REQUIRED)
 
-find_package(yaml-cpp REQUIRED)
-
 find_package(Protobuf REQUIRED)
 include_directories(${Protobuf_INCLUDE_DIRS})
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")

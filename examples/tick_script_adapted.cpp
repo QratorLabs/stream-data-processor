@@ -16,7 +16,6 @@
 #include "node_pipeline/node_pipeline.h"
 #include "nodes/data_handlers/data_handlers.h"
 #include "nodes/nodes.h"
-#include "nodes/period_handlers/serialized_period_handler.h"
 #include "producers/producers.h"
 #include "record_batch_handlers/record_batch_handlers.h"
 #include "nodes/data_handlers/parsers/graphite_parser.h"
@@ -205,15 +204,17 @@ int main(int argc, char** argv) {
       &pipelines[cputime_host_calc_default_node->getName()], loop.get(),
       zmq_context, sdp::TransportUtils::ZMQTransportType::INPROC);
 
+  sdp::WindowHandler::Options window_options{
+    std::chrono::duration_cast<std::chrono::seconds>(win_period),
+    std::chrono::duration_cast<std::chrono::seconds>(win_every),
+    false
+  };
+
   std::shared_ptr<sdp::Node> cputime_all_win_window_node =
-      std::make_shared<sdp::PeriodNode>(
+      std::make_shared<sdp::EvalNode>(
           "cputime_all_win_window_node",
-          std::chrono::duration_cast<std::chrono::seconds>(win_period)
-              .count(),
-          std::chrono::duration_cast<std::chrono::seconds>(win_every).count(),
-          "time",
-          std::make_shared<sdp::SerializedPeriodHandler>(
-              std::make_shared<sdp::WindowHandler>()));
+          std::make_shared<sdp::SerializedRecordBatchHandler>(
+              std::make_shared<sdp::WindowHandler>(std::move(window_options))));
 
   pipelines[cputime_all_win_window_node->getName()] = sdp::NodePipeline();
   pipelines[cputime_all_win_window_node->getName()].setNode(

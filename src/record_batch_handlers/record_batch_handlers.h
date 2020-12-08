@@ -8,7 +8,9 @@
 #include "sort_handler.h"
 
 #include "join_handler.h"
-#include "window_handler.h"
 
 #include "group_dispatcher.h"
 #include "pipeline_handler.h"
+
+#include "stateful_handlers/threshold_state_machine.h"
+#include "stateful_handlers/window_handler.h"
