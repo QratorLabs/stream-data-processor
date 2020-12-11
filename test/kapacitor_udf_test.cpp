@@ -200,7 +200,13 @@ TEST_CASE("group string encoding", "[grouping_utils]") {
   auto group =
       grouping_utils::parse(group_string_builder.str(), measurement_column_name);
 
-  auto encoded_string = grouping_utils::encode(group, measurement_column_name);
+  auto encoded_string = grouping_utils::encode(
+      group, measurement_column_name,
+      {
+        {measurement_column_name, metadata::MEASUREMENT},
+        {tag_name_0, metadata::TAG},
+        {tag_name_1, metadata::TAG}
+      });
   auto redecoded_group =
       grouping_utils::parse(encoded_string, measurement_column_name);
 

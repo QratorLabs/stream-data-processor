@@ -47,7 +47,9 @@ RecordBatchGroup parse(const std::string& group_string,
 }
 
 std::string encode(const RecordBatchGroup& group,
-                   const std::string& measurement_column_name) {
+                   const std::string& measurement_column_name,
+                   const std::unordered_map<std::string, metadata::ColumnType>
+                       column_types) {
   std::string measurement_prefix = "";
   std::stringstream tags_group_string_builder;
   bool first_tag_written = false;
@@ -58,7 +60,8 @@ std::string encode(const RecordBatchGroup& group,
 
     if (column_name == measurement_column_name) {
       measurement_prefix = column_value + '\n';
-    } else {
+    } else if (column_types.find(column_name) != column_types.end() &&
+               column_types.at(column_name) == metadata::TAG) {
       if (first_tag_written) {
         tags_group_string_builder << ',';
       }

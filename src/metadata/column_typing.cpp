@@ -162,5 +162,20 @@ arrow::Result<std::string> getMeasurementColumnNameMetadata(
                                MEASUREMENT_COLUMN_NAME_METADATA_KEY);
 }
 
+arrow::Result<std::unordered_map<std::string, ColumnType>> getColumnTypes(
+    const arrow::RecordBatch& record_batch) {
+  std::unordered_map<std::string, ColumnType> column_types;
+  for (auto& field : record_batch.schema()->fields()) {
+    if (column_types.find(field->name()) != column_types.end()) {
+      return arrow::Status::KeyError(
+          fmt::format("Duplicate of column names: {}", field->name()));
+    }
+
+    column_types[field->name()] = getColumnType(*field);
+  }
+
+  return column_types;
+}
+
 }  // namespace metadata
 }  // namespace stream_data_processor

@@ -323,6 +323,7 @@ AggregateHandler::splitByGroups(
 
   return grouped;
 }
+
 arrow::Status AggregateHandler::isValid(
     const arrow::RecordBatchVector& record_batches) const {
   std::string time_column_name{""};

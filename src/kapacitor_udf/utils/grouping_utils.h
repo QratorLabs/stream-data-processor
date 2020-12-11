@@ -2,6 +2,7 @@
 
 #include <exception>
 #include <string>
+#include <unordered_map>
 
 #include "metadata.pb.h"
 #include "udf.pb.h"
@@ -20,8 +21,9 @@ RecordBatchGroup parse(const std::string& group_string,
 RecordBatchGroup parse(const agent::Point& point,
                        const std::string& measurement_column_name);
 
-std::string encode(const RecordBatchGroup& group,
-                   const std::string& measurement_column_name);
+std::string encode(
+    const RecordBatchGroup& group, const std::string& measurement_column_name,
+    const std::unordered_map<std::string, metadata::ColumnType> column_types);
 
 }  // namespace grouping_utils
 }  // namespace kapacitor_udf

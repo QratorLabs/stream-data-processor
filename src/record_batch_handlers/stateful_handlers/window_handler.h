@@ -32,7 +32,6 @@ class WindowHandler : public RecordBatchHandler {
   arrow::Status removeOldRecords();
 
  private:
- private:
   Options options_;
   std::deque<std::shared_ptr<arrow::RecordBatch>> buffered_record_batches_;
   std::time_t next_emit_{0};

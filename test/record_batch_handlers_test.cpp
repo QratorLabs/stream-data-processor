@@ -87,10 +87,10 @@ TEST_CASE ( "split one record batch to separate ones by grouping on column with 
   auto record_batch = arrow::RecordBatch::Make(schema, 2, {array});
 
   std::vector<std::string> grouping_columns{"field_name"};
-  std::shared_ptr<RecordBatchHandler> filter_handler = std::make_shared<GroupHandler>(std::move(grouping_columns));
+  std::shared_ptr<RecordBatchHandler> group_handler = std::make_shared<GroupHandler>(std::move(grouping_columns));
 
   arrow::RecordBatchVector result;
-  arrowAssignOrRaise(result, filter_handler->handle({record_batch}));
+  arrowAssignOrRaise(result, group_handler->handle({record_batch}));
 
   REQUIRE( result.size() == 2 );
   checkSize(result[0], 1, 1);
@@ -1099,6 +1099,73 @@ SCENARIO( "WindowHandler behaviour with false fill_period flag", "[WindowHandler
                 4, result[0], time_column_name, 0);
             checkValue<int64_t, arrow::Int64Scalar>(
                 5, result[0], time_column_name, 1);
+          }
+        }
+      }
+    }
+  }
+}
+
+SCENARIO( "GroupHandler preserves old group metadata", "[GroupHandler]") {
+  GIVEN( "RecordBatch with two columns" ) {
+    RecordBatchBuilder builder;
+    builder.reset();
+    arrowAssertNotOk(builder.setRowNumber(1));
+
+    std::string column_name_1{"column_1"};
+    std::string column_name_2{"column_2"};
+    arrowAssertNotOk(builder.buildColumn<int64_t>(column_name_1, {1}));
+    arrowAssertNotOk(builder.buildColumn<int64_t>(column_name_2, {2}));
+    std::shared_ptr<arrow::RecordBatch> record_batch;
+    arrowAssertNotOk(builder.getResult(&record_batch));
+
+    WHEN ( "groups by first column" ) {
+      std::vector<std::string> grouping_columns_1{column_name_1};
+      std::shared_ptr<RecordBatchHandler> group_handler =
+          std::make_shared<GroupHandler>(std::move(grouping_columns_1));
+
+      arrow::RecordBatchVector result;
+      arrowAssignOrRaise(result, group_handler->handle(record_batch));
+
+      THEN ( "group metadata is set" ) {
+        REQUIRE(result.size() == 1);
+        checkSize(result[0], 1, 2);
+        checkColumnsArePresent(result[0], {column_name_1, column_name_2});
+        checkValue<int64_t, arrow::Int64Scalar>(1, result[0],
+                                                column_name_1, 0);
+        checkValue<int64_t, arrow::Int64Scalar>(2, result[0],
+                                                column_name_2, 0);
+
+        auto group_column_names =
+            metadata::extractGroupingColumnsNames(*result[0]);
+        REQUIRE(group_column_names.size() == 1);
+        REQUIRE(group_column_names[0] == column_name_1);
+
+        AND_WHEN( "group by second column" ) {
+          std::vector<std::string> grouping_columns_2{column_name_2};
+          group_handler =
+              std::make_shared<GroupHandler>(std::move(grouping_columns_2));
+
+          arrowAssignOrRaise(result, group_handler->handle(result[0]));
+
+          THEN ( "group metadata from first grouping is preserved and the metadata from second grouping is added" ) {
+            REQUIRE(result.size() == 1);
+            checkSize(result[0], 1, 2);
+            checkColumnsArePresent(result[0], {column_name_1, column_name_2});
+            checkValue<int64_t, arrow::Int64Scalar>(1, result[0],
+                                                    column_name_1, 0);
+            checkValue<int64_t, arrow::Int64Scalar>(2, result[0],
+                                                    column_name_2, 0);
+
+            group_column_names =
+                metadata::extractGroupingColumnsNames(*result[0]);
+            REQUIRE(group_column_names.size() == 2);
+            if (group_column_names[0] != column_name_1) {
+              std::swap(group_column_names[0], group_column_names[1]);
+            }
+
+            REQUIRE(group_column_names[0] == column_name_1);
+            REQUIRE(group_column_names[1] == column_name_2);
           }
         }
       }

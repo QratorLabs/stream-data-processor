@@ -55,15 +55,18 @@ arrow::Result<agent::PointBatch> PointsConverter::convertToPoints(
         measurement_column_name,
         metadata::getMeasurementColumnNameMetadata(*record_batch));
 
+    std::unordered_map<std::string, metadata::ColumnType> column_types;
+    ARROW_ASSIGN_OR_RAISE(column_types,
+                          metadata::getColumnTypes(*record_batch));
+
     auto group = metadata::extractGroup(*record_batch);
     auto group_string =
-        grouping_utils::encode(group, measurement_column_name);
+        grouping_utils::encode(group, measurement_column_name, column_types);
 
     for (int i = 0; i < record_batch->num_columns(); ++i) {
       auto& column_name = record_batch->column_name(i);
       auto column = record_batch->column(i);
-      auto column_type =
-          metadata::getColumnType(*record_batch->schema()->field(i));
+      auto column_type = column_types[column_name];
 
       for (int j = 0; j < column->length(); ++j) {
         std::shared_ptr<arrow::Scalar> scalar_value;
