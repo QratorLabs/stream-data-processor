@@ -1,75 +1,42 @@
 # How to run this example?
 
-### Preparation
+## `docker-compose`
 
-I don't know why, but this UDF works fine only in Docker. Before we start, we 
-need to create a docker volume -- we will use it in further steps to share 
-Unix sockets between containers.
+Just run the following in the current directory:
 
 ```terminal
-host$ docker volume create sockets-vol
+$ docker-compose up
 ```
 
-### UDF container
-
-Firstly, you should build a docker image using [Dockerfile](../../Dockerfile) 
-from the [root directory](../..). For example, call from the root directory:
+Now you can use `kapacitor` commands right from your host system. For example,
+you can run [cpu.tick](cpu.tick) and watch the results:
 
 ```terminal
-host$ docker image build --build-arg ALPINE_IMAGE_VERSION=3.12.1 \
-        -t qevent_intership_stream_data_processor_image .
+$ kapacitor define cpu_task -tick cpu.tick
+$ kapacitor enable cpu_task
+$ kapacitor watch cpu_task
 ```
 
-Next, run the container:
+After that you will able to see points coming from UDF.
+
+To remove intermediate build container, call:
 
 ```terminal
-host$ docker run -it --rm -v sockets-vol:/var/run/ \
-        --name udf-docker \
-        -v $PWD:/stream_data_processor \
-        qevent_intership_stream_data_processor_image:latest bash
+$ docker image prune --filter "label=stage=builder" --filter "label=project=aggregate_udf_example" --force
 ```
 
-After that you should build an UDF executable inside the new container:
+# Explanation
 
-```terminal
-udf-docker$ cd stream_data_processor
-udf-docker$ mkdir build && cd build
-udf-docker$ cmake ..
-udf-docker$ make cpu_kapacitor_udf
-```
+This example uses number of Docker containers:
 
-Now, start the UDF:
-
-```terminal
-udf-docker$ ./bin/cpu_kapacitor_udf \
-                --batch /var/run/batchAggregateUDF.sock \
-                --stream /var/run/streamAggregateUDF.sock
-```
-
-### Kapacitor container
-
-We just started the UDF, let's move to the kapacitor and open a new session. 
-We need to run a kapacitor container with everything we need (`recording.srpl`
-is your sample recording you want to test):
-
-```terminal
-host$ docker run --rm --name kapacitor-container -p 9092:9092 \
-        -v $PWD/recording.srpl:/var/lib/kapacitor/replay/recording.srpl \
-        -v sockets-vol:/var/run/ \
-        -v $PWD/kapacitor.conf:/etc/kapacitor/kapacitor.conf:ro \
-        kapacitor
-```
-
-Now we can add a task from a new session and test it on the sample data:
-
-```terminal
-host$ kapacitor define cpu_task -tick cpu.tick
-host$ kapacitor enable cpu_task
-host$ kapacitor replay -recording recording -task cpu_task
-```
-
-If needed, you can add a 
-[LogNode](https://docs.influxdata.com/kapacitor/v1.5/nodes/log_node/) to the 
-tick script to see the result of an UDF and/or enable `--verbose` option for
-UDF. **Be careful:** both of this print a lot of logs so I suggest to pipe the 
-output to the file.
+* kapacitor-udf -- container with UDF. Uses Docker image built from
+[Dockerfile](../../Dockerfile).
+* [collectd](https://registry.hub.docker.com/r/fr3nd/collectd) -- metrics
+producer. Sends them to InfluxDB. In theory, can be replaced.
+* [indluxdb](https://registry.hub.docker.com/_/influxdb) -- InfluxDB container.
+Parses [Graphite data format](https://docs.influxdata.com/influxdb/v1.7/supported_protocols/graphite/#)
+coming from collectd. Provides metrics for Kapacitor.
+* [kapacitor](https://registry.hub.docker.com/_/kapacitor) -- Kapacitor
+container. Subscribes to InfluxDB to receive metrics, processes them with
+[TICK scripts](https://docs.influxdata.com/kapacitor/v1.5/tick/syntax/#),
+communicates with UDF.

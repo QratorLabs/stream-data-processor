@@ -47,13 +47,13 @@ class StreamAggregateUDFAgentClientFactory : public sdp::UnixSocketClientFactory
 int main(int argc, char** argv) {
   cxxopts::Options options("AggregateUDF", "Aggregates data from kapacitor");
   options.add_options()
-  ("b,batch", "Unix socket path for batch data",
-      cxxopts::value<std::string>())
-  ("s,stream", "Unix socket path for stream data",
-      cxxopts::value<std::string>())
-  ("v,verbose", "Enable detailed logging")
-  ("h,help", "Print this message")
-  ;
+      ("b,batch", "Unix socket path for batch data",
+       cxxopts::value<std::string>())
+      ("s,stream", "Unix socket path for stream data",
+       cxxopts::value<std::string>())
+      ("v,verbose", "Enable detailed logging")
+      ("h,help", "Print this message")
+      ;
 
   std::string batch_socket_path, stream_socket_path;
   try {
@@ -90,8 +90,8 @@ int main(int argc, char** argv) {
   auto signal_handle = loop->resource<uvw::SignalHandle>();
   signal_handle->on<uvw::SignalEvent>(
       [&](const uvw::SignalEvent& event, uvw::SignalHandle& handle) {
-        if (event.signum == SIGINT) {
-          spdlog::info("Caught SIGINT signal. Terminating...");
+        if (event.signum == SIGINT || event.signum == SIGTERM) {
+          spdlog::info("Caught stop signal. Terminating...");
           batch_server.stop();
           stream_server.stop();
           signal_handle->stop();
@@ -100,6 +100,7 @@ int main(int argc, char** argv) {
       });
 
   signal_handle->start(SIGINT);
+  signal_handle->start(SIGTERM);
   batch_server.start();
   stream_server.start();
 
