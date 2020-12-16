@@ -37,9 +37,15 @@ arrow::Result<arrow::RecordBatchVector> JoinHandler::handle(
         column_builders[field->name()] =
             std::shared_ptr<arrow::ArrayBuilder>();
 
-        ARROW_ASSIGN_OR_RAISE(
-            column_builders[field->name()],
-            arrow_utils::createArrayBuilder(field->type()->id(), pool));
+        if (field->type()->id() == arrow::Type::TIMESTAMP) {
+          ARROW_ASSIGN_OR_RAISE(
+              column_builders[field->name()],
+              arrow_utils::createTimestampArrayBuilder(field->type(), pool));
+        } else {
+          ARROW_ASSIGN_OR_RAISE(
+              column_builders[field->name()],
+              arrow_utils::createArrayBuilder(field->type()->id(), pool));
+        }
 
         column_types[field->name()] = field->type();
       }
@@ -96,9 +102,16 @@ arrow::Result<arrow::RecordBatchVector> JoinHandler::handle(
         ARROW_ASSIGN_OR_RAISE(
             value_scalar, record_batch->column(i)->GetScalar(value.row_idx));
 
-        ARROW_RETURN_NOT_OK(arrow_utils::appendToBuilder(
-            value_scalar, &column_builders[column_name],
-            record_batch->schema()->field(i)->type()->id()));
+        if (record_batch->schema()->field(i)->type()->id() ==
+            arrow::Type::TIMESTAMP) {
+          ARROW_RETURN_NOT_OK(arrow_utils::appendToTimestampBuilder(
+              value_scalar, &column_builders[column_name],
+              record_batch->schema()->field(i)->type()));
+        } else {
+          ARROW_RETURN_NOT_OK(arrow_utils::appendToBuilder(
+              value_scalar, &column_builders[column_name],
+              record_batch->schema()->field(i)->type()->id()));
+        }
 
         filled[column_name] = true;
       }
@@ -164,8 +177,9 @@ arrow::Result<JoinHandler::JoinKey> JoinHandler::getJoinKey(
   std::shared_ptr<arrow::Scalar> value_scalar;
   ARROW_ASSIGN_OR_RAISE(value_scalar, time_column->GetScalar(row_idx));
 
-  join_key.time =
-      std::static_pointer_cast<arrow::Int64Scalar>(value_scalar)->value;
+  join_key.time = std::static_pointer_cast<arrow::Int64Scalar>(value_scalar)
+                      ->value;  // TODO: it's a bug: we should synchronize
+                                // arrow::TimeUnit types
 
   return join_key;
 }

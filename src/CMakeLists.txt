@@ -122,6 +122,7 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_SOURCES"
   record_batch_handlers/filter_handler.cpp
   record_batch_handlers/group_dispatcher.cpp
   record_batch_handlers/group_handler.cpp
+  record_batch_handlers/log_handler.cpp
   record_batch_handlers/map_handler.cpp
   record_batch_handlers/pipeline_handler.cpp
   record_batch_handlers/sort_handler.cpp
@@ -176,6 +177,7 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   record_batch_handlers/filter_handler.cpp
   record_batch_handlers/group_dispatcher.cpp
   record_batch_handlers/group_handler.cpp
+  record_batch_handlers/log_handler.cpp
   record_batch_handlers/map_handler.cpp
   record_batch_handlers/pipeline_handler.cpp
   record_batch_handlers/sort_handler.cpp

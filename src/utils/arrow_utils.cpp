@@ -14,16 +14,26 @@ arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> createArrayBuilder(
       return std::make_shared<arrow::StringBuilder>(pool);
     case arrow::Type::BOOL:
       return std::make_shared<arrow::BooleanBuilder>(pool);
-    case arrow::Type::TIMESTAMP:
-      return std::make_shared<arrow::TimestampBuilder>(
-          arrow::timestamp(arrow::TimeUnit::SECOND), pool);
     default:
       return arrow::Status::NotImplemented(
           "Step-by-step array building currently supports one of "
           "{arrow::int64, arrow::float64, arrow::utf8, arrow::boolean, "
-          "arrow::Type::TIMESTAMP} types fields "
+          "types fields "
           "only");  // TODO: support any type
   }
+}
+
+arrow::Result<std::shared_ptr<arrow::ArrayBuilder>>
+createTimestampArrayBuilder(
+    const std::shared_ptr<arrow::DataType>& arrow_type,
+    arrow::MemoryPool* pool) {
+  if (arrow_type->id() != arrow::Type::TIMESTAMP) {
+    return arrow::Status::TypeError(
+        "arrow::Type::TIMESTAMP type is required "
+        "to create timestamp ArrayBuilder");
+  }
+
+  return std::make_shared<arrow::TimestampBuilder>(arrow_type, pool);
 }
 
 arrow::Status appendToBuilder(const std::shared_ptr<arrow::Scalar>& value,
@@ -51,19 +61,34 @@ arrow::Status appendToBuilder(const std::shared_ptr<arrow::Scalar>& value,
           std::static_pointer_cast<arrow::BooleanBuilder>(*builder)->Append(
               std::static_pointer_cast<arrow::BooleanScalar>(value)->value));
       return arrow::Status::OK();
-    case arrow::Type::TIMESTAMP:
-      ARROW_RETURN_NOT_OK(
-          std::static_pointer_cast<arrow::TimestampBuilder>(*builder)->Append(
-              std::static_pointer_cast<arrow::TimestampScalar>(value)
-                  ->value));
-      return arrow::Status::OK();
     default:
       return arrow::Status::NotImplemented(
           "Expected one of {arrow::int64, arrow::float64, arrow::utf8, "
-          "arrow::boolean, "
-          "arrow::Type::TIMESTAMP} "
+          "arrow::boolean "
           "types");  // TODO: support any type
   }
+}
+
+arrow::Status appendToTimestampBuilder(
+    const std::shared_ptr<arrow::Scalar>& value,
+    std::shared_ptr<arrow::ArrayBuilder>* builder,
+    const std::shared_ptr<arrow::DataType>& arrow_type) {
+  if (arrow_type->id() != arrow::Type::TIMESTAMP) {
+    return arrow::Status::TypeError(
+        "arrow::Type::TIMESTAMP type is required "
+        "to append value to timestamp "
+        "ArrayBuilder");
+  }
+
+  std::shared_ptr<arrow::Scalar> timestamp_scalar;
+  ARROW_ASSIGN_OR_RAISE(timestamp_scalar, value->CastTo(arrow_type));
+
+  ARROW_RETURN_NOT_OK(
+      std::static_pointer_cast<arrow::TimestampBuilder>(*builder)->Append(
+          std::static_pointer_cast<arrow::TimestampScalar>(timestamp_scalar)
+              ->value));
+
+  return arrow::Status::OK();
 }
 
 bool isNumericType(arrow::Type::type type) {
@@ -82,6 +107,13 @@ bool isNumericType(arrow::Type::type type) {
     case arrow::Type::DECIMAL: return true;
     default: return false;
   }
+}
+
+arrow::Result<std::shared_ptr<arrow::Scalar>> castTimestampScalar(
+    const arrow::Result<std::shared_ptr<arrow::Scalar>>& timestamp_scalar,
+    arrow::TimeUnit::type time_unit) {
+  ARROW_RETURN_NOT_OK(timestamp_scalar.status());
+  return timestamp_scalar.ValueOrDie()->CastTo(arrow::timestamp(time_unit));
 }
 
 }  // namespace arrow_utils

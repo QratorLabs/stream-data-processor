@@ -43,7 +43,7 @@ arrow::Result<arrow::RecordBatchVector> AggregateHandler::handle(
   }
 
   arrow::RecordBatchVector result_vector;
-  ARROW_ASSIGN_OR_RAISE(result_vector, handle({record_batch}));
+  ARROW_ASSIGN_OR_RAISE(result_vector, handle(std::vector{record_batch}));
   if (result_vector.size() != 1) {
     return arrow::Status::ExecutionError(
         "Aggregation of one record batch "
@@ -77,6 +77,21 @@ arrow::Result<arrow::RecordBatchVector> AggregateHandler::handle(
     auto grouping_columns =
         metadata::extractGroupingColumnsNames(*record_batches_group.front());
 
+    std::string time_column_name;
+    ARROW_ASSIGN_OR_RAISE(
+        time_column_name,
+        metadata::getTimeColumnNameMetadata(*record_batches.front()));
+
+    for (auto group_iter = grouping_columns.begin();
+         group_iter != grouping_columns.end(); ++group_iter) {
+      if (*group_iter == time_column_name) {
+        grouping_columns.erase(
+            group_iter);  // we should remove time grouping -- time column
+                          // will be replaced with aggregated one
+        break;
+      }
+    }
+
     bool explicitly_add_measurement_field = true;
     bool has_measurement = false;
 
@@ -99,10 +114,11 @@ arrow::Result<arrow::RecordBatchVector> AggregateHandler::handle(
     }
 
     std::shared_ptr<arrow::Schema> result_schema;
-    ARROW_ASSIGN_OR_RAISE(result_schema,
-                          createResultSchema(record_batches, grouping_columns,
-                                             explicitly_add_measurement_field,
-                                             measurement_column_name));
+    ARROW_ASSIGN_OR_RAISE(
+        result_schema,
+        createResultSchema(record_batches, grouping_columns,
+                           explicitly_add_measurement_field,
+                           measurement_column_name, time_column_name));
 
     ARROW_RETURN_NOT_OK(
         aggregateTimeColumn(record_batches_group, &result_arrays, pool));
@@ -147,11 +163,15 @@ AggregateHandler::createResultSchema(
     const arrow::RecordBatchVector& record_batches,
     const std::vector<std::string>& grouping_columns,
     bool explicitly_add_measurement,
-    const std::string& measurement_column_name) const {
+    const std::string& measurement_column_name,
+    const std::string& time_column_name) const {
   arrow::FieldVector result_fields;
-  result_fields.push_back(
-      arrow::field(options_.result_time_column_rule.result_column_name,
-                   arrow::timestamp(arrow::TimeUnit::SECOND)));
+
+  auto time_column_type =
+      record_batches.front()->GetColumnByName(time_column_name)->type();
+
+  result_fields.push_back(arrow::field(
+      options_.result_time_column_rule.result_column_name, time_column_type));
 
   ARROW_RETURN_NOT_OK(
       metadata::setColumnTypeMetadata(&result_fields.back(), metadata::TIME));
@@ -214,9 +234,14 @@ arrow::Status AggregateHandler::aggregate(
   }
 
   std::shared_ptr<arrow::ArrayBuilder> builder;
-  ARROW_ASSIGN_OR_RAISE(builder,
-                        arrow_utils::createArrayBuilder(
-                            aggregate_column_field->type()->id(), pool));
+  if (aggregate_column_field->type()->id() == arrow::Type::TIMESTAMP) {
+    ARROW_ASSIGN_OR_RAISE(builder, arrow_utils::createTimestampArrayBuilder(
+                                       aggregate_column_field->type(), pool));
+  } else {
+    ARROW_ASSIGN_OR_RAISE(builder,
+                          arrow_utils::createArrayBuilder(
+                              aggregate_column_field->type()->id(), pool));
+  }
 
   for (auto& group : groups) {
     std::shared_ptr<arrow::Scalar> aggregated_value;
@@ -224,8 +249,13 @@ arrow::Status AggregateHandler::aggregate(
                           TYPES_TO_FUNCTIONS.at(aggregate_function)
                               ->aggregate(*group, aggregate_column_name));
 
-    ARROW_RETURN_NOT_OK(arrow_utils::appendToBuilder(
-        aggregated_value, &builder, aggregate_column_field->type()->id()));
+    if (aggregate_column_field->type()->id() == arrow::Type::TIMESTAMP) {
+      ARROW_RETURN_NOT_OK(arrow_utils::appendToTimestampBuilder(
+          aggregated_value, &builder, aggregate_column_field->type()));
+    } else {
+      ARROW_RETURN_NOT_OK(arrow_utils::appendToBuilder(
+          aggregated_value, &builder, aggregate_column_field->type()->id()));
+    }
   }
 
   result_arrays->emplace_back();

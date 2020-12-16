@@ -20,7 +20,7 @@ class RecordBatchBuilder {
   template <typename ValueType>
   arrow::Status buildTimeColumn(
       const std::string& time_column_name,
-      std::vector<ValueType> values,
+      const std::vector<ValueType>& values,
       arrow::TimeUnit::type time_unit) {
     static_assert(std::is_integral_v<ValueType>,
                   "Time values must have integral type at least");
@@ -54,16 +54,15 @@ class RecordBatchBuilder {
 
   arrow::Status buildMeasurementColumn(
       const std::string& measurement_column_name,
-      std::vector<std::string> values);
+      const std::vector<std::string>& values);
 
   template <typename ValueType>
   arrow::Status buildColumn(
       const std::string& column_name,
-      std::vector<ValueType> values,
+      const std::vector<ValueType>& values,
       sdp::metadata::ColumnType column_type = sdp::metadata::UNKNOWN);
 
-  arrow::Status getResult(
-      std::shared_ptr<arrow::RecordBatch>* record_batch) const;
+  arrow::Result<std::shared_ptr<arrow::RecordBatch>> getResult() const;
 
  private:
   template <typename ValueType>

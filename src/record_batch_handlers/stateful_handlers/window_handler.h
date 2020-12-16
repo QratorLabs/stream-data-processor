@@ -12,7 +12,7 @@ class WindowHandler : public RecordBatchHandler {
   struct Options {
     std::chrono::seconds period;
     std::chrono::seconds every;
-    bool fill_period;
+    bool fill_period{false};
   };
 
   template <typename OptionsType>

@@ -17,8 +17,12 @@ namespace kapacitor_udf {
 
 class AggregateOptionsParser {
  public:
-  static google::protobuf::Map<std::string, agent::OptionInfo>
+  [[nodiscard]] static google::protobuf::Map<std::string, agent::OptionInfo>
   getResponseOptionsMap();
+
+  static void addResponseOptions(
+      google::protobuf::Map<std::string, agent::OptionInfo>* options_map);
+
   static AggregateHandler::AggregateOptions parseOptions(
       const google::protobuf::RepeatedPtrField<agent::Option>&
           request_options);

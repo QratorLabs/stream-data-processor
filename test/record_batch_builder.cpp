@@ -30,7 +30,7 @@ arrow::Status RecordBatchBuilder::setRowNumber(int row_number) {
 template<>
 arrow::Status RecordBatchBuilder::buildColumn<int64_t>(
     const std::string& column_name,
-    std::vector<int64_t> values,
+    const std::vector<int64_t>& values,
     sdp::metadata::ColumnType column_type) {
   ARROW_RETURN_NOT_OK(checkValueArraySize(values));
   fields_.push_back(arrow::field(column_name, arrow::int64()));
@@ -49,7 +49,7 @@ arrow::Status RecordBatchBuilder::buildColumn<int64_t>(
 template<>
 arrow::Status RecordBatchBuilder::buildColumn<std::string>(
     const std::string& column_name,
-    std::vector<std::string> values,
+    const std::vector<std::string>& values,
     sdp::metadata::ColumnType column_type) {
   ARROW_RETURN_NOT_OK(checkValueArraySize(values));
   fields_.push_back(arrow::field(column_name, arrow::utf8()));
@@ -68,7 +68,7 @@ arrow::Status RecordBatchBuilder::buildColumn<std::string>(
 template<>
 arrow::Status RecordBatchBuilder::buildColumn<double>(
     const std::string& column_name,
-    std::vector<double> values,
+    const std::vector<double>& values,
     sdp::metadata::ColumnType column_type) {
   ARROW_RETURN_NOT_OK(checkValueArraySize(values));
   fields_.push_back(arrow::field(column_name, arrow::float64()));
@@ -87,7 +87,7 @@ arrow::Status RecordBatchBuilder::buildColumn<double>(
 template<>
 arrow::Status RecordBatchBuilder::buildColumn<bool>(
     const std::string& column_name,
-    std::vector<bool> values,
+    const std::vector<bool>& values,
     sdp::metadata::ColumnType column_type) {
   ARROW_RETURN_NOT_OK(checkValueArraySize(values));
   fields_.push_back(arrow::field(column_name, arrow::boolean()));
@@ -105,7 +105,7 @@ arrow::Status RecordBatchBuilder::buildColumn<bool>(
 
 arrow::Status RecordBatchBuilder::buildMeasurementColumn(
     const std::string& measurement_column_name,
-    std::vector<std::string> values) {
+    const std::vector<std::string>& values) {
   if (specified_metadata_columns_.find(SPECIFIED_MEASUREMENT_KEY) !=
       specified_metadata_columns_.end()) {
     return arrow::Status::ExecutionError("Measurement column has already built");
@@ -119,22 +119,21 @@ arrow::Status RecordBatchBuilder::buildMeasurementColumn(
   return arrow::Status::OK();
 }
 
-arrow::Status RecordBatchBuilder::getResult(
-    std::shared_ptr<arrow::RecordBatch>* record_batch) const {
-  *record_batch = arrow::RecordBatch::Make(
+arrow::Result<std::shared_ptr<arrow::RecordBatch>> RecordBatchBuilder::getResult() const {
+  auto record_batch = arrow::RecordBatch::Make(
       arrow::schema(fields_), row_number_, column_arrays_);
 
   if (specified_metadata_columns_.find(SPECIFIED_TIME_KEY) !=
         specified_metadata_columns_.end()) {
     ARROW_RETURN_NOT_OK(sdp::metadata::setTimeColumnNameMetadata(
-        record_batch, specified_metadata_columns_.at(SPECIFIED_TIME_KEY)));
+        &record_batch, specified_metadata_columns_.at(SPECIFIED_TIME_KEY)));
   }
 
   if (specified_metadata_columns_.find(SPECIFIED_MEASUREMENT_KEY) !=
         specified_metadata_columns_.end()) {
     ARROW_RETURN_NOT_OK(sdp::metadata::setMeasurementColumnNameMetadata(
-        record_batch, specified_metadata_columns_.at(SPECIFIED_MEASUREMENT_KEY)));
+        &record_batch, specified_metadata_columns_.at(SPECIFIED_MEASUREMENT_KEY)));
   }
 
-  return arrow::Status::OK();
+  return record_batch;
 }

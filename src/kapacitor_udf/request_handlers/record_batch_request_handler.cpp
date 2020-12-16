@@ -26,6 +26,10 @@ void RecordBatchRequestHandler::handleBatch() {
     return;
   }
 
+  if (batch_points_.points_size() == 0) {
+    return;
+  }
+
   auto record_batches = PointsConverter::convertToRecordBatches(
       batch_points_, to_record_batches_options_);
 
@@ -44,16 +48,19 @@ void RecordBatchRequestHandler::handleBatch() {
     return;
   }
 
-  auto response_points =
+  auto response_points_result =
       PointsConverter::convertToPoints(result.ValueOrDie());
 
-  if (!response_points.ok()) {
-    response.mutable_error()->set_error(response_points.status().message());
+  if (!response_points_result.ok()) {
+    response.mutable_error()->set_error(
+        response_points_result.status().message());
     getAgent()->writeResponse(response);
     return;
   }
 
-  for (auto& point : response_points.ValueOrDie().points()) {
+  auto response_points = response_points_result.ValueOrDie();
+
+  for (auto& point : response_points.points()) {
     response.mutable_point()->CopyFrom(point);
     getAgent()->writeResponse(response);
   }
@@ -129,6 +136,46 @@ void StreamRecordBatchRequestHandlerBase::endBatch(
   response.mutable_error()->set_error(
       "Invalid EndBatch request, UDF wants stream data");
   getAgent()->writeResponse(response);
+}
+
+TimerRecordBatchRequestHandlerBase::TimerRecordBatchRequestHandlerBase(
+    const std::shared_ptr<IUDFAgent>& agent,
+    const PointsConverter::PointsToRecordBatchesConversionOptions&
+        to_record_batches_options,
+    uvw::Loop* loop)
+    : StreamRecordBatchRequestHandlerBase(agent, to_record_batches_options),
+      emit_timer_(loop->resource<uvw::TimerHandle>()) {
+  emit_timer_->on<uvw::TimerEvent>(
+      [this](const uvw::TimerEvent& /* non-used */,
+             const uvw::TimerHandle& /* non-used */) { handleBatch(); });
+}
+
+TimerRecordBatchRequestHandlerBase::TimerRecordBatchRequestHandlerBase(
+    const std::shared_ptr<IUDFAgent>& agent,
+    const PointsConverter::PointsToRecordBatchesConversionOptions&
+        to_record_batches_options,
+    uvw::Loop* loop, const std::chrono::seconds& batch_interval,
+    const std::shared_ptr<RecordBatchHandler>& handler)
+    : StreamRecordBatchRequestHandlerBase(agent, to_record_batches_options,
+                                          handler),
+      emit_timer_(loop->resource<uvw::TimerHandle>()),
+      emit_timeout_(batch_interval) {
+  emit_timer_->on<uvw::TimerEvent>(
+      [this](const uvw::TimerEvent& /* non-used */,
+             const uvw::TimerHandle& /* non-used */) { handleBatch(); });
+}
+
+void TimerRecordBatchRequestHandlerBase::point(const agent::Point& point) {
+  addPoint(point);
+  if (!emit_timer_->active()) {
+    emit_timer_->start(emit_timeout_, emit_timeout_);
+  }
+}
+
+void TimerRecordBatchRequestHandlerBase::stop() {
+  handleBatch();
+  emit_timer_->stop();
+  RequestHandler::stop();
 }
 
 }  // namespace kapacitor_udf

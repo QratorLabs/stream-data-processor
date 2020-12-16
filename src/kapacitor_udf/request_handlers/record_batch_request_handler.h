@@ -1,7 +1,10 @@
 #pragma once
 
+#include <chrono>
 #include <utility>
 #include <vector>
+
+#include <uvw.hpp>
 
 #include "kapacitor_udf/udf_agent.h"
 #include "kapacitor_udf/utils/points_converter.h"
@@ -59,6 +62,41 @@ class StreamRecordBatchRequestHandlerBase : public RecordBatchRequestHandler {
 
   void beginBatch(const agent::BeginBatch& batch) override;
   void endBatch(const agent::EndBatch& batch) override;
+};
+
+class TimerRecordBatchRequestHandlerBase
+    : public StreamRecordBatchRequestHandlerBase {
+ public:
+  TimerRecordBatchRequestHandlerBase(
+      const std::shared_ptr<IUDFAgent>& agent,
+      const PointsConverter::PointsToRecordBatchesConversionOptions&
+          to_record_batches_options,
+      uvw::Loop* loop);
+
+  TimerRecordBatchRequestHandlerBase(
+      const std::shared_ptr<IUDFAgent>& agent,
+      const PointsConverter::PointsToRecordBatchesConversionOptions&
+          to_record_batches_options,
+      uvw::Loop* loop, const std::chrono::seconds& batch_interval,
+      const std::shared_ptr<RecordBatchHandler>& handler = nullptr);
+
+  void point(const agent::Point& point) override;
+
+  void stop() override;
+
+ protected:
+  template <typename SecondsType>
+  void setEmitTimeout(SecondsType&& new_timeout) {
+    emit_timeout_ = std::forward<SecondsType>(new_timeout);
+    if (emit_timer_->active()) {
+      emit_timer_->repeat(emit_timeout_);
+      emit_timer_->again();
+    }
+  }
+
+ private:
+  std::shared_ptr<uvw::TimerHandle> emit_timer_;
+  std::chrono::seconds emit_timeout_;
 };
 
 }  // namespace kapacitor_udf

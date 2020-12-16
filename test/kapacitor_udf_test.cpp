@@ -77,8 +77,8 @@ SCENARIO("UDFAgent with RequestHandler interaction",
 
     WHEN("mirror Handler restores from snapshot") {
       agent::Point point;
-      int64_t now = std::time(nullptr);
-      point.set_time(now);
+      int64_t time = 100 * 10e9;
+      point.set_time(time);
       point.set_name("name");
       point.set_group("");
 

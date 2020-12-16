@@ -7,17 +7,11 @@ StreamToStreamRequestHandler::StreamToStreamRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent,
     const PointsConverter::PointsToRecordBatchesConversionOptions&
         to_record_batches_options,
-    const std::shared_ptr<RecordBatchHandler>& handlers_pipeline,
-    uvw::Loop* loop, const std::chrono::duration<uint64_t>& batch_interval)
-    : StreamRecordBatchRequestHandlerBase(agent, to_record_batches_options,
-                                          handlers_pipeline),
-      batch_timer_(loop->resource<uvw::TimerHandle>()),
-      batch_interval_(batch_interval) {
-  batch_timer_->on<uvw::TimerEvent>(
-      [this](const uvw::TimerEvent& event, uvw::TimerHandle& handle) {
-        handleBatch();
-      });
-}
+    uvw::Loop* loop, const std::chrono::duration<uint64_t>& batch_interval,
+    const std::shared_ptr<RecordBatchHandler>& batch_handler)
+    : TimerRecordBatchRequestHandlerBase(agent, to_record_batches_options,
+                                         loop, batch_interval,
+                                         batch_handler) {}
 
 agent::Response StreamToStreamRequestHandler::info() const {
   agent::Response response;
@@ -31,18 +25,6 @@ agent::Response StreamToStreamRequestHandler::init(
   agent::Response response;
   response.mutable_init()->set_success(true);
   return response;
-}
-
-void StreamToStreamRequestHandler::point(const agent::Point& point) {
-  addPoint(point);
-  if (!batch_timer_->active()) {
-    batch_timer_->start(batch_interval_, batch_interval_);
-  }
-}
-
-void StreamToStreamRequestHandler::stop() {
-  handleBatch();
-  batch_timer_->stop();
 }
 
 }  // namespace kapacitor_udf

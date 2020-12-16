@@ -42,10 +42,9 @@ arrow::Result<std::time_t> ThresholdState::getTimeAtRow(
   std::shared_ptr<arrow::Scalar> time_scalar;
   ARROW_ASSIGN_OR_RAISE(
       time_scalar,
-      record_batch.GetColumnByName(time_column_name)->GetScalar(row_id));
-  ARROW_ASSIGN_OR_RAISE(
-      time_scalar,
-      time_scalar->CastTo(arrow::timestamp(arrow::TimeUnit::SECOND)));
+      arrow_utils::castTimestampScalar(
+          record_batch.GetColumnByName(time_column_name)->GetScalar(row_id),
+          arrow::TimeUnit::SECOND));
 
   return std::static_pointer_cast<arrow::Int64Scalar>(time_scalar)->value;
 }

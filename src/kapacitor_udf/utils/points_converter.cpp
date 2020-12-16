@@ -6,6 +6,7 @@
 #include "metadata/column_typing.h"
 #include "metadata/grouping.h"
 #include "points_converter.h"
+#include "utils/arrow_utils.h"
 
 namespace stream_data_processor {
 namespace kapacitor_udf {
@@ -91,11 +92,18 @@ arrow::Result<agent::PointBatch> PointsConverter::convertToPoints(
           case metadata::MEASUREMENT:
             point.set_name(scalar_value->ToString());
             break;
-          case metadata::TIME:
+          case metadata::TIME: {
+            std::shared_ptr<arrow::Scalar> timestamp_scalar;
+            ARROW_ASSIGN_OR_RAISE(timestamp_scalar,
+                                  arrow_utils::castTimestampScalar(
+                                      scalar_value, arrow::TimeUnit::NANO));
+
             point.set_time(
-                std::static_pointer_cast<arrow::Int64Scalar>(scalar_value)
+                std::static_pointer_cast<arrow::Int64Scalar>(timestamp_scalar)
                     ->value);
-            break;
+          }
+
+          break;
           case metadata::TAG:
             point.mutable_tags()->operator[](column_name) =
                 scalar_value->ToString();
@@ -205,7 +213,7 @@ PointsConverter::convertPointsGroup(
     const PointsToRecordBatchesConversionOptions& options) {
   auto pool = arrow::default_memory_pool();
   auto timestamp_builder =
-      arrow::TimestampBuilder(arrow::timestamp(arrow::TimeUnit::MILLI), pool);
+      arrow::TimestampBuilder(arrow::timestamp(arrow::TimeUnit::NANO), pool);
   auto measurement_builder = arrow::StringBuilder(pool);
   std::map<std::string, arrow::StringBuilder> tags_builders;
   std::map<std::string, arrow::DoubleBuilder> double_fields_builders;
@@ -240,7 +248,7 @@ PointsConverter::convertPointsGroup(
   arrow::ArrayVector column_arrays;
 
   schema_fields.push_back(arrow::field(
-      options.time_column_name, arrow::timestamp(arrow::TimeUnit::MILLI)));
+      options.time_column_name, arrow::timestamp(arrow::TimeUnit::NANO)));
   ARROW_RETURN_NOT_OK(
       metadata::setColumnTypeMetadata(&schema_fields.back(), metadata::TIME));
   column_arrays.emplace_back();

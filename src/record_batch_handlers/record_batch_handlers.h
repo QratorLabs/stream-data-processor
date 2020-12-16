@@ -4,6 +4,7 @@
 #include "default_handler.h"
 #include "filter_handler.h"
 #include "group_handler.h"
+#include "log_handler.h"
 #include "map_handler.h"
 #include "sort_handler.h"
 

@@ -1,5 +1,6 @@
 #include <chrono>
 #include <csignal>
+#include <exception>
 #include <iostream>
 #include <memory>
 
@@ -31,17 +32,25 @@ class BatchAggregateUDFAgentClientFactory : public sdp::UnixSocketClientFactory 
 
 class StreamAggregateUDFAgentClientFactory : public sdp::UnixSocketClientFactory {
  public:
+  explicit StreamAggregateUDFAgentClientFactory(uvw::Loop* loop)
+      : loop_(loop) {
+
+  }
+
   std::shared_ptr<sdp::UnixSocketClient> createClient(
       const std::shared_ptr<uvw::PipeHandle>& pipe_handle) override {
     auto agent =
         std::make_shared<udf::SocketBasedUDFAgent>(pipe_handle, pipe_handle);
 
     std::shared_ptr<udf::RequestHandler> handler =
-        std::make_shared<udf::StreamAggregateRequestHandler>(agent);
+        std::make_shared<udf::StreamAggregateRequestHandler>(agent, loop_);
 
     agent->setHandler(handler);
     return std::make_shared<udf::AgentClient>(agent);
   }
+
+ private:
+  uvw::Loop* loop_;
 };
 
 int main(int argc, char** argv) {
@@ -69,7 +78,7 @@ int main(int argc, char** argv) {
 
     batch_socket_path = arguments_parse_result["batch"].as<std::string>();
     stream_socket_path = arguments_parse_result["stream"].as<std::string>();
-  } catch (const cxxopts::OptionException& exc) {
+  } catch (const std::exception& exc) {
     std::cerr << exc.what() << std::endl;
     std::cout << options.help() << std::endl;
     return 1;
@@ -84,7 +93,7 @@ int main(int argc, char** argv) {
       batch_socket_path, loop.get());
 
   sdp::UnixSocketServer stream_server(
-      std::make_shared<StreamAggregateUDFAgentClientFactory>(),
+      std::make_shared<StreamAggregateUDFAgentClientFactory>(loop.get()),
       stream_socket_path, loop.get());
 
   auto signal_handle = loop->resource<uvw::SignalHandle>();
@@ -104,7 +113,14 @@ int main(int argc, char** argv) {
   batch_server.start();
   stream_server.start();
 
-  loop->run();
+  try {
+    loop->run();
+  } catch (const std::exception& exc) {
+    batch_server.stop();
+    stream_server.stop();
+    std::cerr << exc.what() << std::endl;
+    return 1;
+  }
 
   return 0;
 }

@@ -17,8 +17,10 @@ arrow::Result<arrow::RecordBatchVector> WindowHandler::handle(
   if (next_emit_ == 0) {
     std::shared_ptr<arrow::Scalar> min_ts;
     ARROW_ASSIGN_OR_RAISE(
-        min_ts,
-        sorted_record_batch->GetColumnByName(time_column_name)->GetScalar(0));
+        min_ts, arrow_utils::castTimestampScalar(
+                    sorted_record_batch->GetColumnByName(time_column_name)
+                        ->GetScalar(0),
+                    arrow::TimeUnit::SECOND));
 
     next_emit_ = std::static_pointer_cast<arrow::Int64Scalar>(min_ts)->value;
     if (options_.fill_period) {
@@ -29,9 +31,12 @@ arrow::Result<arrow::RecordBatchVector> WindowHandler::handle(
   }
 
   std::shared_ptr<arrow::Scalar> max_ts_scalar;
-  ARROW_ASSIGN_OR_RAISE(max_ts_scalar,
-                        sorted_record_batch->GetColumnByName(time_column_name)
-                            ->GetScalar(sorted_record_batch->num_rows() - 1));
+  ARROW_ASSIGN_OR_RAISE(
+      max_ts_scalar,
+      arrow_utils::castTimestampScalar(
+          sorted_record_batch->GetColumnByName(time_column_name)
+              ->GetScalar(sorted_record_batch->num_rows() - 1),
+          arrow::TimeUnit::SECOND));
 
   std::time_t max_ts(
       std::static_pointer_cast<arrow::Int64Scalar>(max_ts_scalar)->value);
@@ -50,8 +55,14 @@ arrow::Result<arrow::RecordBatchVector> WindowHandler::handle(
           sorted_record_batch->Slice(0, divide_index));
     }
 
-    result.emplace_back();
-    ARROW_ASSIGN_OR_RAISE(result.back(), emitWindow());
+    if (!buffered_record_batches_.empty()) {
+      result.emplace_back();
+      ARROW_ASSIGN_OR_RAISE(result.back(), emitWindow());
+    }
+
+    next_emit_ += options_.every.count();
+    ARROW_RETURN_NOT_OK(removeOldRecords());
+
     sorted_record_batch = sorted_record_batch->Slice(divide_index);
   }
 
@@ -72,7 +83,9 @@ arrow::Result<size_t> WindowHandler::tsLowerBound(
     std::shared_ptr<arrow::Scalar> ts_scalar;
     ARROW_ASSIGN_OR_RAISE(
         ts_scalar,
-        record_batch.GetColumnByName(time_column_name)->GetScalar(middle));
+        arrow_utils::castTimestampScalar(
+            record_batch.GetColumnByName(time_column_name)->GetScalar(middle),
+            arrow::TimeUnit::SECOND));
 
     std::time_t ts(
         std::static_pointer_cast<arrow::Int64Scalar>(ts_scalar)->value);
@@ -85,9 +98,11 @@ arrow::Result<size_t> WindowHandler::tsLowerBound(
   }
 
   std::shared_ptr<arrow::Scalar> ts_scalar;
-  ARROW_ASSIGN_OR_RAISE(
-      ts_scalar,
-      record_batch.GetColumnByName(time_column_name)->GetScalar(left_bound));
+  ARROW_ASSIGN_OR_RAISE(ts_scalar,
+                        arrow_utils::castTimestampScalar(
+                            record_batch.GetColumnByName(time_column_name)
+                                ->GetScalar(left_bound),
+                            arrow::TimeUnit::SECOND));
 
   std::time_t ts(
       std::static_pointer_cast<arrow::Int64Scalar>(ts_scalar)->value);
@@ -109,9 +124,6 @@ WindowHandler::emitWindow() {
   std::shared_ptr<arrow::RecordBatch> window;
   ARROW_ASSIGN_OR_RAISE(
       window, convert_utils::concatenateRecordBatches(window_batches));
-
-  next_emit_ += options_.every.count();
-  ARROW_RETURN_NOT_OK(removeOldRecords());
 
   return window;
 }

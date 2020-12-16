@@ -32,21 +32,22 @@ inline const std::unordered_set<std::string> REQUIRED_THRESHOLD_OPTIONS{
     INCREASE_AFTER_OPTION_NAME};
 
 inline const std::unordered_map<std::string, agent::ValueType>
-    THRESHOLD_OPTIONS_TYPES{{WATCH_COLUMN_OPTION_NAME, agent::STRING},
-                            {THRESHOLD_COLUMN_OPTION_NAME, agent::STRING},
-                            {DEFAULT_THRESHOLD_OPTION_NAME, agent::DOUBLE},
-                            {INCREASE_SCALE_OPTION_NAME, agent::DOUBLE},
-                            {INCREASE_AFTER_OPTION_NAME, agent::DURATION},
-                            {DECREASE_SCALE_OPTION_NAME, agent::DOUBLE},
-                            {DECREASE_TRIGGER_OPTION_NAME, agent::DOUBLE},
-                            {DECREASE_AFTER_OPTION_NAME, agent::DURATION},
-                            {MIN_LEVEL_OPTION_NAME, agent::DOUBLE},
-                            {MAX_LEVEL_OPTION_NAME, agent::DOUBLE}};
+    STREAM_AGGREGATE_OPTIONS_TYPES{
+        {WATCH_COLUMN_OPTION_NAME, agent::STRING},
+        {THRESHOLD_COLUMN_OPTION_NAME, agent::STRING},
+        {DEFAULT_THRESHOLD_OPTION_NAME, agent::DOUBLE},
+        {INCREASE_SCALE_OPTION_NAME, agent::DOUBLE},
+        {INCREASE_AFTER_OPTION_NAME, agent::DURATION},
+        {DECREASE_SCALE_OPTION_NAME, agent::DOUBLE},
+        {DECREASE_TRIGGER_OPTION_NAME, agent::DOUBLE},
+        {DECREASE_AFTER_OPTION_NAME, agent::DURATION},
+        {MIN_LEVEL_OPTION_NAME, agent::DOUBLE},
+        {MAX_LEVEL_OPTION_NAME, agent::DOUBLE}};
 
 google::protobuf::Map<std::string, agent::OptionInfo>
 getThresholdOptionsMap() {
   google::protobuf::Map<std::string, agent::OptionInfo> options_map;
-  for (auto& [option_name, option_type] : THRESHOLD_OPTIONS_TYPES) {
+  for (auto& [option_name, option_type] : STREAM_AGGREGATE_OPTIONS_TYPES) {
     options_map[option_name].add_valuetypes(option_type);
   }
 
@@ -60,8 +61,8 @@ ThresholdStateMachine::Options parseThresholdOptions(
   std::unordered_set<std::string> parsed_options;
   for (auto& option : request_options) {
     auto& option_name = option.name();
-    auto option_type = THRESHOLD_OPTIONS_TYPES.find(option_name);
-    if (option_type == THRESHOLD_OPTIONS_TYPES.end()) {
+    auto option_type = STREAM_AGGREGATE_OPTIONS_TYPES.find(option_name);
+    if (option_type == STREAM_AGGREGATE_OPTIONS_TYPES.end()) {
       throw InvalidOptionException(
           fmt::format("Unexpected option name: {}", option_name));
     }
