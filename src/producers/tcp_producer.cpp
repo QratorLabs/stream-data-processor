@@ -59,10 +59,10 @@ void TCPProducer::configureListener() {
 
 void TCPProducer::handleData(const char* data, size_t length) {
   if (is_external_) {
-    handleData(data, length);
+    getNode()->handleData(data, length);
   } else {
     for (auto& [data, length] : TransportUtils::splitMessage(data, length)) {
-      handleData(data, length);
+      getNode()->handleData(data, length);
     }
   }
 }
