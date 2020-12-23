@@ -20,7 +20,7 @@ arrow::Status setColumnTypeMetadata(
 
 arrow::Status setColumnTypeMetadata(
     std::shared_ptr<arrow::RecordBatch>* record_batch,
-    std::string column_name, ColumnType type);
+    const std::string& column_name, ColumnType type);
 
 ColumnType getColumnType(const arrow::Field& column_field);
 

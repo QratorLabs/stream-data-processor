@@ -4,5 +4,6 @@
 #include "compute_utils.h"
 #include "convert_utils.h"
 #include "serialize_utils.h"
+#include "time_utils.h"
 #include "transport_utils.h"
 #include "uvarint_utils.h"

@@ -107,7 +107,9 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_SOURCES"
   consumers/publisher_consumer.cpp
   consumers/tcp_consumer.cpp
   metadata/column_typing.cpp
+  metadata/time_metadata.cpp
   metadata/grouping.cpp
+  metadata/help.cpp
   nodes/node.cpp
   nodes/eval_node.cpp
   nodes/data_handlers/data_parser.cpp
@@ -134,6 +136,7 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_SOURCES"
   utils/arrow_utils.cpp
   utils/compute_utils.cpp
   utils/convert_utils.cpp
+  utils/time_utils.cpp
   utils/transport_utils.cpp
   utils/serialize_utils.cpp
   utils/string_utils.cpp
@@ -168,7 +171,9 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   kapacitor_udf/request_handlers/batch_to_stream_request_handler.cpp
   kapacitor_udf/request_handlers/stream_to_stream_request_handler.cpp
   metadata/column_typing.cpp
+  metadata/time_metadata.cpp
   metadata/grouping.cpp
+  metadata/help.cpp
   record_batch_handlers/record_batch_handler.cpp
   record_batch_handlers/aggregate_functions/aggregate_functions.cpp
   record_batch_handlers/stateful_handlers/threshold_state_machine.cpp
@@ -187,6 +192,7 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   utils/arrow_utils.cpp
   utils/compute_utils.cpp
   utils/convert_utils.cpp
+  utils/time_utils.cpp
   utils/transport_utils.cpp
   utils/serialize_utils.cpp
   utils/string_utils.cpp

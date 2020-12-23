@@ -132,7 +132,7 @@ agent::Response StreamAggregateRequestHandler::init(
 
   auto pipeline_handler = std::make_shared<PipelineHandler>();
 
-  WindowHandler::Options window_options{
+  WindowHandler::WindowOptions window_options{
       stream_aggregate_options[TOLERANCE_OPTION_NAME],
       stream_aggregate_options[TOLERANCE_OPTION_NAME], true};
 

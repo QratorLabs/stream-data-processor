@@ -1,3 +1,5 @@
+#include <functional>
+
 #include <arrow/api.h>
 #include <catch2/catch.hpp>
 
@@ -47,5 +49,130 @@ TEST_CASE( "serialization and deserialization preserves schema metadata", "[Seri
 
     REQUIRE( deserialized.size() == 1 );
     REQUIRE( deserialized[0]->Equals(*record_batches[i], true) );
+  }
+}
+
+TEST_CASE( "check conversion between different TimeUnits", "[time_utils]" ) {
+  using namespace time_utils;
+  constexpr int64_t max_int64 = std::numeric_limits<int64_t>::max();
+  arrow::Result<int64_t> overflow_result = arrow::Status::TypeError("Overflow while converting durations");
+
+  auto convertWithOverflowCheck = [&](int64_t t, int64_t factor) {
+    return t > max_int64 / factor ? overflow_result : t * factor;
+  };
+
+  const std::unordered_map<TimeUnit, std::unordered_map<
+      TimeUnit,
+      std::function<arrow::Result<int64_t>(int64_t)>
+      >> convert_rules {
+      {NANO, {
+          {NANO, [&](int64_t t) { return t; }},
+          {MICRO, [&](int64_t t) { return t / 1000; }},
+          {MILLI, [&](int64_t t) { return t / 1000000; }},
+          {SECOND, [&](int64_t t) { return t / 1000000000; }},
+          {MINUTE, [&](int64_t t) { return t / 1000000000 / 60; }},
+          {HOUR, [&](int64_t t) { return t / 1000000000 / 60 / 60; }},
+          {DAY, [&](int64_t t) { return t / 1000000000 / 60 / 60 / 24; }},
+          {WEEK, [&](int64_t t) { return t / 1000000000 / 60 / 60 / 24 / 7; }}
+      }},
+      {MICRO, {
+          {NANO, [&](int64_t t) { return convertWithOverflowCheck(t, 1000); }},
+          {MICRO, [&](int64_t t) { return t; }},
+          {MILLI, [&](int64_t t) { return t / 1000; }},
+          {SECOND, [&](int64_t t) { return t / 1000000; }},
+          {MINUTE, [&](int64_t t) { return t / 1000000 / 60; }},
+          {HOUR, [&](int64_t t) { return t / 1000000 / 60 / 60; }},
+          {DAY, [&](int64_t t) { return t / 1000000 / 60 / 60 / 24; }},
+          {WEEK, [&](int64_t t) { return t / 1000000 / 60 / 60 / 24 / 7; }}
+      }},
+      {MILLI, {
+          {NANO, [&](int64_t t) { return convertWithOverflowCheck(t, 1000000); }},
+          {MICRO, [&](int64_t t) { return convertWithOverflowCheck(t, 1000); }},
+          {MILLI, [&](int64_t t) { return t; }},
+          {SECOND, [&](int64_t t) { return t / 1000; }},
+          {MINUTE, [&](int64_t t) { return t / 1000 / 60; }},
+          {HOUR, [&](int64_t t) { return t / 1000 / 60 / 60; }},
+          {DAY, [&](int64_t t) { return t / 1000 / 60 / 60 / 24; }},
+          {WEEK, [&](int64_t t) { return t / 1000 / 60 / 60 / 24 / 7; }}
+      }},
+      {SECOND, {
+          {NANO, [&](int64_t t) { return convertWithOverflowCheck(t, 1000000000); }},
+          {MICRO, [&](int64_t t) { return convertWithOverflowCheck(t, 1000000); }},
+          {MILLI, [&](int64_t t) { return convertWithOverflowCheck(t, 1000); }},
+          {SECOND, [&](int64_t t) { return t; }},
+          {MINUTE, [&](int64_t t) { return t / 60; }},
+          {HOUR, [&](int64_t t) { return t / 60 / 60; }},
+          {DAY, [&](int64_t t) { return t / 60 / 60 / 24; }},
+          {WEEK, [&](int64_t t) { return t / 60 / 60 / 24 / 7; }}
+      }},
+      {MINUTE, {
+          {NANO, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{1000000000} * 60); }},
+          {MICRO, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{1000000} * 60); }},
+          {MILLI, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{1000} * 60); }},
+          {SECOND, [&](int64_t t) { return convertWithOverflowCheck(t, 60); }},
+          {MINUTE, [&](int64_t t) { return t; }},
+          {HOUR, [&](int64_t t) { return t / 60; }},
+          {DAY, [&](int64_t t) { return t / 60 / 24; }},
+          {WEEK, [&](int64_t t) { return t / 60 / 24 / 7; }}
+      }},
+      {HOUR, {
+          {NANO, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{1000000000} * 60 * 60); }},
+          {MICRO, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{1000000} * 60 * 60); }},
+          {MILLI, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{1000} * 60 * 60); }},
+          {SECOND, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{60} * 60); }},
+          {MINUTE, [&](int64_t t) { return convertWithOverflowCheck(t, 60); }},
+          {HOUR, [&](int64_t t) { return t; }},
+          {DAY, [&](int64_t t) { return t / 24; }},
+          {WEEK, [&](int64_t t) { return t / 24 / 7; }}
+      }},
+      {DAY, {
+          {NANO, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{1000000000} * 60 * 60 * 24); }},
+          {MICRO, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{1000000} * 60 * 60 * 24); }},
+          {MILLI, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{1000} * 60 * 60 * 24); }},
+          {SECOND, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{60} * 60 * 24); }},
+          {MINUTE, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{60} * 24); }},
+          {HOUR, [&](int64_t t) { return convertWithOverflowCheck(t, 24); }},
+          {DAY, [&](int64_t t) { return t; }},
+          {WEEK, [&](int64_t t) { return t / 7; }}
+      }},
+      {WEEK, {
+          {NANO, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{1000000000} * 60 * 60 * 24 * 7); }},
+          {MICRO, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{1000000} * 60 * 60 * 24 * 7); }},
+          {MILLI, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{1000} * 60 * 60 * 24 * 7); }},
+          {SECOND, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{60} * 60 * 24 * 7); }},
+          {MINUTE, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{60} * 24 * 7); }},
+          {HOUR, [&](int64_t t) { return convertWithOverflowCheck(t, int64_t{24} * 7); }},
+          {DAY, [&](int64_t t) { return convertWithOverflowCheck(t, 7); }},
+          {WEEK, [&](int64_t t) { return t; }}
+      }}
+  };
+
+  std::vector<int64_t> test_cases{0, 1, 7, 24, 60, 7 * 24, 1000, 24 * 60,
+                                  24 * 60 * 60, 1000000, int64_t{1000} * 60 * 60,
+                                  60 * 24 * 7, 60 * 60 * 24 * 7,
+                                  1000000000, int64_t{1000} * 60 * 60 * 24 * 7,
+                                  int64_t{1000000} * 60 * 60 * 24 * 7,
+                                  int64_t{1000000000} * 60 * 60 * 24 * 7,
+                                  int64_t{1000} * 60 * 60 * 24,
+                                  int64_t{1000000} * 60 * 60 * 24,
+                                  int64_t{1000000000} * 60 * 60 * 24,
+                                  60 * 60, int64_t{1000000} * 60 * 60,
+                                  int64_t{1000000000} * 60 * 60,
+                                  1000 * 60, int64_t{1000000} * 60,
+                                  int64_t{1000000000} * 60};
+
+  std::vector<TimeUnit> time_units{NANO, MICRO, MILLI, SECOND, MINUTE, HOUR, DAY, WEEK};
+  for (auto& test_case : test_cases) {
+    for (auto& from : time_units) {
+      for (auto& to : time_units) {
+        auto convert_result = convertTime(test_case, from ,to);
+        auto true_result = convert_rules.at(from).at(to)(test_case);
+//        assert(convert_result.status().Equals(true_result.status()));
+        REQUIRE( convert_result.status().Equals(true_result.status()) );
+        if (convert_result.ok()) {
+          REQUIRE( convert_result.ValueOrDie() == true_result.ValueOrDie() );
+        }
+      }
+    }
   }
 }

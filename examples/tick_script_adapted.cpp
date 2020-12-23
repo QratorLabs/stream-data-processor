@@ -204,7 +204,7 @@ int main(int argc, char** argv) {
       &pipelines[cputime_host_calc_default_node->getName()], loop.get(),
       zmq_context, sdp::TransportUtils::ZMQTransportType::INPROC);
 
-  sdp::WindowHandler::Options window_options{
+  sdp::WindowHandler::WindowOptions window_options{
     std::chrono::duration_cast<std::chrono::seconds>(win_period),
     std::chrono::duration_cast<std::chrono::seconds>(win_every),
     false

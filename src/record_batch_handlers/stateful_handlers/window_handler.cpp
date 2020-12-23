@@ -1,5 +1,8 @@
-#include "window_handler.h"
+#include <spdlog/spdlog.h>
+
+#include "metadata/time_metadata.h"
 #include "utils/utils.h"
+#include "window_handler.h"
 
 namespace stream_data_processor {
 
@@ -60,6 +63,7 @@ arrow::Result<arrow::RecordBatchVector> WindowHandler::handle(
       ARROW_ASSIGN_OR_RAISE(result.back(), emitWindow());
     }
 
+    emitted_first_ = true;
     next_emit_ += options_.every.count();
     ARROW_RETURN_NOT_OK(removeOldRecords());
 
@@ -116,6 +120,8 @@ arrow::Result<size_t> WindowHandler::tsLowerBound(
 
 arrow::Result<std::shared_ptr<arrow::RecordBatch>>
 WindowHandler::emitWindow() {
+  ARROW_RETURN_NOT_OK(removeOldRecords());
+
   arrow::RecordBatchVector window_batches;
   for (auto& batch : buffered_record_batches_) {
     window_batches.push_back(batch);
@@ -155,6 +161,141 @@ arrow::Status WindowHandler::removeOldRecords() {
       buffered_record_batches_.pop_front();
     }
   }
+}
+
+arrow::Result<arrow::RecordBatchVector> DynamicWindowHandler::handle(
+    const std::shared_ptr<arrow::RecordBatch>& record_batch) {
+  if (record_batch->GetColumnByName(options_.every_column_name) == nullptr) {
+    return arrow::Status::KeyError(
+        fmt::format("Column {} not found", options_.every_column_name));
+  }
+
+  if (record_batch->GetColumnByName(options_.period_column_name) == nullptr) {
+    return arrow::Status::KeyError(
+        fmt::format("Column {} not found", options_.period_column_name));
+  }
+
+  time_utils::TimeUnit every_time_unit, period_time_unit;
+  ARROW_ASSIGN_OR_RAISE(
+      every_time_unit,
+      getColumnTimeUnit(*record_batch, options_.every_column_name));
+  ARROW_ASSIGN_OR_RAISE(
+      period_time_unit,
+      getColumnTimeUnit(*record_batch, options_.period_column_name));
+
+  std::string time_column_name;
+  ARROW_ASSIGN_OR_RAISE(time_column_name,
+                        metadata::getTimeColumnNameMetadata(*record_batch));
+
+  std::shared_ptr<arrow::RecordBatch> sorted_by_time;
+  ARROW_ASSIGN_OR_RAISE(sorted_by_time, compute_utils::sortByColumn(
+                                            time_column_name, record_batch));
+
+  arrow::RecordBatchVector result;
+  int64_t new_options_index;
+  std::chrono::seconds duration_option;
+  std::time_t new_options_ts;
+  while (sorted_by_time->num_rows() > 0) {
+    ARROW_ASSIGN_OR_RAISE(
+        new_options_index,
+        findNewWindowOptionsIndex(*sorted_by_time, every_time_unit,
+                                  period_time_unit));
+
+    if (new_options_index > 0) {
+      arrow::RecordBatchVector intermediate_result;
+      ARROW_ASSIGN_OR_RAISE(intermediate_result,
+                            window_handler_->handle(
+                                sorted_by_time->Slice(0, new_options_index)));
+
+      convert_utils::append(std::move(intermediate_result), result);
+    }
+
+    sorted_by_time = sorted_by_time->Slice(new_options_index);
+    if (sorted_by_time->num_rows() == 0) {
+      break;
+    }
+
+    std::shared_ptr<arrow::Scalar> new_options_ts_scalar;
+    ARROW_ASSIGN_OR_RAISE(
+        new_options_ts_scalar,
+        arrow_utils::castTimestampScalar(
+            sorted_by_time->GetColumnByName(time_column_name)->GetScalar(0),
+            arrow::TimeUnit::SECOND));
+    new_options_ts =
+        std::static_pointer_cast<arrow::Int64Scalar>(new_options_ts_scalar)
+            ->value;
+
+    ARROW_ASSIGN_OR_RAISE(
+        duration_option,
+        getDurationOption(*sorted_by_time, 0, options_.every_column_name,
+                          every_time_unit));
+    window_handler_->setEveryOption(duration_option, new_options_ts);
+    ARROW_ASSIGN_OR_RAISE(
+        duration_option,
+        getDurationOption(*sorted_by_time, 0, options_.period_column_name,
+                          period_time_unit));
+    window_handler_->setPeriodOption(duration_option, new_options_ts);
+  }
+
+  return result;
+}
+
+arrow::Result<int64_t> DynamicWindowHandler::findNewWindowOptionsIndex(
+    const arrow::RecordBatch& record_batch,
+    time_utils::TimeUnit every_time_unit,
+    time_utils::TimeUnit period_time_unit) const {
+  int64_t new_options_row_index = 0;
+  std::chrono::seconds current_every_value, current_period_value;
+  while (new_options_row_index < record_batch.num_rows()) {
+    ARROW_ASSIGN_OR_RAISE(
+        current_every_value,
+        getDurationOption(record_batch, new_options_row_index,
+                          options_.every_column_name, every_time_unit));
+    ARROW_ASSIGN_OR_RAISE(
+        current_period_value,
+        getDurationOption(record_batch, new_options_row_index,
+                          options_.period_column_name, period_time_unit));
+
+    if (current_every_value != window_handler_->getEveryOption() ||
+        current_period_value != window_handler_->getPeriodOption()) {
+      break;
+    }
+
+    ++new_options_row_index;
+  }
+
+  return new_options_row_index;
+}
+
+arrow::Result<std::chrono::seconds> DynamicWindowHandler::getDurationOption(
+    const arrow::RecordBatch& record_batch, int64_t row,
+    const std::string& column_name, time_utils::TimeUnit time_unit) {
+  auto column = record_batch.GetColumnByName(column_name);
+  std::shared_ptr<arrow::Scalar> duration_scalar;
+  ARROW_ASSIGN_OR_RAISE(duration_scalar, column->GetScalar(row));
+
+  auto duration =
+      std::static_pointer_cast<arrow::Int64Scalar>(duration_scalar)->value;
+
+  int64_t seconds;
+  ARROW_ASSIGN_OR_RAISE(seconds, time_utils::convertTime(duration, time_unit,
+                                                         time_utils::SECOND));
+
+  return std::chrono::seconds{seconds};
+}
+
+arrow::Result<time_utils::TimeUnit> DynamicWindowHandler::getColumnTimeUnit(
+    const arrow::RecordBatch& record_batch, const std::string& column_name) {
+  auto arrow_type = record_batch.GetColumnByName(column_name)->type();
+  if (arrow_type->id() == arrow::Type::DURATION) {
+    return time_utils::mapArrowTimeUnit(
+        std::static_pointer_cast<arrow::DurationType>(arrow_type)->unit());
+  } else if (arrow_type->id() == arrow::Type::TIMESTAMP) {
+    return time_utils::mapArrowTimeUnit(
+        std::static_pointer_cast<arrow::TimestampType>(arrow_type)->unit());
+  }
+
+  return metadata::getTimeUnitMetadata(record_batch, column_name);
 }
 
 }  // namespace stream_data_processor
