@@ -138,14 +138,16 @@ ThresholdStateMachine::Options parseThresholdOptions(
 
 }  // namespace
 
-const PointsConverter::PointsToRecordBatchesConversionOptions
+const BasePointsConverter::PointsToRecordBatchesConversionOptions
     StatefulThresholdRequestHandler::DEFAULT_TO_RECORD_BATCHES_OPTIONS{
         "time", "name"};
 
 StatefulThresholdRequestHandler::StatefulThresholdRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent)
-    : StreamRecordBatchRequestHandlerBase(
-          agent, DEFAULT_TO_RECORD_BATCHES_OPTIONS) {}
+    : StreamRecordBatchRequestHandlerBase(agent) {
+  setPointsConverter(std::make_shared<BasePointsConverter>(
+      DEFAULT_TO_RECORD_BATCHES_OPTIONS));
+}
 
 agent::Response StatefulThresholdRequestHandler::info() const {
   agent::Response response;

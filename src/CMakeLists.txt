@@ -166,6 +166,7 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   kapacitor_udf/request_handlers/aggregate_request_handlers/aggregate_options_parser.cpp
   kapacitor_udf/request_handlers/aggregate_request_handlers/batch_aggregate_request_handler.cpp
   kapacitor_udf/request_handlers/aggregate_request_handlers/stream_aggregate_request_handler.cpp
+  kapacitor_udf/request_handlers/dynamic_window_request_handler.cpp
   kapacitor_udf/request_handlers/record_batch_request_handler.cpp
   kapacitor_udf/request_handlers/stateful_threshold_request_handler.cpp
   kapacitor_udf/request_handlers/batch_to_stream_request_handler.cpp

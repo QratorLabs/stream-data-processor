@@ -19,14 +19,13 @@ inline const std::unordered_set<std::string>
 inline const std::chrono::seconds DEFAULT_TOLERANCE_VALUE{0};
 
 inline const std::unordered_map<std::string, agent::ValueType>
-    STREAM_AGGREGATE_OPTIONS_TYPES{
-        {EMIT_TIMEOUT_OPTION_NAME, agent::DURATION},
-        {TOLERANCE_OPTION_NAME, agent::DURATION}};
+    WINDOW_OPTIONS_TYPES{{EMIT_TIMEOUT_OPTION_NAME, agent::DURATION},
+                         {TOLERANCE_OPTION_NAME, agent::DURATION}};
 
 google::protobuf::Map<std::string, agent::OptionInfo>
 getStreamAggregateOptionsMap() {
   google::protobuf::Map<std::string, agent::OptionInfo> options_map;
-  for (auto& [option_name, option_type] : STREAM_AGGREGATE_OPTIONS_TYPES) {
+  for (auto& [option_name, option_type] : WINDOW_OPTIONS_TYPES) {
     options_map[option_name].add_valuetypes(option_type);
   }
 
@@ -41,8 +40,8 @@ parseStreamAggregateOptions(
   std::unordered_set<std::string> parsed_options;
   for (auto& option : request_options) {
     auto& option_name = option.name();
-    auto option_type = STREAM_AGGREGATE_OPTIONS_TYPES.find(option_name);
-    if (option_type == STREAM_AGGREGATE_OPTIONS_TYPES.end()) {
+    auto option_type = WINDOW_OPTIONS_TYPES.find(option_name);
+    if (option_type == WINDOW_OPTIONS_TYPES.end()) {
       continue;
     }
 
@@ -86,14 +85,16 @@ parseStreamAggregateOptions(
 
 }  // namespace
 
-const PointsConverter::PointsToRecordBatchesConversionOptions
+const BasePointsConverter::PointsToRecordBatchesConversionOptions
     StreamAggregateRequestHandler::DEFAULT_TO_RECORD_BATCHES_OPTIONS{"time",
                                                                      "name"};
 
 StreamAggregateRequestHandler::StreamAggregateRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent, uvw::Loop* loop)
-    : TimerRecordBatchRequestHandlerBase(
-          agent, DEFAULT_TO_RECORD_BATCHES_OPTIONS, loop) {}
+    : TimerRecordBatchRequestHandlerBase(agent, loop) {
+  setPointsConverter(std::make_shared<BasePointsConverter>(
+      DEFAULT_TO_RECORD_BATCHES_OPTIONS));
+}
 
 agent::Response StreamAggregateRequestHandler::info() const {
   agent::Response response;

@@ -6,16 +6,11 @@
 namespace stream_data_processor {
 namespace kapacitor_udf {
 
-using convert_utils::PointsConverter;
+using convert_utils::BasePointsConverter;
 
 RecordBatchRequestHandler::RecordBatchRequestHandler(
-    const std::shared_ptr<IUDFAgent>& agent,
-    PointsConverter::PointsToRecordBatchesConversionOptions
-        to_record_batches_options,
-    const std::shared_ptr<RecordBatchHandler>& handler)
-    : RequestHandler(agent),
-      handler_(handler),
-      to_record_batches_options_(std::move(to_record_batches_options)) {}
+    const std::shared_ptr<IUDFAgent>& agent)
+    : RequestHandler(agent) {}
 
 void RecordBatchRequestHandler::handleBatch() {
   agent::Response response;
@@ -26,12 +21,18 @@ void RecordBatchRequestHandler::handleBatch() {
     return;
   }
 
+  if (points_converter_ == nullptr) {
+    response.mutable_error()->set_error("PointsConverter is not provided");
+    getAgent()->writeResponse(response);
+    return;
+  }
+
   if (batch_points_.points_size() == 0) {
     return;
   }
 
-  auto record_batches = PointsConverter::convertToRecordBatches(
-      batch_points_, to_record_batches_options_);
+  auto record_batches =
+      points_converter_->convertToRecordBatches(batch_points_);
 
   batch_points_.mutable_points()->Clear();
 
@@ -49,7 +50,7 @@ void RecordBatchRequestHandler::handleBatch() {
   }
 
   auto response_points_result =
-      PointsConverter::convertToPoints(result.ValueOrDie());
+      points_converter_->convertToPoints(result.ValueOrDie());
 
   if (!response_points_result.ok()) {
     response.mutable_error()->set_error(
@@ -64,11 +65,6 @@ void RecordBatchRequestHandler::handleBatch() {
     response.mutable_point()->CopyFrom(point);
     getAgent()->writeResponse(response);
   }
-}
-
-std::shared_ptr<RecordBatchHandler> RecordBatchRequestHandler::getHandler()
-    const {
-  return handler_;
 }
 
 const agent::PointBatch& RecordBatchRequestHandler::getPoints() const {
@@ -93,11 +89,8 @@ void RecordBatchRequestHandler::setPointsName(const std::string& name) {
 }
 
 StreamRecordBatchRequestHandlerBase::StreamRecordBatchRequestHandlerBase(
-    const std::shared_ptr<IUDFAgent>& agent,
-    PointsConverter::PointsToRecordBatchesConversionOptions
-        to_record_batches_options,
-    const std::shared_ptr<RecordBatchHandler>& handler)
-    : RecordBatchRequestHandler(agent, to_record_batches_options, handler) {}
+    const std::shared_ptr<IUDFAgent>& agent)
+    : RecordBatchRequestHandler(agent) {}
 
 agent::Response StreamRecordBatchRequestHandlerBase::snapshot() const {
   agent::Response response;
@@ -139,11 +132,8 @@ void StreamRecordBatchRequestHandlerBase::endBatch(
 }
 
 TimerRecordBatchRequestHandlerBase::TimerRecordBatchRequestHandlerBase(
-    const std::shared_ptr<IUDFAgent>& agent,
-    const PointsConverter::PointsToRecordBatchesConversionOptions&
-        to_record_batches_options,
-    uvw::Loop* loop)
-    : StreamRecordBatchRequestHandlerBase(agent, to_record_batches_options),
+    const std::shared_ptr<IUDFAgent>& agent, uvw::Loop* loop)
+    : StreamRecordBatchRequestHandlerBase(agent),
       emit_timer_(loop->resource<uvw::TimerHandle>()) {
   emit_timer_->on<uvw::TimerEvent>(
       [this](const uvw::TimerEvent& /* non-used */,
@@ -151,13 +141,9 @@ TimerRecordBatchRequestHandlerBase::TimerRecordBatchRequestHandlerBase(
 }
 
 TimerRecordBatchRequestHandlerBase::TimerRecordBatchRequestHandlerBase(
-    const std::shared_ptr<IUDFAgent>& agent,
-    const PointsConverter::PointsToRecordBatchesConversionOptions&
-        to_record_batches_options,
-    uvw::Loop* loop, const std::chrono::seconds& batch_interval,
-    const std::shared_ptr<RecordBatchHandler>& handler)
-    : StreamRecordBatchRequestHandlerBase(agent, to_record_batches_options,
-                                          handler),
+    const std::shared_ptr<IUDFAgent>& agent, uvw::Loop* loop,
+    const std::chrono::seconds& batch_interval)
+    : StreamRecordBatchRequestHandlerBase(agent),
       emit_timer_(loop->resource<uvw::TimerHandle>()),
       emit_timeout_(batch_interval) {
   emit_timer_->on<uvw::TimerEvent>(

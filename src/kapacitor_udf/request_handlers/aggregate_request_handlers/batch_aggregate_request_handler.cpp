@@ -7,13 +7,16 @@
 namespace stream_data_processor {
 namespace kapacitor_udf {
 
-const PointsConverter::PointsToRecordBatchesConversionOptions
+const BasePointsConverter::PointsToRecordBatchesConversionOptions
     BatchAggregateRequestHandler::DEFAULT_TO_RECORD_BATCHES_OPTIONS{"time",
                                                                     "name"};
 
 BatchAggregateRequestHandler::BatchAggregateRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent)
-    : RecordBatchRequestHandler(agent, DEFAULT_TO_RECORD_BATCHES_OPTIONS) {}
+    : RecordBatchRequestHandler(agent) {
+  setPointsConverter(std::make_shared<BasePointsConverter>(
+      DEFAULT_TO_RECORD_BATCHES_OPTIONS));
+}
 
 agent::Response BatchAggregateRequestHandler::info() const {
   agent::Response response;

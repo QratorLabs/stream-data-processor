@@ -26,7 +26,7 @@ class BatchAggregateRequestHandler : public RecordBatchRequestHandler {
   void endBatch(const agent::EndBatch& batch) override;
 
  private:
-  static const PointsConverter::PointsToRecordBatchesConversionOptions
+  static const BasePointsConverter::PointsToRecordBatchesConversionOptions
       DEFAULT_TO_RECORD_BATCHES_OPTIONS;
 
   bool in_batch_{false};

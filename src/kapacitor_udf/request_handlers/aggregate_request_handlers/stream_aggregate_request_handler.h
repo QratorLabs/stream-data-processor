@@ -25,7 +25,7 @@ class StreamAggregateRequestHandler
       const agent::InitRequest& init_request) override;
 
  private:
-  static const PointsConverter::PointsToRecordBatchesConversionOptions
+  static const BasePointsConverter::PointsToRecordBatchesConversionOptions
       DEFAULT_TO_RECORD_BATCHES_OPTIONS;
 };
 

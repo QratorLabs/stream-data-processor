@@ -4,14 +4,9 @@ namespace stream_data_processor {
 namespace kapacitor_udf {
 
 StreamToStreamRequestHandler::StreamToStreamRequestHandler(
-    const std::shared_ptr<IUDFAgent>& agent,
-    const PointsConverter::PointsToRecordBatchesConversionOptions&
-        to_record_batches_options,
-    uvw::Loop* loop, const std::chrono::duration<uint64_t>& batch_interval,
-    const std::shared_ptr<RecordBatchHandler>& batch_handler)
-    : TimerRecordBatchRequestHandlerBase(agent, to_record_batches_options,
-                                         loop, batch_interval,
-                                         batch_handler) {}
+    const std::shared_ptr<IUDFAgent>& agent, uvw::Loop* loop,
+    const std::chrono::duration<uint64_t>& batch_interval)
+    : TimerRecordBatchRequestHandlerBase(agent, loop, batch_interval) {}
 
 agent::Response StreamToStreamRequestHandler::info() const {
   agent::Response response;

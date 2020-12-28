@@ -15,9 +15,8 @@ namespace convert_utils {
 using metadata::RecordBatchGroup;
 
 arrow::Result<arrow::RecordBatchVector>
-PointsConverter::convertToRecordBatches(
-    const agent::PointBatch& points,
-    const PointsToRecordBatchesConversionOptions& options) {
+BasePointsConverter::convertToRecordBatches(
+    const agent::PointBatch& points) const {
   std::unordered_map<std::string, std::vector<size_t>> groups_indexes;
   for (size_t i = 0; i < points.points_size(); ++i) {
     auto point_group_string = points.points(i).group();
@@ -33,14 +32,14 @@ PointsConverter::convertToRecordBatches(
     record_batches.emplace_back();
     ARROW_ASSIGN_OR_RAISE(
         record_batches.back(),
-        convertPointsGroup(points, group_string, group_indexes, options));
+        convertPointsGroup(points, group_string, group_indexes));
   }
 
   return record_batches;
 }
 
-arrow::Result<agent::PointBatch> PointsConverter::convertToPoints(
-    const arrow::RecordBatchVector& record_batches) {
+arrow::Result<agent::PointBatch> BasePointsConverter::convertToPoints(
+    const arrow::RecordBatchVector& record_batches) const {
   int points_count = 0;
   agent::PointBatch points;
   for (auto& record_batch : record_batches) {
@@ -164,7 +163,7 @@ arrow::Result<agent::PointBatch> PointsConverter::convertToPoints(
 }
 
 template <typename T, typename BuilderType>
-void PointsConverter::addBuilders(
+void BasePointsConverter::addBuilders(
     const google::protobuf::Map<std::string, T>& data_map,
     std::map<std::string, BuilderType>* builders, arrow::MemoryPool* pool) {
   for (auto& value : data_map) {
@@ -175,7 +174,7 @@ void PointsConverter::addBuilders(
 }
 
 template <typename T, typename BuilderType>
-arrow::Status PointsConverter::appendValues(
+arrow::Status BasePointsConverter::appendValues(
     const google::protobuf::Map<std::string, T>& data_map,
     std::map<std::string, BuilderType>* builders) {
   for (auto& [field_name, builder] : *builders) {
@@ -190,7 +189,7 @@ arrow::Status PointsConverter::appendValues(
 }
 
 template <typename BuilderType>
-arrow::Status PointsConverter::buildColumnArrays(
+arrow::Status BasePointsConverter::buildColumnArrays(
     arrow::ArrayVector* column_arrays, arrow::FieldVector* schema_fields,
     std::map<std::string, BuilderType>* builders,
     const std::shared_ptr<arrow::DataType>& data_type,
@@ -207,10 +206,9 @@ arrow::Status PointsConverter::buildColumnArrays(
   return arrow::Status::OK();
 }
 arrow::Result<std::shared_ptr<arrow::RecordBatch>>
-PointsConverter::convertPointsGroup(
+BasePointsConverter::convertPointsGroup(
     const agent::PointBatch& points, const std::string& group_string,
-    const std::vector<size_t>& group_indexes,
-    const PointsToRecordBatchesConversionOptions& options) {
+    const std::vector<size_t>& group_indexes) const {
   auto pool = arrow::default_memory_pool();
   auto timestamp_builder =
       arrow::TimestampBuilder(arrow::timestamp(arrow::TimeUnit::NANO), pool);
@@ -248,14 +246,14 @@ PointsConverter::convertPointsGroup(
   arrow::ArrayVector column_arrays;
 
   schema_fields.push_back(arrow::field(
-      options.time_column_name, arrow::timestamp(arrow::TimeUnit::NANO)));
+      options_.time_column_name, arrow::timestamp(arrow::TimeUnit::NANO)));
   ARROW_RETURN_NOT_OK(
       metadata::setColumnTypeMetadata(&schema_fields.back(), metadata::TIME));
   column_arrays.emplace_back();
   ARROW_RETURN_NOT_OK(timestamp_builder.Finish(&column_arrays.back()));
 
   schema_fields.push_back(
-      arrow::field(options.measurement_column_name, arrow::utf8()));
+      arrow::field(options_.measurement_column_name, arrow::utf8()));
   ARROW_RETURN_NOT_OK(metadata::setColumnTypeMetadata(&schema_fields.back(),
                                                       metadata::MEASUREMENT));
   column_arrays.emplace_back();
@@ -283,7 +281,7 @@ PointsConverter::convertPointsGroup(
   RecordBatchGroup group;
   try {
     group =
-        grouping_utils::parse(group_string, options.measurement_column_name);
+        grouping_utils::parse(group_string, options_.measurement_column_name);
   } catch (const grouping_utils::GroupParserException& exc) {
     return arrow::Status::Invalid(
         fmt::format("Error while parsing group string: {}", group_string));
@@ -292,12 +290,14 @@ PointsConverter::convertPointsGroup(
   ARROW_RETURN_NOT_OK(metadata::setGroupMetadata(&record_batch, group));
 
   ARROW_RETURN_NOT_OK(metadata::setTimeColumnNameMetadata(
-      &record_batch, options.time_column_name));
+      &record_batch, options_.time_column_name));
   ARROW_RETURN_NOT_OK(metadata::setMeasurementColumnNameMetadata(
-      &record_batch, options.measurement_column_name));
+      &record_batch, options_.measurement_column_name));
 
   return record_batch;
 }
+
+PointsConverter::~PointsConverter() = default;
 
 }  // namespace convert_utils
 }  // namespace kapacitor_udf

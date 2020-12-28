@@ -2,10 +2,13 @@
 #include <memory>
 #include <sstream>
 #include <vector>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <catch2/catch.hpp>
 #include <gmock/gmock.h>
 #include <spdlog/spdlog.h>
+#include <uvw.hpp>
 
 #include "kapacitor_udf/udf_agent.h"
 #include "kapacitor_udf/request_handlers/aggregate_request_handlers/aggregate_options_parser.h"
@@ -15,6 +18,9 @@
 #include "record_batch_handlers/record_batch_handler.h"
 #include "kapacitor_udf/utils/grouping_utils.h"
 #include "kapacitor_udf/utils/points_converter.h"
+#include "kapacitor_udf/request_handlers/dynamic_window_request_handler.h"
+#include "test_help.h"
+#include "record_batch_builder.h"
 
 #include "udf.pb.h"
 
@@ -37,17 +43,21 @@ SCENARIO("UDFAgent with RequestHandler interaction",
     std::shared_ptr<MockUDFAgent>
         mock_agent = std::make_shared<MockUDFAgent>();
     std::vector<std::shared_ptr<RecordBatchHandler>> empty_handler_pipeline;
-    PointsConverter::PointsToRecordBatchesConversionOptions
+    BasePointsConverter::PointsToRecordBatchesConversionOptions
         to_record_batches_options{
         "time",
         "measurement"
     };
-    std::shared_ptr<RequestHandler>
+    std::shared_ptr<RecordBatchRequestHandler>
         handler = std::make_shared<BatchToStreamRequestHandler>(
-        mock_agent,
-        to_record_batches_options,
-        std::make_shared<PipelineHandler>(std::move(empty_handler_pipeline))
+        mock_agent
     );
+
+    handler->setHandler(
+        std::make_shared<PipelineHandler>(std::move(empty_handler_pipeline)));
+
+    handler->setPointsConverter(
+        std::make_shared<BasePointsConverter>(to_record_batches_options));
 
     WHEN("mirror Handler consumes points batch") {
       agent::Point point;
@@ -227,5 +237,178 @@ TEST_CASE("group string encoding", "[grouping_utils]") {
       INFO(fmt::format("Unexpected column name: {}", column_name));
       REQUIRE(false);
     }
+  }
+}
+
+class MockPointsConverter :
+    public kapacitor_udf::convert_utils::PointsConverter {
+ public:
+  MOCK_METHOD(arrow::Result<arrow::RecordBatchVector>,
+      convertToRecordBatches, (const agent::PointBatch& points),
+      (const, override));
+
+  MOCK_METHOD(arrow::Result<agent::PointBatch>,
+      convertToPoints, (const arrow::RecordBatchVector& record_batches),
+      (const, override));
+};
+
+SCENARIO("Window converter decorator calls wrappee's method", "[WindowOptionsConverterDecorator]") {
+  GIVEN("decorator and wrappee") {
+    using namespace ::testing;
+
+    std::shared_ptr<MockPointsConverter> wrappee_mock =
+        std::make_shared<NiceMock<MockPointsConverter>>();
+
+    kapacitor_udf::internal::WindowOptionsConverterDecorator::WindowOptions options{
+        {"period", time_utils::SECOND},
+        {"every", time_utils::SECOND}
+    };
+
+    std::unique_ptr<kapacitor_udf::convert_utils::PointsConverter> decorator =
+        std::make_unique<kapacitor_udf::internal::WindowOptionsConverterDecorator>(
+            wrappee_mock, options);
+
+    WHEN("decorator converts points to RecordBatches") {
+      THEN("wrappee's method is called") {
+        EXPECT_CALL(*wrappee_mock,
+                    convertToRecordBatches(_))
+                    .WillOnce(Return(arrow::RecordBatchVector{}));
+      }
+
+      arrow::RecordBatchVector result;
+      arrowAssignOrRaise(
+          result, decorator->convertToRecordBatches(agent::PointBatch{}));
+
+      REQUIRE( result.empty() );
+    }
+
+    WHEN("decorator converts RecordBatches to points") {
+      THEN("wrappee's method is called") {
+        EXPECT_CALL(*wrappee_mock,
+                    convertToPoints(_))
+            .WillOnce(Return(agent::PointBatch{}));
+      }
+
+      RecordBatchBuilder builder;
+      builder.reset();
+      arrowAssertNotOk(builder.setRowNumber(0));
+      arrowAssertNotOk(builder.buildTimeColumn<int64_t>("time", {}, arrow::TimeUnit::SECOND));
+
+      std::shared_ptr<arrow::RecordBatch> record_batch;
+      arrowAssignOrRaise(record_batch, builder.getResult());
+
+      agent::PointBatch result;
+      arrowAssignOrRaise(
+          result, decorator->convertToPoints({record_batch}));
+
+      REQUIRE( result.points().empty() );
+    }
+  }
+}
+
+TEST_CASE("successfully parses DynamicWindowUDF options", "[DynamicWindowUDF]") {
+  using namespace std::chrono_literals;
+
+  std::unordered_map<std::string, agent::OptionValue> options;
+  std::string period_field_option_name{"periodField"};
+  options[period_field_option_name] = {};
+  options[period_field_option_name].set_type(agent::STRING);
+  options[period_field_option_name].set_stringvalue("period");
+
+  std::string period_time_unit_option_name{"periodTimeUnit"};
+  options[period_time_unit_option_name] = {};
+  options[period_time_unit_option_name].set_type(agent::STRING);
+  options[period_time_unit_option_name].set_stringvalue("m");
+
+  std::string every_field_option_name{"everyField"};
+  options[every_field_option_name] = {};
+  options[every_field_option_name].set_type(agent::STRING);
+  options[every_field_option_name].set_stringvalue("every");
+
+  std::string every_time_unit_option_name{"everyTimeUnit"};
+  options[every_time_unit_option_name] = {};
+  options[every_time_unit_option_name].set_type(agent::STRING);
+  options[every_time_unit_option_name].set_stringvalue("ms");
+
+  std::string fill_period_option_name{"fillPeriod"};
+
+  std::string default_period_option_name{"defaultPeriod"};
+  options[default_period_option_name] = {};
+  options[default_period_option_name].set_type(agent::DURATION);
+  options[default_period_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(60s).count());
+
+  std::string default_every_option_name{"defaultEvery"};
+  options[default_every_option_name] = {};
+  options[default_every_option_name].set_type(agent::DURATION);
+  options[default_every_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(1s).count());
+
+  google::protobuf::RepeatedPtrField<agent::Option> request_options;
+  for (auto& [option_name, option_value] : options) {
+    auto new_option = request_options.Add();
+    new_option->set_name(option_name);
+    auto new_option_value = new_option->mutable_values()->Add();
+    *new_option_value = option_value;
+  }
+
+  auto fill_period_option = request_options.Add();
+  fill_period_option->set_name(fill_period_option_name);
+
+  auto parsed_options = kapacitor_udf::internal::parseWindowOptions(request_options);
+
+  REQUIRE( (60s).count() == parsed_options.window_handler_options.period.count()  );
+  REQUIRE( (1s).count() == parsed_options.window_handler_options.every.count() );
+  REQUIRE( parsed_options.window_handler_options.fill_period );
+
+  REQUIRE( options[period_field_option_name].stringvalue() ==
+            parsed_options.convert_options.period_option.first );
+  REQUIRE( time_utils::MINUTE == parsed_options.convert_options.period_option.second );
+
+  REQUIRE( options[every_field_option_name].stringvalue() ==
+      parsed_options.convert_options.every_option.first );
+  REQUIRE( time_utils::MILLI == parsed_options.convert_options.every_option.second );
+}
+
+TEST_CASE("DynamicWindowUDF info response is right", "[DynamicWindowUDF]") {
+  std::shared_ptr<IUDFAgent> udf_agent =
+      std::make_shared<::testing::NiceMock<MockUDFAgent>>();
+
+  auto loop = uvw::Loop::getDefault();
+  DynamicWindowRequestHandler request_handler(udf_agent, loop.get());
+
+  auto info_response = request_handler.info();
+
+  REQUIRE( info_response.has_info() );
+  REQUIRE( agent::STREAM == info_response.info().wants() );
+  REQUIRE( agent::BATCH == info_response.info().provides() );
+
+  std::unordered_map<std::string, agent::ValueType> window_options_types{
+      {"periodField", agent::STRING},
+      {"periodTimeUnit", agent::STRING},
+      {"everyField", agent::STRING},
+      {"everyTimeUnit", agent::STRING},
+      {"defaultPeriod", agent::DURATION},
+      {"defaultEvery", agent::DURATION}
+  };
+
+  std::string fill_period_option_name{"fillPeriod"};
+
+  std::unordered_set<std::string> info_options;
+
+  for (auto& option : info_response.info().options()) {
+    info_options.insert(option.first);
+    if (window_options_types.find(option.first) != window_options_types.end()) {
+      REQUIRE( option.second.valuetypes_size() == 1 );
+      REQUIRE( window_options_types[option.first] == option.second.valuetypes(0) );
+    } else {
+      REQUIRE( option.first == fill_period_option_name );
+      REQUIRE( option.second.valuetypes_size() == 0 );
+    }
+  }
+
+  REQUIRE( info_options.find(fill_period_option_name) != info_options.end() );
+  for ([[maybe_unused]] auto& [option_name, _] : window_options_types) {
+    REQUIRE( info_options.find(option_name) != info_options.end() );
   }
 }
