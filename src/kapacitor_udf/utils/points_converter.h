@@ -25,7 +25,6 @@ class PointsConverter {
   virtual ~PointsConverter() = 0;
 
  protected:
- protected:
   PointsConverter() = default;
 
   PointsConverter(const PointsConverter& /* non-used */) = default;

@@ -40,6 +40,7 @@ class WindowOptionsConverterDecorator : public BasePointsConverterDecorator {
 struct WindowOptions {
   internal::WindowOptionsConverterDecorator::WindowOptions convert_options;
   WindowHandler::WindowOptions window_handler_options;
+  std::chrono::seconds emit_timeout;
 };
 
 google::protobuf::Map<std::string, agent::OptionInfo> getWindowOptionsMap();

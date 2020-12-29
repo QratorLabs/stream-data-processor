@@ -3,6 +3,7 @@
 #include "dynamic_window_request_handler.h"
 #include "invalid_option_exception.h"
 #include "metadata/time_metadata.h"
+#include "record_batch_handlers/group_dispatcher.h"
 
 namespace stream_data_processor {
 namespace kapacitor_udf {
@@ -16,6 +17,7 @@ inline const std::string EVERY_TIME_UNIT_OPTION_NAME{"everyTimeUnit"};
 inline const std::string FILL_PERIOD_OPTION_NAME{"fillPeriod"};
 inline const std::string DEFAULT_PERIOD_OPTION_NAME{"defaultPeriod"};
 inline const std::string DEFAULT_EVERY_OPTION_NAME{"defaultEvery"};
+inline const std::string EMIT_TIMEOUT_OPTION_NAME{"emitTimeout"};
 
 inline const std::unordered_map<std::string, agent::ValueType>
     WINDOW_OPTIONS_TYPES{{PERIOD_FIELD_OPTION_NAME, agent::STRING},
@@ -23,13 +25,14 @@ inline const std::unordered_map<std::string, agent::ValueType>
                          {EVERY_OPTION_NAME, agent::STRING},
                          {EVERY_TIME_UNIT_OPTION_NAME, agent::STRING},
                          {DEFAULT_PERIOD_OPTION_NAME, agent::DURATION},
-                         {DEFAULT_EVERY_OPTION_NAME, agent::DURATION}};
+                         {DEFAULT_EVERY_OPTION_NAME, agent::DURATION},
+                         {EMIT_TIMEOUT_OPTION_NAME, agent::DURATION}};
 
 inline const std::unordered_map<std::string, int> EXACT_OPTIONS_SIZE{
-    {PERIOD_FIELD_OPTION_NAME, 1}, {PERIOD_TIME_UNIT_OPTION_NAME, 1},
-    {EVERY_OPTION_NAME, 1},        {EVERY_TIME_UNIT_OPTION_NAME, 1},
-    {FILL_PERIOD_OPTION_NAME, 0},  {DEFAULT_PERIOD_OPTION_NAME, 1},
-    {DEFAULT_EVERY_OPTION_NAME, 1}};
+    {PERIOD_FIELD_OPTION_NAME, 1},  {PERIOD_TIME_UNIT_OPTION_NAME, 1},
+    {EVERY_OPTION_NAME, 1},         {EVERY_TIME_UNIT_OPTION_NAME, 1},
+    {FILL_PERIOD_OPTION_NAME, 0},   {DEFAULT_PERIOD_OPTION_NAME, 1},
+    {DEFAULT_EVERY_OPTION_NAME, 1}, {EMIT_TIMEOUT_OPTION_NAME, 1}};
 
 inline const std::unordered_map<std::string, time_utils::TimeUnit>
     TIME_NAMES_TO_UNITS{{"ns", time_utils::NANO},  {"u", time_utils::MICRO},
@@ -146,6 +149,11 @@ WindowOptions parseWindowOptions(
 
       window_options.window_handler_options.every =
           std::chrono::duration_cast<std::chrono::seconds>(default_every);
+    } else if (option_name == EMIT_TIMEOUT_OPTION_NAME) {
+      std::chrono::nanoseconds emit_timeout(option_value.durationvalue());
+
+      window_options.emit_timeout =
+          std::chrono::duration_cast<std::chrono::seconds>(emit_timeout);
     } else {
       throw InvalidOptionException(
           fmt::format("Unexpected option name: {}", option_name));
@@ -172,7 +180,7 @@ const BasePointsConverter::PointsToRecordBatchesConversionOptions
 
 DynamicWindowRequestHandler::DynamicWindowRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent, uvw::Loop* loop)
-    : TimerRecordBatchRequestHandlerBase(agent, loop) {}
+    : TimerRecordBatchRequestHandlerBase(agent, true, loop) {}
 
 agent::Response DynamicWindowRequestHandler::info() const {
   agent::Response response;
@@ -198,6 +206,8 @@ agent::Response DynamicWindowRequestHandler::init(
     return response;
   }
 
+  setEmitTimeout(window_options.emit_timeout);
+
   setPointsConverter(
       std::make_shared<internal::WindowOptionsConverterDecorator>(
           std::make_shared<BasePointsConverter>(
@@ -208,9 +218,10 @@ agent::Response DynamicWindowRequestHandler::init(
       window_options.convert_options.period_option.first,
       window_options.convert_options.every_option.first};
 
-  setHandler(std::make_shared<DynamicWindowHandler>(
-      dynamic_window_options, std::make_shared<WindowHandler>(
-                                  window_options.window_handler_options)));
+  setHandler(std::make_shared<GroupDispatcher>(
+      std::make_shared<DynamicWindowHandlerFactory>(
+          window_options.window_handler_options,
+          std::move(dynamic_window_options))));
 
   response.mutable_init()->set_success(true);
   return response;

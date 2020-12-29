@@ -91,7 +91,7 @@ const BasePointsConverter::PointsToRecordBatchesConversionOptions
 
 StreamAggregateRequestHandler::StreamAggregateRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent, uvw::Loop* loop)
-    : TimerRecordBatchRequestHandlerBase(agent, loop) {
+    : TimerRecordBatchRequestHandlerBase(agent, false, loop) {
   setPointsConverter(std::make_shared<BasePointsConverter>(
       DEFAULT_TO_RECORD_BATCHES_OPTIONS));
 }

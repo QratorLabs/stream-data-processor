@@ -6,7 +6,8 @@ namespace kapacitor_udf {
 StreamToStreamRequestHandler::StreamToStreamRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent, uvw::Loop* loop,
     const std::chrono::duration<uint64_t>& batch_interval)
-    : TimerRecordBatchRequestHandlerBase(agent, loop, batch_interval) {}
+    : TimerRecordBatchRequestHandlerBase(agent, false, loop, batch_interval) {
+}
 
 agent::Response StreamToStreamRequestHandler::info() const {
   agent::Response response;

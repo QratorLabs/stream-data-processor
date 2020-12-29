@@ -1,0 +1,44 @@
+version: "3.8"
+
+volumes:
+  sockets-vol:
+
+services:
+  kapacitor-udf:
+    build:
+      context: ./../..
+      dockerfile: Dockerfile
+      target: app
+      args:
+        ALPINE_IMAGE_VERSION: 3.12.1
+        CMAKE_BUILD_BINARY_TARGET: dynamic_window_udf
+        PROJECT_ID: dynamic_window_udf_example
+    volumes:
+      - sockets-vol:/var/run/
+    command: /app/dynamic_window_udf --socket /var/run/dynamicWindowUDF.sock --verbose
+
+  collectd:
+    image: fr3nd/collectd
+    privileged: true
+    volumes:
+      - ./collectd.conf:/etc/collectd/collectd.conf
+
+  influxdb:
+    image: influxdb
+    ports:
+      - 8086:8086
+      - 2003:2003
+    volumes:
+      - ./influxdb.conf:/etc/influxdb/influxdb.conf
+
+  kapacitor:
+    image: kapacitor
+    volumes:
+      - sockets-vol:/var/run/
+      - ./kapacitor.conf:/etc/kapacitor/kapacitor.conf
+      - ./cpus:/usr/kapacitor/cpus
+    ports:
+      - 9092:9092
+    depends_on:
+      - influxdb
+      - kapacitor-udf

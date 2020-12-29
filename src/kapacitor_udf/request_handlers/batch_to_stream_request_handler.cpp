@@ -11,7 +11,7 @@ namespace kapacitor_udf {
 
 BatchToStreamRequestHandler::BatchToStreamRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent)
-    : RecordBatchRequestHandler(agent) {}
+    : RecordBatchRequestHandler(agent, false) {}
 
 agent::Response BatchToStreamRequestHandler::info() const {
   agent::Response response;

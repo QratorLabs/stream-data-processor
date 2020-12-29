@@ -8,6 +8,7 @@
 
 #include "kapacitor_udf/udf_agent.h"
 #include "kapacitor_udf/utils/points_converter.h"
+#include "metadata/metadata.h"
 #include "record_batch_handlers/record_batch_handler.h"
 #include "request_handler.h"
 
@@ -20,7 +21,8 @@ using convert_utils::BasePointsConverter;
 
 class RecordBatchRequestHandler : public RequestHandler {
  public:
-  explicit RecordBatchRequestHandler(const std::shared_ptr<IUDFAgent>& agent);
+  RecordBatchRequestHandler(const std::shared_ptr<IUDFAgent>& agent,
+                            bool provides_batch);
 
   template <class HandlerType>
   void setHandler(HandlerType&& handler) {
@@ -40,6 +42,45 @@ class RecordBatchRequestHandler : public RequestHandler {
   void setPointsName(const std::string& name);
 
  private:
+  static arrow::Result<agent::BeginBatch> getBeginBatchResponse(
+      const arrow::RecordBatch& record_batch);
+
+  static arrow::Result<agent::EndBatch> getEndBatchResponse(
+      const arrow::RecordBatch& record_batch);
+
+  static arrow::Result<std::string> getGroupString(
+      const arrow::RecordBatch& record_batch);
+
+  template <class BatchResponseType>
+  static arrow::Status setGroupTagsAndByName(
+      BatchResponseType* batch_response,
+      const arrow::RecordBatch& record_batch) {
+    std::string measurement_column_name;
+    ARROW_ASSIGN_OR_RAISE(
+        measurement_column_name,
+        metadata::getMeasurementColumnNameMetadata(record_batch));
+
+    auto group = metadata::extractGroup(record_batch);
+
+    batch_response->set_byname(false);
+    for (size_t i = 0; i < group.group_columns_values_size(); ++i) {
+      auto& group_key = group.group_columns_names().columns_names(i);
+      if (group_key != measurement_column_name) {
+        auto& group_value = group.group_columns_values(i);
+        batch_response->mutable_tags()->operator[](group_key) = group_value;
+      } else {
+        batch_response->set_byname(true);
+      }
+    }
+
+    return arrow::Status::OK();
+  }
+
+  static arrow::Result<int64_t> getTMax(
+      const arrow::RecordBatch& record_batch);
+
+ private:
+  bool provides_batch_;
   std::shared_ptr<RecordBatchHandler> handler_{nullptr};
   std::shared_ptr<convert_utils::PointsConverter> points_converter_{nullptr};
   agent::PointBatch batch_points_;
@@ -48,7 +89,7 @@ class RecordBatchRequestHandler : public RequestHandler {
 class StreamRecordBatchRequestHandlerBase : public RecordBatchRequestHandler {
  public:
   explicit StreamRecordBatchRequestHandlerBase(
-      const std::shared_ptr<IUDFAgent>& agent);
+      const std::shared_ptr<IUDFAgent>& agent, bool provides_batch);
 
   [[nodiscard]] agent::Response snapshot() const override;
   [[nodiscard]] agent::Response restore(
@@ -62,11 +103,11 @@ class TimerRecordBatchRequestHandlerBase
     : public StreamRecordBatchRequestHandlerBase {
  public:
   TimerRecordBatchRequestHandlerBase(const std::shared_ptr<IUDFAgent>& agent,
-                                     uvw::Loop* loop);
+                                     bool provides_batch, uvw::Loop* loop);
 
   TimerRecordBatchRequestHandlerBase(
-      const std::shared_ptr<IUDFAgent>& agent, uvw::Loop* loop,
-      const std::chrono::seconds& batch_interval);
+      const std::shared_ptr<IUDFAgent>& agent, bool provides_batch,
+      uvw::Loop* loop, const std::chrono::seconds& batch_interval);
 
   void point(const agent::Point& point) override;
 

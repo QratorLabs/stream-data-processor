@@ -1,7 +1,10 @@
 #include <spdlog/spdlog.h>
 
 #include "kapacitor_udf/utils/grouping_utils.h"
+#include "metadata/metadata.h"
+#include "record_batch_handlers/aggregate_functions/aggregate_functions.h"
 #include "record_batch_request_handler.h"
+#include "utils/arrow_utils.h"
 
 namespace stream_data_processor {
 namespace kapacitor_udf {
@@ -9,10 +12,11 @@ namespace kapacitor_udf {
 using convert_utils::BasePointsConverter;
 
 RecordBatchRequestHandler::RecordBatchRequestHandler(
-    const std::shared_ptr<IUDFAgent>& agent)
-    : RequestHandler(agent) {}
+    const std::shared_ptr<IUDFAgent>& agent, bool provides_batch)
+    : RequestHandler(agent), provides_batch_(provides_batch) {}
 
 void RecordBatchRequestHandler::handleBatch() {
+  spdlog::debug("Handling batch...");
   agent::Response response;
 
   if (handler_ == nullptr) {
@@ -28,6 +32,7 @@ void RecordBatchRequestHandler::handleBatch() {
   }
 
   if (batch_points_.points_size() == 0) {
+    spdlog::debug("No points available, waiting for new points...");
     return;
   }
 
@@ -49,21 +54,48 @@ void RecordBatchRequestHandler::handleBatch() {
     return;
   }
 
-  auto response_points_result =
-      points_converter_->convertToPoints(result.ValueOrDie());
+  auto result_batches = result.ValueOrDie();
+  for (auto& result_batch : result_batches) {
+    auto response_points_result =
+        points_converter_->convertToPoints({result_batch});
 
-  if (!response_points_result.ok()) {
-    response.mutable_error()->set_error(
-        response_points_result.status().message());
-    getAgent()->writeResponse(response);
-    return;
-  }
+    if (!response_points_result.ok()) {
+      response.mutable_error()->set_error(
+          response_points_result.status().message());
+      getAgent()->writeResponse(response);
+      continue;
+    }
 
-  auto response_points = response_points_result.ValueOrDie();
+    auto response_points = response_points_result.ValueOrDie();
 
-  for (auto& point : response_points.points()) {
-    response.mutable_point()->CopyFrom(point);
-    getAgent()->writeResponse(response);
+    if (provides_batch_) {
+      auto begin_result = getBeginBatchResponse(*result_batch);
+      if (!begin_result.ok()) {
+        response.mutable_error()->set_error(begin_result.status().message());
+        getAgent()->writeResponse(response);
+        continue;
+      }
+
+      response.mutable_begin()->CopyFrom(begin_result.ValueOrDie());
+      getAgent()->writeResponse(response);
+    }
+
+    for (auto& point : response_points.points()) {
+      response.mutable_point()->CopyFrom(point);
+      getAgent()->writeResponse(response);
+    }
+
+    if (provides_batch_) {
+      auto end_result = getEndBatchResponse(*result_batch);
+      if (!end_result.ok()) {
+        response.mutable_error()->set_error(end_result.status().message());
+        getAgent()->writeResponse(response);
+        continue;
+      }
+
+      response.mutable_end()->CopyFrom(end_result.ValueOrDie());
+      getAgent()->writeResponse(response);
+    }
   }
 }
 
@@ -88,9 +120,76 @@ void RecordBatchRequestHandler::setPointsName(const std::string& name) {
   }
 }
 
+arrow::Result<agent::BeginBatch>
+RecordBatchRequestHandler::getBeginBatchResponse(
+    const arrow::RecordBatch& record_batch) {
+  agent::BeginBatch begin_batch_response;
+  ARROW_ASSIGN_OR_RAISE(*begin_batch_response.mutable_name(),
+                        metadata::getMeasurementAndValidate(record_batch));
+
+  ARROW_ASSIGN_OR_RAISE(*begin_batch_response.mutable_group(),
+                        getGroupString(record_batch));
+
+  ARROW_RETURN_NOT_OK(
+      setGroupTagsAndByName(&begin_batch_response, record_batch));
+
+  begin_batch_response.set_size(record_batch.num_rows());
+
+  return begin_batch_response;
+}
+
+arrow::Result<agent::EndBatch> RecordBatchRequestHandler::getEndBatchResponse(
+    const arrow::RecordBatch& record_batch) {
+  agent::EndBatch end_batch_response;
+  ARROW_ASSIGN_OR_RAISE(*end_batch_response.mutable_name(),
+                        metadata::getMeasurementAndValidate(record_batch));
+
+  ARROW_ASSIGN_OR_RAISE(*end_batch_response.mutable_group(),
+                        getGroupString(record_batch));
+
+  ARROW_RETURN_NOT_OK(
+      setGroupTagsAndByName(&end_batch_response, record_batch));
+
+  int64_t tmax_value;
+  ARROW_ASSIGN_OR_RAISE(tmax_value, getTMax(record_batch));
+  end_batch_response.set_tmax(tmax_value);
+
+  return end_batch_response;
+}
+
+arrow::Result<std::string> RecordBatchRequestHandler::getGroupString(
+    const arrow::RecordBatch& record_batch) {
+  std::string measurement_column_name;
+  ARROW_ASSIGN_OR_RAISE(
+      measurement_column_name,
+      metadata::getMeasurementColumnNameMetadata(record_batch));
+
+  std::unordered_map<std::string, metadata::ColumnType> column_types;
+  ARROW_ASSIGN_OR_RAISE(column_types, metadata::getColumnTypes(record_batch));
+
+  auto group = metadata::extractGroup(record_batch);
+  return grouping_utils::encode(group, measurement_column_name, column_types);
+}
+
+arrow::Result<int64_t> RecordBatchRequestHandler::getTMax(
+    const arrow::RecordBatch& record_batch) {
+  std::string time_column_name;
+  ARROW_ASSIGN_OR_RAISE(time_column_name,
+                        metadata::getTimeColumnNameMetadata(record_batch));
+
+  std::shared_ptr<arrow::Scalar> tmax_scalar;
+  ARROW_ASSIGN_OR_RAISE(tmax_scalar, LastAggregateFunction().aggregate(
+                                         record_batch, time_column_name));
+
+  ARROW_ASSIGN_OR_RAISE(tmax_scalar, arrow_utils::castTimestampScalar(
+                                         tmax_scalar, arrow::TimeUnit::NANO));
+
+  return std::static_pointer_cast<arrow::Int64Scalar>(tmax_scalar)->value;
+}
+
 StreamRecordBatchRequestHandlerBase::StreamRecordBatchRequestHandlerBase(
-    const std::shared_ptr<IUDFAgent>& agent)
-    : RecordBatchRequestHandler(agent) {}
+    const std::shared_ptr<IUDFAgent>& agent, bool provides_batch)
+    : RecordBatchRequestHandler(agent, provides_batch) {}
 
 agent::Response StreamRecordBatchRequestHandlerBase::snapshot() const {
   agent::Response response;
@@ -132,8 +231,9 @@ void StreamRecordBatchRequestHandlerBase::endBatch(
 }
 
 TimerRecordBatchRequestHandlerBase::TimerRecordBatchRequestHandlerBase(
-    const std::shared_ptr<IUDFAgent>& agent, uvw::Loop* loop)
-    : StreamRecordBatchRequestHandlerBase(agent),
+    const std::shared_ptr<IUDFAgent>& agent, bool provides_batch,
+    uvw::Loop* loop)
+    : StreamRecordBatchRequestHandlerBase(agent, provides_batch),
       emit_timer_(loop->resource<uvw::TimerHandle>()) {
   emit_timer_->on<uvw::TimerEvent>(
       [this](const uvw::TimerEvent& /* non-used */,
@@ -141,9 +241,9 @@ TimerRecordBatchRequestHandlerBase::TimerRecordBatchRequestHandlerBase(
 }
 
 TimerRecordBatchRequestHandlerBase::TimerRecordBatchRequestHandlerBase(
-    const std::shared_ptr<IUDFAgent>& agent, uvw::Loop* loop,
-    const std::chrono::seconds& batch_interval)
-    : StreamRecordBatchRequestHandlerBase(agent),
+    const std::shared_ptr<IUDFAgent>& agent, bool provides_batch,
+    uvw::Loop* loop, const std::chrono::seconds& batch_interval)
+    : StreamRecordBatchRequestHandlerBase(agent, provides_batch),
       emit_timer_(loop->resource<uvw::TimerHandle>()),
       emit_timeout_(batch_interval) {
   emit_timer_->on<uvw::TimerEvent>(

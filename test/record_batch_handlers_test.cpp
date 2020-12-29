@@ -1318,7 +1318,7 @@ SCENARIO("DynamicWindowHandler tries to change WindowHandler options when new op
 
     std::unique_ptr<RecordBatchHandler> handler =
         std::make_unique<DynamicWindowHandler>(
-            dynamic_window_options, mock_window_handler
+            mock_window_handler, dynamic_window_options
         );
 
     int64_t new_every_option = 10;
@@ -1441,7 +1441,8 @@ TEST_CASE("DynamicWindowHandler preserves metadata", "[DynamicWindowHandler]") {
 
   std::unique_ptr<RecordBatchHandler> handler =
       std::make_unique<DynamicWindowHandler>(
-          dynamic_window_options, std::make_shared<WindowHandler>(std::move(options)));
+          std::make_shared<WindowHandler>(std::move(options)),
+              dynamic_window_options);
 
   RecordBatchBuilder builder;
   builder.reset();
@@ -1486,7 +1487,8 @@ TEST_CASE("when every option is decreased window is emitted sooner", "[DynamicWi
 
   std::unique_ptr<RecordBatchHandler> handler =
       std::make_unique<DynamicWindowHandler>(
-          dynamic_window_options, std::make_shared<WindowHandler>(std::move(options)));
+          std::make_shared<WindowHandler>(std::move(options)),
+              dynamic_window_options);
 
   RecordBatchBuilder builder;
   builder.reset();
@@ -1530,7 +1532,8 @@ TEST_CASE("when every option is increased window is emitted later", "[DynamicWin
 
   std::unique_ptr<RecordBatchHandler> handler =
       std::make_unique<DynamicWindowHandler>(
-          dynamic_window_options, std::make_shared<WindowHandler>(std::move(options)));
+          std::make_shared<WindowHandler>(std::move(options)),
+              dynamic_window_options);
 
   RecordBatchBuilder builder;
   builder.reset();
@@ -1569,7 +1572,8 @@ TEST_CASE("when period option is decreased emitted window is shorter", "[Dynamic
 
   std::unique_ptr<RecordBatchHandler> handler =
       std::make_unique<DynamicWindowHandler>(
-          dynamic_window_options, std::make_shared<WindowHandler>(std::move(options)));
+          std::make_shared<WindowHandler>(std::move(options)),
+              dynamic_window_options);
 
   RecordBatchBuilder builder;
   builder.reset();

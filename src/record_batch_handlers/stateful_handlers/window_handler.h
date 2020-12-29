@@ -5,6 +5,7 @@
 #include <string>
 #include <utility>
 
+#include "handler_factory.h"
 #include "record_batch_handlers/record_batch_handler.h"
 #include "utils/utils.h"
 
@@ -94,10 +95,10 @@ class DynamicWindowHandler : public RecordBatchHandler {
   };
 
   template <typename OptionsType>
-  DynamicWindowHandler(OptionsType&& options,
-                       std::shared_ptr<IWindowHandler> window_handler)
-      : options_(std::forward<OptionsType>(options)),
-        window_handler_(std::move(window_handler)) {}
+  DynamicWindowHandler(std::shared_ptr<IWindowHandler> window_handler,
+                       OptionsType&& options)
+      : window_handler_(std::move(window_handler)),
+        options_(std::forward<OptionsType>(options)) {}
 
   arrow::Result<arrow::RecordBatchVector> handle(
       const std::shared_ptr<arrow::RecordBatch>& record_batch) override;
@@ -116,8 +117,25 @@ class DynamicWindowHandler : public RecordBatchHandler {
       const arrow::RecordBatch& record_batch, const std::string& column_name);
 
  private:
-  DynamicWindowOptions options_;
   std::shared_ptr<IWindowHandler> window_handler_;
+  DynamicWindowOptions options_;
+};
+
+class DynamicWindowHandlerFactory : public HandlerFactory {
+ public:
+  template <class WindowOptionsType, class DynamicWindowOptionsType>
+  explicit DynamicWindowHandlerFactory(
+      WindowOptionsType&& window_options,
+      DynamicWindowOptionsType&& dynamic_window_options)
+      : window_options_(std::forward<WindowOptionsType>(window_options)),
+        dynamic_window_options_(
+            std::forward<DynamicWindowOptionsType>(dynamic_window_options)) {}
+
+  std::shared_ptr<RecordBatchHandler> createHandler() const override;
+
+ private:
+  WindowHandler::WindowOptions window_options_;
+  DynamicWindowHandler::DynamicWindowOptions dynamic_window_options_;
 };
 
 }  // namespace stream_data_processor

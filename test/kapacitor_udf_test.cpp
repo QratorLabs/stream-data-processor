@@ -344,6 +344,12 @@ TEST_CASE("successfully parses DynamicWindowUDF options", "[DynamicWindowUDF]") 
   options[default_every_option_name].set_durationvalue(
       std::chrono::duration_cast<std::chrono::nanoseconds>(1s).count());
 
+  std::string emit_timeout_option_name{"emitTimeout"};
+  options[emit_timeout_option_name] = {};
+  options[emit_timeout_option_name].set_type(agent::DURATION);
+  options[emit_timeout_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(10s).count());
+
   google::protobuf::RepeatedPtrField<agent::Option> request_options;
   for (auto& [option_name, option_value] : options) {
     auto new_option = request_options.Add();
@@ -389,7 +395,8 @@ TEST_CASE("DynamicWindowUDF info response is right", "[DynamicWindowUDF]") {
       {"everyField", agent::STRING},
       {"everyTimeUnit", agent::STRING},
       {"defaultPeriod", agent::DURATION},
-      {"defaultEvery", agent::DURATION}
+      {"defaultEvery", agent::DURATION},
+      {"emitTimeout", agent::DURATION}
   };
 
   std::string fill_period_option_name{"fillPeriod"};

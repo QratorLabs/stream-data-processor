@@ -144,7 +144,7 @@ const BasePointsConverter::PointsToRecordBatchesConversionOptions
 
 StatefulThresholdRequestHandler::StatefulThresholdRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent)
-    : StreamRecordBatchRequestHandlerBase(agent) {
+    : StreamRecordBatchRequestHandlerBase(agent, false) {
   setPointsConverter(std::make_shared<BasePointsConverter>(
       DEFAULT_TO_RECORD_BATCHES_OPTIONS));
 }
@@ -152,7 +152,7 @@ StatefulThresholdRequestHandler::StatefulThresholdRequestHandler(
 agent::Response StatefulThresholdRequestHandler::info() const {
   agent::Response response;
   response.mutable_info()->set_wants(agent::STREAM);
-  response.mutable_info()->set_provides(agent::BATCH);
+  response.mutable_info()->set_provides(agent::STREAM);
   *response.mutable_info()->mutable_options() = getThresholdOptionsMap();
 
   return response;

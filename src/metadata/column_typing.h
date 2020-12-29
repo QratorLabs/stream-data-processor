@@ -41,5 +41,11 @@ arrow::Result<std::string> getMeasurementColumnNameMetadata(
 arrow::Result<std::unordered_map<std::string, ColumnType>> getColumnTypes(
     const arrow::RecordBatch& record_batch);
 
+arrow::Result<std::string> getMeasurement(
+    const arrow::RecordBatch& record_batch);
+
+arrow::Result<std::string> getMeasurementAndValidate(
+    const arrow::RecordBatch& record_batch);
+
 }  // namespace metadata
 }  // namespace stream_data_processor

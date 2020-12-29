@@ -298,4 +298,11 @@ arrow::Result<time_utils::TimeUnit> DynamicWindowHandler::getColumnTimeUnit(
   return metadata::getTimeUnitMetadata(record_batch, column_name);
 }
 
+std::shared_ptr<RecordBatchHandler>
+DynamicWindowHandlerFactory::createHandler() const {
+  return std::make_shared<DynamicWindowHandler>(
+      std::make_shared<WindowHandler>(window_options_),
+      dynamic_window_options_);
+}
+
 }  // namespace stream_data_processor

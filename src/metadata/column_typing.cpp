@@ -131,5 +131,59 @@ arrow::Result<std::unordered_map<std::string, ColumnType>> getColumnTypes(
   return column_types;
 }
 
+arrow::Result<std::string> getMeasurement(
+    const arrow::RecordBatch& record_batch) {
+  std::string measurement_column_name;
+  ARROW_ASSIGN_OR_RAISE(measurement_column_name,
+                        getMeasurementColumnNameMetadata(record_batch));
+
+  auto measurement_column =
+      record_batch.GetColumnByName(measurement_column_name);
+
+  if (measurement_column == nullptr) {
+    return arrow::Status::Invalid(
+        fmt::format("Invalid measurement column name metadata: {}",
+                    measurement_column_name));
+  }
+
+  if (record_batch.num_rows() == 0) {
+    return arrow::Status::Invalid(
+        "Can't extract measurement value from empty"
+        "RecordBatch");
+  }
+
+  std::string measurement_value;
+  std::shared_ptr<arrow::Scalar> measurement_scalar;
+  ARROW_ASSIGN_OR_RAISE(measurement_scalar, measurement_column->GetScalar(0));
+  return measurement_scalar->ToString();
+}
+
+arrow::Result<std::string> getMeasurementAndValidate(
+    const arrow::RecordBatch& record_batch) {
+  std::string measurement_value;
+  ARROW_ASSIGN_OR_RAISE(measurement_value, getMeasurement(record_batch));
+
+  std::string measurement_column_name;
+  ARROW_ASSIGN_OR_RAISE(measurement_column_name,
+                        getMeasurementColumnNameMetadata(record_batch));
+
+  auto measurement_column =
+      record_batch.GetColumnByName(measurement_column_name);
+
+  std::shared_ptr<arrow::Scalar> measurement_scalar;
+  for (int i = 0; i < record_batch.num_rows(); ++i) {
+    ARROW_ASSIGN_OR_RAISE(measurement_scalar,
+                          measurement_column->GetScalar(i));
+    if (measurement_value != measurement_scalar->ToString()) {
+      return arrow::Status::Invalid(
+          fmt::format("Found more than one unique measurement values: "
+                      "{} and {}",
+                      measurement_value, measurement_scalar->ToString()));
+    }
+  }
+
+  return measurement_value;
+}
+
 }  // namespace metadata
 }  // namespace stream_data_processor

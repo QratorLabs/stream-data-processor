@@ -13,7 +13,7 @@ const BasePointsConverter::PointsToRecordBatchesConversionOptions
 
 BatchAggregateRequestHandler::BatchAggregateRequestHandler(
     const std::shared_ptr<IUDFAgent>& agent)
-    : RecordBatchRequestHandler(agent) {
+    : RecordBatchRequestHandler(agent, false) {
   setPointsConverter(std::make_shared<BasePointsConverter>(
       DEFAULT_TO_RECORD_BATCHES_OPTIONS));
 }
