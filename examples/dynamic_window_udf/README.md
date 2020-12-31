@@ -1,6 +1,42 @@
-# How to run this example?
+# DynamicWindowUDF
 
-## `docker-compose`
+## Usage example
+
+Files in this directory represent DynamicWindowUDF usage in bundle with 
+[Kapacitor SideloadNode](https://docs.influxdata.com/kapacitor/v1.5/nodes/sideload_node/)
+
+### Properties
+
+```tickscript
+@dynamicWindowUDF()
+    .periodField('period')
+    .periodTimeUnit('m')
+    .everyField('every')
+    .everyTimeUnit('m')
+    .fillPeriod()
+    .defaultPeriod(default_period)
+    .defaultEvery(default_every)
+    .emitTimeout(10s)
+```
+
+* `periodField` –- `period` field name
+* `periodTimeUnit` –- `period` values time unit to interpret them correctly: ns 
+  – nanoseconds, u – microseconds, ms – milliseconds, s – seconds, m – 
+  minutes, h – hours, d – days, w – weeks
+* `everyField` –- `every` field name
+* `everyTimeUnit` –- `every` values time unit, similarly to `periodTimeUnit`
+* `fillPeriod` –- optional property. Defines if UDF should wait until the first 
+  window is fully filled (Kapacitor WindowNode's `fillPeriod` property 
+  analogue)
+* `defaultPeriod` –- `period` default value
+* `defaultEvery` -– `every` default value
+* `emitTimeout` -–  UDF accumulates several points before processing. 
+  `emitTimeout` property defines timeout between two sequential processing 
+  moments
+
+## How to run this example?
+
+### `docker-compose`
 
 Just run the following in the current directory:
 
@@ -25,7 +61,7 @@ To remove intermediate build container, call:
 $ docker image prune --filter "label=stage=builder" --filter "label=project=dynamic_window_udf_example" --force
 ```
 
-# Explanation
+### Explanation
 
 This example uses number of Docker containers:
 
