@@ -53,13 +53,19 @@ WindowOptionsConverterDecorator::convertToRecordBatches(
       BasePointsConverterDecorator::convertToRecordBatches(points));
 
   for (auto& record_batch : converted_record_batches) {
-    ARROW_RETURN_NOT_OK(metadata::setTimeUnitMetadata(
-        &record_batch, options_.every_option.first,
-        options_.every_option.second));
+    if (record_batch->GetColumnByName(options_.every_option.first) !=
+        nullptr) {
+      ARROW_RETURN_NOT_OK(metadata::setTimeUnitMetadata(
+          &record_batch, options_.every_option.first,
+          options_.every_option.second));
+    }
 
-    ARROW_RETURN_NOT_OK(metadata::setTimeUnitMetadata(
-        &record_batch, options_.period_option.first,
-        options_.period_option.second));
+    if (record_batch->GetColumnByName(options_.period_option.first) !=
+        nullptr) {
+      ARROW_RETURN_NOT_OK(metadata::setTimeUnitMetadata(
+          &record_batch, options_.period_option.first,
+          options_.period_option.second));
+    }
   }
 
   return converted_record_batches;

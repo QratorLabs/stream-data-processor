@@ -59,8 +59,9 @@ arrow::Result<arrow::RecordBatchVector> WindowHandler::handle(
     }
 
     if (!buffered_record_batches_.empty()) {
-      result.emplace_back();
-      ARROW_ASSIGN_OR_RAISE(result.back(), emitWindow());
+      arrow::RecordBatchVector window;
+      ARROW_ASSIGN_OR_RAISE(window, emitWindow());
+      convert_utils::append(std::move(window), result);
     }
 
     emitted_first_ = true;
@@ -118,18 +119,34 @@ arrow::Result<size_t> WindowHandler::tsLowerBound(
   }
 }
 
-arrow::Result<std::shared_ptr<arrow::RecordBatch>>
-WindowHandler::emitWindow() {
+arrow::Result<arrow::RecordBatchVector> WindowHandler::emitWindow() {
   ARROW_RETURN_NOT_OK(removeOldRecords());
 
+  arrow::RecordBatchVector window;
+  if (buffered_record_batches_.empty()) {
+    return window;
+  }
+
+  auto current_schema = buffered_record_batches_.front()->schema();
   arrow::RecordBatchVector window_batches;
   for (auto& batch : buffered_record_batches_) {
+    if (!current_schema->Equals(batch->schema(), false)) {
+      window.emplace_back();
+
+      ARROW_ASSIGN_OR_RAISE(
+          window.back(),
+          convert_utils::concatenateRecordBatches(window_batches));
+
+      window_batches.clear();
+      current_schema = batch->schema();
+    }
+
     window_batches.push_back(batch);
   }
 
-  std::shared_ptr<arrow::RecordBatch> window;
+  window.emplace_back();
   ARROW_ASSIGN_OR_RAISE(
-      window, convert_utils::concatenateRecordBatches(window_batches));
+      window.back(), convert_utils::concatenateRecordBatches(window_batches));
 
   return window;
 }
@@ -165,23 +182,35 @@ arrow::Status WindowHandler::removeOldRecords() {
 
 arrow::Result<arrow::RecordBatchVector> DynamicWindowHandler::handle(
     const std::shared_ptr<arrow::RecordBatch>& record_batch) {
-  if (record_batch->GetColumnByName(options_.every_column_name) == nullptr) {
-    return arrow::Status::KeyError(
-        fmt::format("Column {} not found", options_.every_column_name));
-  }
+  bool is_new_period_possible =
+      options_.period_column_name.has_value() &&
+      (record_batch->GetColumnByName(options_.period_column_name.value()) !=
+       nullptr);
 
-  if (record_batch->GetColumnByName(options_.period_column_name) == nullptr) {
-    return arrow::Status::KeyError(
-        fmt::format("Column {} not found", options_.period_column_name));
-  }
+  bool is_new_every_possible =
+      options_.every_column_name.has_value() &&
+      (record_batch->GetColumnByName(options_.every_column_name.value()) !=
+       nullptr);
 
-  time_utils::TimeUnit every_time_unit, period_time_unit;
-  ARROW_ASSIGN_OR_RAISE(
-      every_time_unit,
-      getColumnTimeUnit(*record_batch, options_.every_column_name));
-  ARROW_ASSIGN_OR_RAISE(
-      period_time_unit,
-      getColumnTimeUnit(*record_batch, options_.period_column_name));
+  int64_t new_period_index, new_every_index;
+  time_utils::TimeUnit period_time_unit, every_time_unit;
+  if (is_new_period_possible) {
+    ARROW_ASSIGN_OR_RAISE(
+        period_time_unit,
+        getColumnTimeUnit(*record_batch,
+                          options_.period_column_name.value()));
+    new_period_index = 0;
+  } else {
+    new_period_index = record_batch->num_rows();
+  }
+  if (is_new_every_possible) {
+    ARROW_ASSIGN_OR_RAISE(
+        every_time_unit,
+        getColumnTimeUnit(*record_batch, options_.every_column_name.value()));
+    new_every_index = 0;
+  } else {
+    new_every_index = record_batch->num_rows();
+  }
 
   std::string time_column_name;
   ARROW_ASSIGN_OR_RAISE(time_column_name,
@@ -192,15 +221,26 @@ arrow::Result<arrow::RecordBatchVector> DynamicWindowHandler::handle(
                                             time_column_name, record_batch));
 
   arrow::RecordBatchVector result;
-  int64_t new_options_index;
   std::chrono::seconds duration_option;
   std::time_t new_options_ts;
   while (sorted_by_time->num_rows() > 0) {
-    ARROW_ASSIGN_OR_RAISE(
-        new_options_index,
-        findNewWindowOptionsIndex(*sorted_by_time, every_time_unit,
-                                  period_time_unit));
+    if (is_new_period_possible && new_period_index == 0) {
+      ARROW_ASSIGN_OR_RAISE(
+          new_period_index,
+          findNewWindowOptionIndex(
+              *sorted_by_time, window_handler_->getPeriodOption(),
+              options_.period_column_name.value(), period_time_unit));
+    }
 
+    if (is_new_every_possible && new_every_index == 0) {
+      ARROW_ASSIGN_OR_RAISE(
+          new_every_index,
+          findNewWindowOptionIndex(
+              *sorted_by_time, window_handler_->getEveryOption(),
+              options_.every_column_name.value(), every_time_unit));
+    }
+
+    auto new_options_index = std::min(new_every_index, new_period_index);
     if (new_options_index > 0) {
       arrow::RecordBatchVector intermediate_result;
       ARROW_ASSIGN_OR_RAISE(intermediate_result,
@@ -225,46 +265,52 @@ arrow::Result<arrow::RecordBatchVector> DynamicWindowHandler::handle(
         std::static_pointer_cast<arrow::Int64Scalar>(new_options_ts_scalar)
             ->value;
 
-    ARROW_ASSIGN_OR_RAISE(
-        duration_option,
-        getDurationOption(*sorted_by_time, 0, options_.every_column_name,
-                          every_time_unit));
-    window_handler_->setEveryOption(duration_option, new_options_ts);
-    ARROW_ASSIGN_OR_RAISE(
-        duration_option,
-        getDurationOption(*sorted_by_time, 0, options_.period_column_name,
-                          period_time_unit));
-    window_handler_->setPeriodOption(duration_option, new_options_ts);
+    if (is_new_period_possible && new_options_index == new_period_index) {
+      ARROW_ASSIGN_OR_RAISE(
+          duration_option,
+          getDurationOption(*sorted_by_time, 0,
+                            options_.period_column_name.value(),
+                            period_time_unit));
+      window_handler_->setPeriodOption(duration_option, new_options_ts);
+    }
+
+    if (is_new_every_possible && new_options_index == new_every_index) {
+      ARROW_ASSIGN_OR_RAISE(
+          duration_option,
+          getDurationOption(*sorted_by_time, 0,
+                            options_.every_column_name.value(),
+                            every_time_unit));
+      window_handler_->setEveryOption(duration_option, new_options_ts);
+    }
+
+    new_period_index -= new_options_index;
+    new_every_index -= new_options_index;
   }
 
   return result;
 }
 
-arrow::Result<int64_t> DynamicWindowHandler::findNewWindowOptionsIndex(
+arrow::Result<int64_t> DynamicWindowHandler::findNewWindowOptionIndex(
     const arrow::RecordBatch& record_batch,
-    time_utils::TimeUnit every_time_unit,
-    time_utils::TimeUnit period_time_unit) const {
-  int64_t new_options_row_index = 0;
-  std::chrono::seconds current_every_value, current_period_value;
-  while (new_options_row_index < record_batch.num_rows()) {
+    const std::chrono::seconds& current_option_value,
+    const std::string& option_column_name,
+    time_utils::TimeUnit option_time_unit) const {
+  int64_t new_option_row_index = 0;
+  std::chrono::seconds new_option_value;
+  while (new_option_row_index < record_batch.num_rows()) {
     ARROW_ASSIGN_OR_RAISE(
-        current_every_value,
-        getDurationOption(record_batch, new_options_row_index,
-                          options_.every_column_name, every_time_unit));
-    ARROW_ASSIGN_OR_RAISE(
-        current_period_value,
-        getDurationOption(record_batch, new_options_row_index,
-                          options_.period_column_name, period_time_unit));
+        new_option_value,
+        getDurationOption(record_batch, new_option_row_index,
+                          option_column_name, option_time_unit));
 
-    if (current_every_value != window_handler_->getEveryOption() ||
-        current_period_value != window_handler_->getPeriodOption()) {
+    if (new_option_value != current_option_value) {
       break;
     }
 
-    ++new_options_row_index;
+    ++new_option_row_index;
   }
 
-  return new_options_row_index;
+  return new_option_row_index;
 }
 
 arrow::Result<std::chrono::seconds> DynamicWindowHandler::getDurationOption(

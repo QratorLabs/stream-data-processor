@@ -21,12 +21,14 @@ void RecordBatchRequestHandler::handleBatch() {
 
   if (handler_ == nullptr) {
     response.mutable_error()->set_error("RecordBatchHandler is not provided");
+    spdlog::critical(response.error().error());
     getAgent()->writeResponse(response);
     return;
   }
 
   if (points_converter_ == nullptr) {
     response.mutable_error()->set_error("PointsConverter is not provided");
+    spdlog::critical(response.error().error());
     getAgent()->writeResponse(response);
     return;
   }
@@ -42,15 +44,13 @@ void RecordBatchRequestHandler::handleBatch() {
   batch_points_.mutable_points()->Clear();
 
   if (!record_batches.ok()) {
-    response.mutable_error()->set_error(record_batches.status().message());
-    getAgent()->writeResponse(response);
+    spdlog::error(record_batches.status().message());
     return;
   }
 
   auto result = handler_->handle(record_batches.ValueOrDie());
   if (!result.ok()) {
-    response.mutable_error()->set_error(result.status().message());
-    getAgent()->writeResponse(response);
+    spdlog::error(result.status().message());
     return;
   }
 
@@ -60,19 +60,25 @@ void RecordBatchRequestHandler::handleBatch() {
         points_converter_->convertToPoints({result_batch});
 
     if (!response_points_result.ok()) {
-      response.mutable_error()->set_error(
-          response_points_result.status().message());
-      getAgent()->writeResponse(response);
+      spdlog::error(response_points_result.status().message());
       continue;
     }
 
     auto response_points = response_points_result.ValueOrDie();
 
+    arrow::Result<agent::BeginBatch> begin_result;
+    arrow::Result<agent::EndBatch> end_result;
+
     if (provides_batch_) {
-      auto begin_result = getBeginBatchResponse(*result_batch);
+      begin_result = getBeginBatchResponse(*result_batch);
       if (!begin_result.ok()) {
-        response.mutable_error()->set_error(begin_result.status().message());
-        getAgent()->writeResponse(response);
+        spdlog::error(begin_result.status().message());
+        continue;
+      }
+
+      end_result = getEndBatchResponse(*result_batch);
+      if (!end_result.ok()) {
+        spdlog::error(end_result.status().message());
         continue;
       }
 
@@ -86,13 +92,6 @@ void RecordBatchRequestHandler::handleBatch() {
     }
 
     if (provides_batch_) {
-      auto end_result = getEndBatchResponse(*result_batch);
-      if (!end_result.ok()) {
-        response.mutable_error()->set_error(end_result.status().message());
-        getAgent()->writeResponse(response);
-        continue;
-      }
-
       response.mutable_end()->CopyFrom(end_result.ValueOrDie());
       getAgent()->writeResponse(response);
     }
