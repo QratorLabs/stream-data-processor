@@ -91,7 +91,7 @@ arrow::Result<std::shared_ptr<arrow::RecordBatch>> sortByColumn(
 
   std::shared_ptr<arrow::Array> sorted_idx;
   ARROW_ASSIGN_OR_RAISE(sorted_idx,
-                        arrow::compute::SortToIndices(*sorting_column));
+                        arrow::compute::SortIndices(*sorting_column));
 
   arrow::Datum sorted_datum;
   ARROW_ASSIGN_OR_RAISE(sorted_datum,

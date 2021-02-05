@@ -1,9 +1,9 @@
 ARG ALPINE_IMAGE_VERSION=latest
 
 FROM alpine:${ALPINE_IMAGE_VERSION} AS arrow-base
-ENV ARROW_VERSION=2.0.0
+ENV ARROW_VERSION=3.0.0
 ENV ARROW_DIR_NAME="arrow-apache-arrow-${ARROW_VERSION}"
-ENV ENV_ARROW_SHA256="ea299df9cf440cfc43393ce12ee6d9a4c9d0dfa9fde33c3bc9b70ec25520a844"
+ENV ENV_ARROW_SHA256="fc461c4f0a60e7470a7c58b28e9344aa8fb0be5cc982e9658970217e084c3a82"
 RUN apk add --no-cache wget tar autoconf bash cmake g++ gcc make protobuf-dev clang llvm-static llvm-dev python3 re2-dev
 SHELL ["bash", "-c"]
 RUN if [ "${ENV_ARROW_SHA256}" = "" ]; then echo "Arrow sha256 hash sum environment variable is empty. Exiting..." ; exit 1 ; fi \
