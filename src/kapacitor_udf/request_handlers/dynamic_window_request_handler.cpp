@@ -1,9 +1,12 @@
+#include <sstream>
+
 #include <spdlog/spdlog.h>
 
 #include "dynamic_window_request_handler.h"
 #include "invalid_option_exception.h"
 #include "metadata/time_metadata.h"
 #include "record_batch_handlers/group_dispatcher.h"
+#include "utils/string_utils.h"
 
 namespace stream_data_processor {
 namespace kapacitor_udf {
@@ -12,27 +15,42 @@ namespace {
 
 inline const std::string PERIOD_FIELD_OPTION_NAME{"periodField"};
 inline const std::string PERIOD_TIME_UNIT_OPTION_NAME{"periodTimeUnit"};
-inline const std::string EVERY_OPTION_NAME{"everyField"};
+inline const std::string EVERY_FIELD_OPTION_NAME{"everyField"};
 inline const std::string EVERY_TIME_UNIT_OPTION_NAME{"everyTimeUnit"};
 inline const std::string FILL_PERIOD_OPTION_NAME{"fillPeriod"};
 inline const std::string DEFAULT_PERIOD_OPTION_NAME{"defaultPeriod"};
 inline const std::string DEFAULT_EVERY_OPTION_NAME{"defaultEvery"};
 inline const std::string EMIT_TIMEOUT_OPTION_NAME{"emitTimeout"};
+inline const std::string STATIC_PERIOD_OPTION_NAME{"staticPeriod"};
+inline const std::string STATIC_EVERY_OPTION_NAME{"staticEvery"};
 
 inline const std::unordered_map<std::string, agent::ValueType>
     WINDOW_OPTIONS_TYPES{{PERIOD_FIELD_OPTION_NAME, agent::STRING},
                          {PERIOD_TIME_UNIT_OPTION_NAME, agent::STRING},
-                         {EVERY_OPTION_NAME, agent::STRING},
+                         {EVERY_FIELD_OPTION_NAME, agent::STRING},
                          {EVERY_TIME_UNIT_OPTION_NAME, agent::STRING},
                          {DEFAULT_PERIOD_OPTION_NAME, agent::DURATION},
                          {DEFAULT_EVERY_OPTION_NAME, agent::DURATION},
-                         {EMIT_TIMEOUT_OPTION_NAME, agent::DURATION}};
+                         {EMIT_TIMEOUT_OPTION_NAME, agent::DURATION},
+                         {STATIC_PERIOD_OPTION_NAME, agent::DURATION},
+                         {STATIC_EVERY_OPTION_NAME, agent::DURATION}};
 
-inline const std::unordered_map<std::string, int> EXACT_OPTIONS_SIZE{
+inline const std::unordered_map<std::string, int> OPTIONS_SIZE{
     {PERIOD_FIELD_OPTION_NAME, 1},  {PERIOD_TIME_UNIT_OPTION_NAME, 1},
-    {EVERY_OPTION_NAME, 1},         {EVERY_TIME_UNIT_OPTION_NAME, 1},
+    {EVERY_FIELD_OPTION_NAME, 1},   {EVERY_TIME_UNIT_OPTION_NAME, 1},
     {FILL_PERIOD_OPTION_NAME, 0},   {DEFAULT_PERIOD_OPTION_NAME, 1},
-    {DEFAULT_EVERY_OPTION_NAME, 1}, {EMIT_TIMEOUT_OPTION_NAME, 1}};
+    {DEFAULT_EVERY_OPTION_NAME, 1}, {EMIT_TIMEOUT_OPTION_NAME, 1},
+    {STATIC_PERIOD_OPTION_NAME, 1}, {STATIC_EVERY_OPTION_NAME, 1}};
+
+inline const std::vector<std::vector<std::unordered_set<std::string>>>
+    PRESENTED_OPTIONS_EXCLUSIVE_CNF{
+        {{PERIOD_FIELD_OPTION_NAME, PERIOD_TIME_UNIT_OPTION_NAME,
+          DEFAULT_PERIOD_OPTION_NAME},
+         {STATIC_PERIOD_OPTION_NAME}},
+        {{EVERY_FIELD_OPTION_NAME, EVERY_TIME_UNIT_OPTION_NAME,
+          DEFAULT_EVERY_OPTION_NAME},
+         {STATIC_EVERY_OPTION_NAME}},
+        {{EMIT_TIMEOUT_OPTION_NAME}}};
 
 inline const std::unordered_map<std::string, time_utils::TimeUnit>
     TIME_NAMES_TO_UNITS{{"ns", time_utils::NANO},  {"u", time_utils::MICRO},
@@ -53,18 +71,22 @@ WindowOptionsConverterDecorator::convertToRecordBatches(
       BasePointsConverterDecorator::convertToRecordBatches(points));
 
   for (auto& record_batch : converted_record_batches) {
-    if (record_batch->GetColumnByName(options_.every_option.first) !=
-        nullptr) {
-      ARROW_RETURN_NOT_OK(metadata::setTimeUnitMetadata(
-          &record_batch, options_.every_option.first,
-          options_.every_option.second));
+    if (options_.every_option.has_value()) {
+      if (record_batch->GetColumnByName(
+              options_.every_option.value().first) != nullptr) {
+        ARROW_RETURN_NOT_OK(metadata::setTimeUnitMetadata(
+            &record_batch, options_.every_option.value().first,
+            options_.every_option.value().second));
+      }
     }
 
-    if (record_batch->GetColumnByName(options_.period_option.first) !=
-        nullptr) {
-      ARROW_RETURN_NOT_OK(metadata::setTimeUnitMetadata(
-          &record_batch, options_.period_option.first,
-          options_.period_option.second));
+    if (options_.period_option.has_value()) {
+      if (record_batch->GetColumnByName(
+              options_.period_option.value().first) != nullptr) {
+        ARROW_RETURN_NOT_OK(metadata::setTimeUnitMetadata(
+            &record_batch, options_.period_option.value().first,
+            options_.period_option.value().second));
+      }
     }
   }
 
@@ -74,18 +96,33 @@ WindowOptionsConverterDecorator::convertToRecordBatches(
 google::protobuf::Map<std::string, agent::OptionInfo> getWindowOptionsMap() {
   google::protobuf::Map<std::string, agent::OptionInfo> options_map;
   for (auto& [option_name, option_type] : WINDOW_OPTIONS_TYPES) {
-    if (EXACT_OPTIONS_SIZE.at(option_name) > 0) {
+    if (OPTIONS_SIZE.at(option_name) > 0) {
       options_map[option_name].add_valuetypes(option_type);
     }
   }
 
-  for (auto& [option_name, minimal_size] : EXACT_OPTIONS_SIZE) {
+  for (auto& [option_name, minimal_size] : OPTIONS_SIZE) {
     if (minimal_size == 0) {
       options_map[option_name].Clear();
     }
   }
 
   return options_map;
+}
+
+std::string constructErrorMessageForUnsatisfiedExclusiveOptionDisjunction(
+    const std::vector<std::unordered_set<std::string>>&
+        exclusive_disjunction) {
+  std::stringstream error_message;
+  error_message << "Expected exactly one of the following option sets to be "
+                   "presented:\n";
+  for (auto& option_set : exclusive_disjunction) {
+    error_message << "{ "
+                  << string_utils::concatenateStrings(option_set, ", ")
+                  << " }\n";
+  }
+
+  return error_message.str();
 }
 
 WindowOptions parseWindowOptions(
@@ -97,7 +134,7 @@ WindowOptions parseWindowOptions(
   std::unordered_map<std::string, int> parsed_options;
   for (auto& option : request_options) {
     auto& option_name = option.name();
-    if (EXACT_OPTIONS_SIZE.find(option_name) == EXACT_OPTIONS_SIZE.end()) {
+    if (OPTIONS_SIZE.find(option_name) == OPTIONS_SIZE.end()) {
       throw InvalidOptionException(
           fmt::format("Unexpected option name: {}", option_name));
     }
@@ -118,10 +155,10 @@ WindowOptions parseWindowOptions(
       continue;
     }
 
-    if (parsed_options[option_name] > EXACT_OPTIONS_SIZE.at(option_name)) {
+    if (parsed_options[option_name] > OPTIONS_SIZE.at(option_name)) {
       throw InvalidOptionException(
           fmt::format("Expected not more than {} values of option {}",
-                      EXACT_OPTIONS_SIZE.at(option_name), option_name));
+                      OPTIONS_SIZE.at(option_name), option_name));
     }
 
     auto& option_value = option.values(0);
@@ -134,16 +171,32 @@ WindowOptions parseWindowOptions(
     }
 
     if (option_name == PERIOD_FIELD_OPTION_NAME) {
-      window_options.convert_options.period_option.first =
+      if (!window_options.convert_options.period_option.has_value()) {
+        window_options.convert_options.period_option.emplace();
+      }
+
+      window_options.convert_options.period_option.value().first =
           option_value.stringvalue();
     } else if (option_name == PERIOD_TIME_UNIT_OPTION_NAME) {
-      window_options.convert_options.period_option.second =
+      if (!window_options.convert_options.period_option.has_value()) {
+        window_options.convert_options.period_option.emplace();
+      }
+
+      window_options.convert_options.period_option.value().second =
           TIME_NAMES_TO_UNITS.at(option_value.stringvalue());
-    } else if (option_name == EVERY_OPTION_NAME) {
-      window_options.convert_options.every_option.first =
+    } else if (option_name == EVERY_FIELD_OPTION_NAME) {
+      if (!window_options.convert_options.every_option.has_value()) {
+        window_options.convert_options.every_option.emplace();
+      }
+
+      window_options.convert_options.every_option.value().first =
           option_value.stringvalue();
     } else if (option_name == EVERY_TIME_UNIT_OPTION_NAME) {
-      window_options.convert_options.every_option.second =
+      if (!window_options.convert_options.every_option.has_value()) {
+        window_options.convert_options.every_option.emplace();
+      }
+
+      window_options.convert_options.every_option.value().second =
           TIME_NAMES_TO_UNITS.at(option_value.stringvalue());
     } else if (option_name == DEFAULT_PERIOD_OPTION_NAME) {
       std::chrono::nanoseconds default_period(option_value.durationvalue());
@@ -160,18 +213,42 @@ WindowOptions parseWindowOptions(
 
       window_options.emit_timeout =
           std::chrono::duration_cast<std::chrono::seconds>(emit_timeout);
+    } else if (option_name == STATIC_PERIOD_OPTION_NAME) {
+      std::chrono::nanoseconds static_period(option_value.durationvalue());
+
+      window_options.window_handler_options.period =
+          std::chrono::duration_cast<std::chrono::seconds>(static_period);
+    } else if (option_name == STATIC_EVERY_OPTION_NAME) {
+      std::chrono::nanoseconds static_every(option_value.durationvalue());
+
+      window_options.window_handler_options.every =
+          std::chrono::duration_cast<std::chrono::seconds>(static_every);
     } else {
       throw InvalidOptionException(
           fmt::format("Unexpected option name: {}", option_name));
     }
   }
 
-  for (auto& [option_name, exact_size] : EXACT_OPTIONS_SIZE) {
-    if (parsed_options.find(option_name) == parsed_options.end() ||
-        parsed_options[option_name] != exact_size) {
-      throw InvalidOptionException(
-          fmt::format("Expected exactly {} values of option {}", exact_size,
-                      option_name));
+  for (auto& exclusive_disjunction : PRESENTED_OPTIONS_EXCLUSIVE_CNF) {
+    bool is_disjunction_satisfied = false;
+    for (auto& option_set : exclusive_disjunction) {
+      bool is_set_presented = true;
+      for (auto& option : option_set) {
+        if (parsed_options.find(option) == parsed_options.end()) {
+          is_set_presented = false;
+          break;
+        }
+      }
+
+      if (is_set_presented) {
+        if (is_disjunction_satisfied) {
+          throw InvalidOptionException(
+              constructErrorMessageForUnsatisfiedExclusiveOptionDisjunction(
+                  exclusive_disjunction));
+        } else {
+          is_disjunction_satisfied = true;
+        }
+      }
     }
   }
 
@@ -220,9 +297,15 @@ agent::Response DynamicWindowRequestHandler::init(
               DEFAULT_TO_RECORD_BATCHES_OPTIONS),
           window_options.convert_options));
 
-  DynamicWindowHandler::DynamicWindowOptions dynamic_window_options{
-      window_options.convert_options.period_option.first,
-      window_options.convert_options.every_option.first};
+  DynamicWindowHandler::DynamicWindowOptions dynamic_window_options;
+  if (window_options.convert_options.period_option.has_value()) {
+    dynamic_window_options.period_column_name =
+        window_options.convert_options.period_option.value().first;
+  }
+  if (window_options.convert_options.every_option.has_value()) {
+    dynamic_window_options.every_column_name =
+        window_options.convert_options.every_option.value().first;
+  }
 
   setHandler(std::make_shared<GroupDispatcher>(
       std::make_shared<DynamicWindowHandlerFactory>(

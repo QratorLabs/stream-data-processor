@@ -13,6 +13,7 @@
 #include "kapacitor_udf/udf_agent.h"
 #include "kapacitor_udf/request_handlers/aggregate_request_handlers/aggregate_options_parser.h"
 #include "kapacitor_udf/request_handlers/batch_to_stream_request_handler.h"
+#include "kapacitor_udf/request_handlers/invalid_option_exception.h"
 #include "record_batch_handlers/aggregate_handler.h"
 #include "record_batch_handlers/pipeline_handler.h"
 #include "record_batch_handlers/record_batch_handler.h"
@@ -259,10 +260,9 @@ SCENARIO("Window converter decorator calls wrappee's method", "[WindowOptionsCon
     std::shared_ptr<MockPointsConverter> wrappee_mock =
         std::make_shared<NiceMock<MockPointsConverter>>();
 
-    kapacitor_udf::internal::WindowOptionsConverterDecorator::WindowOptions options{
-        {"period", time_utils::SECOND},
-        {"every", time_utils::SECOND}
-    };
+    kapacitor_udf::internal::WindowOptionsConverterDecorator::WindowOptions options;
+    options.period_option.emplace("period", time_utils::SECOND);
+    options.every_option.emplace("every", time_utils::SECOND);
 
     std::unique_ptr<kapacitor_udf::convert_utils::PointsConverter> decorator =
         std::make_unique<kapacitor_udf::internal::WindowOptionsConverterDecorator>(
@@ -367,13 +367,105 @@ TEST_CASE("successfully parses DynamicWindowUDF options", "[DynamicWindowUDF]") 
   REQUIRE( (1s).count() == parsed_options.window_handler_options.every.count() );
   REQUIRE( parsed_options.window_handler_options.fill_period );
 
+  REQUIRE( parsed_options.convert_options.period_option.has_value() );
   REQUIRE( options[period_field_option_name].stringvalue() ==
-            parsed_options.convert_options.period_option.first );
-  REQUIRE( time_utils::MINUTE == parsed_options.convert_options.period_option.second );
+              parsed_options.convert_options.period_option.value().first );
+  REQUIRE( time_utils::MINUTE == parsed_options.convert_options.period_option.value().second );
 
+  REQUIRE( parsed_options.convert_options.every_option.has_value() );
   REQUIRE( options[every_field_option_name].stringvalue() ==
-      parsed_options.convert_options.every_option.first );
-  REQUIRE( time_utils::MILLI == parsed_options.convert_options.every_option.second );
+      parsed_options.convert_options.every_option.value().first );
+  REQUIRE( time_utils::MILLI == parsed_options.convert_options.every_option.value().second );
+}
+
+TEST_CASE("successfully parses DynamicWindowUDF options with alternative configuration", "[DynamicWindowUDF]") {
+  using namespace std::chrono_literals;
+
+  std::unordered_map<std::string, agent::OptionValue> options;
+  std::string every_period_option_name{"staticPeriod"};
+  options[every_period_option_name] = {};
+  options[every_period_option_name].set_type(agent::DURATION);
+  options[every_period_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(60s).count());
+
+  std::string static_every_option_name{"staticEvery"};
+  options[static_every_option_name] = {};
+  options[static_every_option_name].set_type(agent::DURATION);
+  options[static_every_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(30s).count());
+
+  std::string emit_timeout_option_name{"emitTimeout"};
+  options[emit_timeout_option_name] = {};
+  options[emit_timeout_option_name].set_type(agent::DURATION);
+  options[emit_timeout_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(10s).count());
+
+  google::protobuf::RepeatedPtrField<agent::Option> request_options;
+  for (auto& [option_name, option_value] : options) {
+    auto new_option = request_options.Add();
+    new_option->set_name(option_name);
+    auto new_option_value = new_option->mutable_values()->Add();
+    *new_option_value = option_value;
+  }
+
+  auto parsed_options = kapacitor_udf::internal::parseWindowOptions(request_options);
+
+  REQUIRE( (60s).count() == parsed_options.window_handler_options.period.count()  );
+  REQUIRE( (30s).count() == parsed_options.window_handler_options.every.count() );
+  REQUIRE( !parsed_options.window_handler_options.fill_period );
+  REQUIRE( !parsed_options.convert_options.period_option.has_value() );
+  REQUIRE( !parsed_options.convert_options.every_option.has_value() );
+}
+
+TEST_CASE("static and dynamic configurations conflict", "[DynamicWindowUDF]") {
+  using namespace std::chrono_literals;
+
+  std::unordered_map<std::string, agent::OptionValue> options;
+  std::string every_period_option_name{"staticPeriod"};
+  options[every_period_option_name] = {};
+  options[every_period_option_name].set_type(agent::DURATION);
+  options[every_period_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(60s).count());
+
+  std::string static_every_option_name{"staticEvery"};
+  options[static_every_option_name] = {};
+  options[static_every_option_name].set_type(agent::DURATION);
+  options[static_every_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(30s).count());
+
+  std::string every_field_option_name{"everyField"};
+  options[every_field_option_name] = {};
+  options[every_field_option_name].set_type(agent::STRING);
+  options[every_field_option_name].set_stringvalue("every");
+
+  std::string every_time_unit_option_name{"everyTimeUnit"};
+  options[every_time_unit_option_name] = {};
+  options[every_time_unit_option_name].set_type(agent::STRING);
+  options[every_time_unit_option_name].set_stringvalue("ms");
+
+  std::string default_every_option_name{"defaultEvery"};
+  options[default_every_option_name] = {};
+  options[default_every_option_name].set_type(agent::DURATION);
+  options[default_every_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(30s).count());
+
+  std::string emit_timeout_option_name{"emitTimeout"};
+  options[emit_timeout_option_name] = {};
+  options[emit_timeout_option_name].set_type(agent::DURATION);
+  options[emit_timeout_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(10s).count());
+
+  google::protobuf::RepeatedPtrField<agent::Option> request_options;
+  for (auto& [option_name, option_value] : options) {
+    auto new_option = request_options.Add();
+    new_option->set_name(option_name);
+    auto new_option_value = new_option->mutable_values()->Add();
+    *new_option_value = option_value;
+  }
+
+  REQUIRE_THROWS_AS(
+      kapacitor_udf::internal::parseWindowOptions(request_options),
+      InvalidOptionException);
 }
 
 TEST_CASE("DynamicWindowUDF info response is right", "[DynamicWindowUDF]") {
@@ -396,7 +488,9 @@ TEST_CASE("DynamicWindowUDF info response is right", "[DynamicWindowUDF]") {
       {"everyTimeUnit", agent::STRING},
       {"defaultPeriod", agent::DURATION},
       {"defaultEvery", agent::DURATION},
-      {"emitTimeout", agent::DURATION}
+      {"emitTimeout", agent::DURATION},
+      {"staticPeriod", agent::DURATION},
+      {"staticEvery", agent::DURATION}
   };
 
   std::string fill_period_option_name{"fillPeriod"};

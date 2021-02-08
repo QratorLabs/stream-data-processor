@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -19,8 +20,8 @@ using convert_utils::BasePointsConverterDecorator;
 class WindowOptionsConverterDecorator : public BasePointsConverterDecorator {
  public:
   struct WindowOptions {
-    std::pair<std::string, time_utils::TimeUnit> period_option;
-    std::pair<std::string, time_utils::TimeUnit> every_option;
+    std::optional<std::pair<std::string, time_utils::TimeUnit>> period_option;
+    std::optional<std::pair<std::string, time_utils::TimeUnit>> every_option;
   };
 
  public:

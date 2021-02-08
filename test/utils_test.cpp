@@ -1,4 +1,5 @@
 #include <functional>
+#include <unordered_set>
 
 #include <arrow/api.h>
 #include <catch2/catch.hpp>
@@ -167,7 +168,6 @@ TEST_CASE( "check conversion between different TimeUnits", "[time_utils]" ) {
       for (auto& to : time_units) {
         auto convert_result = convertTime(test_case, from ,to);
         auto true_result = convert_rules.at(from).at(to)(test_case);
-//        assert(convert_result.status().Equals(true_result.status()));
         REQUIRE( convert_result.status().Equals(true_result.status()) );
         if (convert_result.ok()) {
           REQUIRE( convert_result.ValueOrDie() == true_result.ValueOrDie() );
@@ -175,4 +175,33 @@ TEST_CASE( "check conversion between different TimeUnits", "[time_utils]" ) {
       }
     }
   }
+}
+
+TEST_CASE("concatenation of empty set is empty string", "[string_utils]") {
+  std::unordered_set<std::string> empty_set;
+  auto concatenation_result = string_utils::concatenateStrings(empty_set);
+  REQUIRE( concatenation_result.empty() );
+}
+
+TEST_CASE("concatenation of one string is exactly this string", "[string_utils]") {
+  std::unordered_set<std::string> strings_set{
+      "first"
+  };
+
+  auto concatenation_result =
+      string_utils::concatenateStrings(strings_set, " ");
+
+  REQUIRE( concatenation_result == "first");
+}
+
+TEST_CASE("concatenation puts delimiter right between strings", "[string_utils]") {
+  std::unordered_set<std::string> strings_set{
+    "first", "second"
+  };
+
+  auto concatenation_result =
+      string_utils::concatenateStrings(strings_set, " ");
+
+  REQUIRE( (concatenation_result == "first second" ||
+            concatenation_result == "second first") );
 }

@@ -77,6 +77,7 @@ template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::setHandler(
 
 template <typename UVWHandleType, typename LibuvHandleType>
 void UDFAgent<UVWHandleType, LibuvHandleType>::start() {
+  request_handler_->start();
   in_->read();
 }
 
@@ -89,6 +90,7 @@ void UDFAgent<UVWHandleType, LibuvHandleType>::stop() {
   out_->shutdown();
   in_->stop();
   out_->stop();
+  request_handler_->stop();
 }
 
 template void UDFAgent<uvw::TTYHandle, uv_tty_t>::stop();

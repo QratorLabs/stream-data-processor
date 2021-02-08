@@ -11,10 +11,16 @@ Files in this directory represent DynamicWindowUDF usage in bundle with
 @dynamicWindowUDF()
     .periodField('period')
     .periodTimeUnit('m')
+    .defaultPeriod(default_period)
+    .staticEvery(30s)
+    .fillPeriod()
+    .emitTimeout(10s)
+    
+// alternative configuration
+@dynamicWindowUDF()
+    .staticPeriod(60s)
     .everyField('every')
     .everyTimeUnit('m')
-    .fillPeriod()
-    .defaultPeriod(default_period)
     .defaultEvery(default_every)
     .emitTimeout(10s)
 ```
@@ -23,16 +29,22 @@ Files in this directory represent DynamicWindowUDF usage in bundle with
 * `periodTimeUnit` –- `period` values time unit to interpret them correctly: ns 
   – nanoseconds, u – microseconds, ms – milliseconds, s – seconds, m – 
   minutes, h – hours, d – days, w – weeks
+* `defaultPeriod` –- `period` default value
+* `staticPeriod` -- sets `period` constant value, cannot be changed with 
+  incoming points (Kapacitor WindowNode's `period` property
+  analogue); conflicts with three previous properties
 * `everyField` –- `every` field name
 * `everyTimeUnit` –- `every` values time unit, similarly to `periodTimeUnit`
-* `fillPeriod` –- optional property. Defines if UDF should wait until the first 
-  window is fully filled (Kapacitor WindowNode's `fillPeriod` property 
-  analogue)
-* `defaultPeriod` –- `period` default value
 * `defaultEvery` -– `every` default value
+* `staticEvery` -- sets `every` constant value, cannot be changed with
+  incoming points (Kapacitor WindowNode's `every` property
+  analogue); conflicts with three previous properties
 * `emitTimeout` -–  UDF accumulates several points before processing. 
   `emitTimeout` property defines timeout between two sequential processing 
   moments
+* `fillPeriod` –- optional property. Defines if UDF should wait until the first 
+  window is fully filled (Kapacitor WindowNode's `fillPeriod` property 
+  analogue)
 
 ## How to run this example?
 

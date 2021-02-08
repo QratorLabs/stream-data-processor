@@ -23,11 +23,9 @@ var cpu_window = cpu_window_options
     @dynamicWindowUDF()
         .periodField('period')
         .periodTimeUnit('m')
-        .everyField('every')
-        .everyTimeUnit('m')
-        .fillPeriod()
         .defaultPeriod(default_period)
-        .defaultEvery(default_every)
+        .staticEvery(30s)
+        .fillPeriod()
         .emitTimeout(10s)
 
 var cpu_window_first = cpu_window
