@@ -250,6 +250,12 @@ WindowOptions parseWindowOptions(
         }
       }
     }
+
+    if (!is_disjunction_satisfied) {
+      throw InvalidOptionException(
+          constructErrorMessageForUnsatisfiedExclusiveOptionDisjunction(
+              exclusive_disjunction));
+    }
   }
 
   return window_options;

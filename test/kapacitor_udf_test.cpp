@@ -468,6 +468,35 @@ TEST_CASE("static and dynamic configurations conflict", "[DynamicWindowUDF]") {
       InvalidOptionException);
 }
 
+TEST_CASE("when property configuration is missing exception is thrown", "[DynamicWindowUDF]") {
+  using namespace std::chrono_literals;
+
+  std::unordered_map<std::string, agent::OptionValue> options;
+  std::string every_period_option_name{"staticPeriod"};
+  options[every_period_option_name] = {};
+  options[every_period_option_name].set_type(agent::DURATION);
+  options[every_period_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(60s).count());
+
+  std::string emit_timeout_option_name{"emitTimeout"};
+  options[emit_timeout_option_name] = {};
+  options[emit_timeout_option_name].set_type(agent::DURATION);
+  options[emit_timeout_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(10s).count());
+
+  google::protobuf::RepeatedPtrField<agent::Option> request_options;
+  for (auto& [option_name, option_value] : options) {
+    auto new_option = request_options.Add();
+    new_option->set_name(option_name);
+    auto new_option_value = new_option->mutable_values()->Add();
+    *new_option_value = option_value;
+  }
+
+  REQUIRE_THROWS_AS(
+      kapacitor_udf::internal::parseWindowOptions(request_options),
+      InvalidOptionException);
+}
+
 TEST_CASE("DynamicWindowUDF info response is right", "[DynamicWindowUDF]") {
   std::shared_ptr<IUDFAgent> udf_agent =
       std::make_shared<::testing::NiceMock<MockUDFAgent>>();
