@@ -1300,8 +1300,8 @@ class MockWindowHandler : public IWindowHandler {
   MOCK_METHOD(arrow::Result<arrow::RecordBatchVector>, handle, (const std::shared_ptr<arrow::RecordBatch>& record_batch), (override));
   MOCK_METHOD(std::chrono::seconds, getEveryOption, (), (const, override));
   MOCK_METHOD(std::chrono::seconds, getPeriodOption, (), (const, override));
-  MOCK_METHOD(void, setEveryOption, (const std::chrono::seconds& new_every_option, std::time_t change_ts), (override));
-  MOCK_METHOD(void, setPeriodOption, (const std::chrono::seconds& new_period_option, std::time_t change_ts), (override));
+  MOCK_METHOD(void, setEveryOption, (std::chrono::seconds new_every_option, std::time_t change_ts), (override));
+  MOCK_METHOD(void, setPeriodOption, (std::chrono::seconds new_period_option, std::time_t change_ts), (override));
 };
 
 SCENARIO("DynamicWindowHandler tries to change WindowHandler options when new options are arrived",

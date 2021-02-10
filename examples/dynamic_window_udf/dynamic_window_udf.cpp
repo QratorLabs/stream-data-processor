@@ -27,7 +27,7 @@ class DynamicWindowUDFAgentClientFactory : public sdp::UnixSocketClientFactory {
         std::make_shared<udf::SocketBasedUDFAgent>(pipe_handle, pipe_handle);
 
     std::shared_ptr<udf::RequestHandler> handler =
-        std::make_shared<udf::DynamicWindowRequestHandler>(agent, loop_);
+        std::make_shared<udf::DynamicWindowRequestHandler>(agent.get(), loop_);
 
     agent->setHandler(handler);
     return std::make_shared<udf::AgentClient>(agent);

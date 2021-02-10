@@ -94,7 +94,7 @@ void AggregateOptionsParser::addResponseOptions(
     google::protobuf::Map<std::string, agent::OptionInfo>* options_map) {
   auto aggregate_options_map = getResponseOptionsMap();
   for (auto& [option_name, option_info] : aggregate_options_map) {
-    options_map->operator[](option_name) = option_info;
+    (*options_map)[option_name] = option_info;
   }
 }
 

@@ -22,7 +22,7 @@ class ThresholdUDFAgentClientFactory : public sdp::UnixSocketClientFactory {
         std::make_shared<udf::SocketBasedUDFAgent>(pipe_handle, pipe_handle);
 
     std::shared_ptr<udf::RequestHandler> handler =
-        std::make_shared<udf::StatefulThresholdRequestHandler>(agent);
+        std::make_shared<udf::StatefulThresholdRequestHandler>(agent.get());
 
     agent->setHandler(handler);
     return std::make_shared<udf::AgentClient>(agent);

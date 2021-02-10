@@ -51,7 +51,7 @@ SCENARIO("UDFAgent with RequestHandler interaction",
     };
     std::shared_ptr<RecordBatchRequestHandler>
         handler = std::make_shared<BatchToStreamRequestHandler>(
-        mock_agent
+        mock_agent.get()
     );
 
     handler->setHandler(
@@ -502,7 +502,7 @@ TEST_CASE("DynamicWindowUDF info response is right", "[DynamicWindowUDF]") {
       std::make_shared<::testing::NiceMock<MockUDFAgent>>();
 
   auto loop = uvw::Loop::getDefault();
-  DynamicWindowRequestHandler request_handler(udf_agent, loop.get());
+  DynamicWindowRequestHandler request_handler(udf_agent.get(), loop.get());
 
   auto info_response = request_handler.info();
 

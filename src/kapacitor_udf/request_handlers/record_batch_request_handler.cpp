@@ -11,8 +11,8 @@ namespace kapacitor_udf {
 
 using convert_utils::BasePointsConverter;
 
-RecordBatchRequestHandler::RecordBatchRequestHandler(
-    const std::shared_ptr<IUDFAgent>& agent, bool provides_batch)
+RecordBatchRequestHandler::RecordBatchRequestHandler(IUDFAgent* agent,
+                                                     bool provides_batch)
     : RequestHandler(agent), provides_batch_(provides_batch) {}
 
 void RecordBatchRequestHandler::handleBatch() {
@@ -149,8 +149,7 @@ arrow::Result<agent::EndBatch> RecordBatchRequestHandler::getEndBatchResponse(
   ARROW_RETURN_NOT_OK(
       setGroupTagsAndByName(&end_batch_response, record_batch));
 
-  int64_t tmax_value;
-  ARROW_ASSIGN_OR_RAISE(tmax_value, getTMax(record_batch));
+  ARROW_ASSIGN_OR_RAISE(auto tmax_value, getTMax(record_batch));
   end_batch_response.set_tmax(tmax_value);
 
   return end_batch_response;
@@ -163,8 +162,8 @@ arrow::Result<std::string> RecordBatchRequestHandler::getGroupString(
       measurement_column_name,
       metadata::getMeasurementColumnNameMetadata(record_batch));
 
-  std::unordered_map<std::string, metadata::ColumnType> column_types;
-  ARROW_ASSIGN_OR_RAISE(column_types, metadata::getColumnTypes(record_batch));
+  ARROW_ASSIGN_OR_RAISE(auto column_types,
+                        metadata::getColumnTypes(record_batch));
 
   auto group = metadata::extractGroup(record_batch);
   return grouping_utils::encode(group, measurement_column_name, column_types);
@@ -172,22 +171,21 @@ arrow::Result<std::string> RecordBatchRequestHandler::getGroupString(
 
 arrow::Result<int64_t> RecordBatchRequestHandler::getTMax(
     const arrow::RecordBatch& record_batch) {
-  std::string time_column_name;
-  ARROW_ASSIGN_OR_RAISE(time_column_name,
+  ARROW_ASSIGN_OR_RAISE(auto time_column_name,
                         metadata::getTimeColumnNameMetadata(record_batch));
 
-  std::shared_ptr<arrow::Scalar> tmax_scalar;
-  ARROW_ASSIGN_OR_RAISE(tmax_scalar, LastAggregateFunction().aggregate(
-                                         record_batch, time_column_name));
+  ARROW_ASSIGN_OR_RAISE(
+      auto tmax_scalar,
+      LastAggregateFunction().aggregate(record_batch, time_column_name));
 
   ARROW_ASSIGN_OR_RAISE(tmax_scalar, arrow_utils::castTimestampScalar(
                                          tmax_scalar, arrow::TimeUnit::NANO));
 
-  return std::static_pointer_cast<arrow::Int64Scalar>(tmax_scalar)->value;
+  return dynamic_cast<arrow::TimestampScalar*>(tmax_scalar.get())->value;
 }
 
 StreamRecordBatchRequestHandlerBase::StreamRecordBatchRequestHandlerBase(
-    const std::shared_ptr<IUDFAgent>& agent, bool provides_batch)
+    IUDFAgent* agent, bool provides_batch)
     : RecordBatchRequestHandler(agent, provides_batch) {}
 
 agent::Response StreamRecordBatchRequestHandlerBase::snapshot() const {
@@ -230,8 +228,7 @@ void StreamRecordBatchRequestHandlerBase::endBatch(
 }
 
 TimerRecordBatchRequestHandlerBase::TimerRecordBatchRequestHandlerBase(
-    const std::shared_ptr<IUDFAgent>& agent, bool provides_batch,
-    uvw::Loop* loop)
+    IUDFAgent* agent, bool provides_batch, uvw::Loop* loop)
     : StreamRecordBatchRequestHandlerBase(agent, provides_batch),
       emit_timer_(loop->resource<uvw::TimerHandle>()) {
   emit_timer_->on<uvw::TimerEvent>(
@@ -240,8 +237,8 @@ TimerRecordBatchRequestHandlerBase::TimerRecordBatchRequestHandlerBase(
 }
 
 TimerRecordBatchRequestHandlerBase::TimerRecordBatchRequestHandlerBase(
-    const std::shared_ptr<IUDFAgent>& agent, bool provides_batch,
-    uvw::Loop* loop, const std::chrono::seconds& batch_interval)
+    IUDFAgent* agent, bool provides_batch, uvw::Loop* loop,
+    std::chrono::seconds batch_interval)
     : StreamRecordBatchRequestHandlerBase(agent, provides_batch),
       emit_timer_(loop->resource<uvw::TimerHandle>()),
       emit_timeout_(batch_interval) {

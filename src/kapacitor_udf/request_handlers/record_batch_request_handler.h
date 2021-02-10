@@ -21,8 +21,7 @@ using convert_utils::BasePointsConverter;
 
 class RecordBatchRequestHandler : public RequestHandler {
  public:
-  RecordBatchRequestHandler(const std::shared_ptr<IUDFAgent>& agent,
-                            bool provides_batch);
+  RecordBatchRequestHandler(IUDFAgent* agent, bool provides_batch);
 
   template <class HandlerType>
   void setHandler(HandlerType&& handler) {
@@ -67,7 +66,7 @@ class RecordBatchRequestHandler : public RequestHandler {
       auto& group_key = group.group_columns_names().columns_names(i);
       if (group_key != measurement_column_name) {
         auto& group_value = group.group_columns_values(i);
-        batch_response->mutable_tags()->operator[](group_key) = group_value;
+        (*batch_response->mutable_tags())[group_key] = group_value;
       } else {
         batch_response->set_byname(true);
       }
@@ -88,8 +87,8 @@ class RecordBatchRequestHandler : public RequestHandler {
 
 class StreamRecordBatchRequestHandlerBase : public RecordBatchRequestHandler {
  public:
-  explicit StreamRecordBatchRequestHandlerBase(
-      const std::shared_ptr<IUDFAgent>& agent, bool provides_batch);
+  explicit StreamRecordBatchRequestHandlerBase(IUDFAgent* agent,
+                                               bool provides_batch);
 
   [[nodiscard]] agent::Response snapshot() const override;
   [[nodiscard]] agent::Response restore(
@@ -102,12 +101,12 @@ class StreamRecordBatchRequestHandlerBase : public RecordBatchRequestHandler {
 class TimerRecordBatchRequestHandlerBase
     : public StreamRecordBatchRequestHandlerBase {
  public:
-  TimerRecordBatchRequestHandlerBase(const std::shared_ptr<IUDFAgent>& agent,
-                                     bool provides_batch, uvw::Loop* loop);
+  TimerRecordBatchRequestHandlerBase(IUDFAgent* agent, bool provides_batch,
+                                     uvw::Loop* loop);
 
-  TimerRecordBatchRequestHandlerBase(
-      const std::shared_ptr<IUDFAgent>& agent, bool provides_batch,
-      uvw::Loop* loop, const std::chrono::seconds& batch_interval);
+  TimerRecordBatchRequestHandlerBase(IUDFAgent* agent, bool provides_batch,
+                                     uvw::Loop* loop,
+                                     std::chrono::seconds batch_interval);
 
   void point(const agent::Point& point) override;
 

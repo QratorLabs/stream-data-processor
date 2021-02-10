@@ -27,9 +27,9 @@ arrow::Result<arrow::RecordBatchVector> JoinHandler::handle(
   std::unordered_map<std::string, std::set<JoinValue, JoinValueCompare>>
       keys_to_rows;
 
-  std::string time_column_name;
-  ARROW_ASSIGN_OR_RAISE(time_column_name, metadata::getTimeColumnNameMetadata(
-                                              *record_batches.front()));
+  ARROW_ASSIGN_OR_RAISE(
+      auto time_column_name,
+      metadata::getTimeColumnNameMetadata(*record_batches.front()));
 
   for (size_t i = 0; i < record_batches.size(); ++i) {
     for (auto& field : record_batches[i]->schema()->fields()) {
@@ -174,8 +174,7 @@ arrow::Result<JoinHandler::JoinKey> JoinHandler::getJoinKey(
         "Time column with name {} should be presented", time_column_name));
   }
 
-  std::shared_ptr<arrow::Scalar> value_scalar;
-  ARROW_ASSIGN_OR_RAISE(value_scalar, time_column->GetScalar(row_idx));
+  ARROW_ASSIGN_OR_RAISE(auto value_scalar, time_column->GetScalar(row_idx));
 
   join_key.time = std::static_pointer_cast<arrow::Int64Scalar>(value_scalar)
                       ->value;  // TODO: it's a bug: we should synchronize

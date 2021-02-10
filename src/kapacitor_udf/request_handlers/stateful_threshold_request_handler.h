@@ -11,8 +11,7 @@ namespace kapacitor_udf {
 class StatefulThresholdRequestHandler
     : public StreamRecordBatchRequestHandlerBase {
  public:
-  explicit StatefulThresholdRequestHandler(
-      const std::shared_ptr<IUDFAgent>& agent);
+  explicit StatefulThresholdRequestHandler(IUDFAgent* agent);
 
   [[nodiscard]] agent::Response info() const override;
   [[nodiscard]] agent::Response init(

@@ -15,8 +15,8 @@ DataParser::DataParser(std::shared_ptr<Parser> parser)
 
 arrow::Result<arrow::BufferVector> DataParser::handle(
     const arrow::Buffer& source) {
-  std::vector<std::shared_ptr<arrow::RecordBatch>> record_batches;
-  ARROW_ASSIGN_OR_RAISE(record_batches, parser_->parseRecordBatches(source));
+  ARROW_ASSIGN_OR_RAISE(auto record_batches,
+                        parser_->parseRecordBatches(source));
   if (record_batches.empty()) {
     return arrow::Status::OK();
   }

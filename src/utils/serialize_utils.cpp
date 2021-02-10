@@ -8,8 +8,7 @@ arrow::Result<arrow::BufferVector> serializeRecordBatches(
   arrow::BufferVector result;
 
   for (auto& record_batch : record_batches) {
-    std::shared_ptr<arrow::io::BufferOutputStream> output_stream;
-    ARROW_ASSIGN_OR_RAISE(output_stream,
+    ARROW_ASSIGN_OR_RAISE(auto output_stream,
                           arrow::io::BufferOutputStream::Create());
 
     std::shared_ptr<arrow::ipc::RecordBatchWriter> stream_writer;
@@ -18,8 +17,7 @@ arrow::Result<arrow::BufferVector> serializeRecordBatches(
                                                     record_batch->schema()));
 
     ARROW_RETURN_NOT_OK(stream_writer->WriteRecordBatch(*record_batch));
-    std::shared_ptr<arrow::Buffer> buffer;
-    ARROW_ASSIGN_OR_RAISE(buffer, output_stream->Finish());
+    ARROW_ASSIGN_OR_RAISE(auto buffer, output_stream->Finish());
     result.push_back(buffer);
     ARROW_RETURN_NOT_OK(output_stream->Close());
   }

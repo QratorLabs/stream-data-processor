@@ -7,7 +7,6 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 option(ENABLE_TESTS "enables tests building" OFF)
-option(BUILD_SHARED_LIBS "enables building shared libraries" OFF)
 option(CLANG_TIDY_LINT "enables clang-tidy linter" OFF)
 
 if(NOT BUILD_SHARED_LIBS)

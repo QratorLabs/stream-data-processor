@@ -101,7 +101,7 @@ void UDFAgent<UVWHandleType, LibuvHandleType>::writeResponse(
     const agent::Response& response) {
   auto response_data = response.SerializeAsString();
   std::ostringstream out_stream;
-  uvarint_utils::UVarIntCoder::encode(out_stream, response_data.length());
+  uvarint_utils::encode(out_stream, response_data.length());
   out_stream << response_data;
   spdlog::debug("Response: {}", response.DebugString());
   out_->write(out_stream.str().data(), out_stream.str().length());
@@ -120,7 +120,7 @@ bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(
     try {
       uint32_t request_size = 0;
       if (residual_request_size_ == 0) {
-        request_size = uvarint_utils::UVarIntCoder::decode(input_stream);
+        request_size = uvarint_utils::decode(input_stream);
       } else {
         request_size = residual_request_size_;
         residual_request_size_ = 0;

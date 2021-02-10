@@ -42,8 +42,8 @@ arrow::Result<arrow::RecordBatchVector> AggregateHandler::handle(
     return arrow::Status::OK();
   }
 
-  arrow::RecordBatchVector result_vector;
-  ARROW_ASSIGN_OR_RAISE(result_vector, handle(std::vector{record_batch}));
+  ARROW_ASSIGN_OR_RAISE(auto result_vector,
+                        handle(std::vector{record_batch}));
   if (result_vector.size() != 1) {
     return arrow::Status::ExecutionError(
         "Aggregation of one record batch "
@@ -244,8 +244,7 @@ arrow::Status AggregateHandler::aggregate(
   }
 
   for (auto& group : groups) {
-    std::shared_ptr<arrow::Scalar> aggregated_value;
-    ARROW_ASSIGN_OR_RAISE(aggregated_value,
+    ARROW_ASSIGN_OR_RAISE(auto aggregated_value,
                           TYPES_TO_FUNCTIONS.at(aggregate_function)
                               ->aggregate(*group, aggregate_column_name));
 
@@ -266,9 +265,9 @@ arrow::Status AggregateHandler::aggregate(
 arrow::Status AggregateHandler::aggregateTimeColumn(
     const arrow::RecordBatchVector& record_batch_vector,
     arrow::ArrayVector* result_arrays, arrow::MemoryPool* pool) const {
-  std::string time_column_name;
-  ARROW_ASSIGN_OR_RAISE(time_column_name, metadata::getTimeColumnNameMetadata(
-                                              *record_batch_vector.front()));
+  ARROW_ASSIGN_OR_RAISE(
+      auto time_column_name,
+      metadata::getTimeColumnNameMetadata(*record_batch_vector.front()));
 
   auto ts_column_type =
       record_batch_vector.front()->GetColumnByName(time_column_name)->type();
@@ -396,8 +395,7 @@ arrow::Status AggregateHandler::fillMeasurementColumn(
           "Measurement column {} is not present", measurement_column_name));
     }
 
-    std::shared_ptr<arrow::Scalar> measurement_value;
-    ARROW_ASSIGN_OR_RAISE(measurement_value,
+    ARROW_ASSIGN_OR_RAISE(auto measurement_value,
                           measurement_column->GetScalar(0));
 
     ARROW_RETURN_NOT_OK(

@@ -27,16 +27,14 @@ arrow::Result<double> ThresholdState::getColumnValueAtRow(
         column->type()->ToString()));
   }
 
-  std::shared_ptr<arrow::Scalar> value;
-  ARROW_ASSIGN_OR_RAISE(value, column->GetScalar(row_id));
+  ARROW_ASSIGN_OR_RAISE(auto value, column->GetScalar(row_id));
   ARROW_ASSIGN_OR_RAISE(value, value->CastTo(arrow::float64()));
-  return std::static_pointer_cast<arrow::DoubleScalar>(value)->value;
+  return dynamic_cast<arrow::DoubleScalar*>(value.get())->value;
 }
 
 arrow::Result<std::time_t> ThresholdState::getTimeAtRow(
     const arrow::RecordBatch& record_batch, int row_id) {
-  std::string time_column_name;
-  ARROW_ASSIGN_OR_RAISE(time_column_name,
+  ARROW_ASSIGN_OR_RAISE(auto time_column_name,
                         metadata::getTimeColumnNameMetadata(record_batch));
 
   std::shared_ptr<arrow::Scalar> time_scalar;
@@ -46,7 +44,7 @@ arrow::Result<std::time_t> ThresholdState::getTimeAtRow(
           record_batch.GetColumnByName(time_column_name)->GetScalar(row_id),
           arrow::TimeUnit::SECOND));
 
-  return std::static_pointer_cast<arrow::Int64Scalar>(time_scalar)->value;
+  return dynamic_cast<arrow::TimestampScalar*>(time_scalar.get())->value;
 }
 
 StateOK::StateOK(const std::shared_ptr<ThresholdStateMachine>& state_machine,

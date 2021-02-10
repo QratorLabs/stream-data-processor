@@ -21,10 +21,10 @@ arrow::Result<arrow::RecordBatchVector> CSVParser::parseRecordBatches(
   bool read_column_names = record_batches_schema_ == nullptr;
   read_options.autogenerate_column_names = !read_column_names;
 
-  std::shared_ptr<arrow::csv::StreamingReader> batch_reader;
-  ARROW_ASSIGN_OR_RAISE(batch_reader, arrow::csv::StreamingReader::Make(
-                                          pool, buffer_input, read_options,
-                                          parse_options, convert_options));
+  ARROW_ASSIGN_OR_RAISE(
+      auto batch_reader,
+      arrow::csv::StreamingReader::Make(pool, buffer_input, read_options,
+                                        parse_options, convert_options));
 
   arrow::RecordBatchVector record_batches;
   ARROW_RETURN_NOT_OK(batch_reader->ReadAll(&record_batches));

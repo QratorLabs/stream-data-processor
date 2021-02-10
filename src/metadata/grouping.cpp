@@ -25,9 +25,8 @@ arrow::Status fillGroupMap(std::map<std::string, std::string>* group_map,
       continue;
     }
 
-    std::shared_ptr<arrow::Scalar> column_value;
-    ARROW_ASSIGN_OR_RAISE(column_value, column->GetScalar(0));
-    group_map->operator[](grouping_column_name) = column_value->ToString();
+    ARROW_ASSIGN_OR_RAISE(auto column_value, column->GetScalar(0));
+    (*group_map)[grouping_column_name] = column_value->ToString();
   }
 
   return arrow::Status::OK();

@@ -83,7 +83,7 @@ class TransportUtils {
       zmq::socket_t& socket, zmq::recv_flags flags = zmq::recv_flags::none);
 
  private:
-  const static int NUMBER_PARSING_BASE{10};
+  static constexpr int NUMBER_PARSING_BASE{10};
 
  private:
   static std::string getSizeString(size_t size);

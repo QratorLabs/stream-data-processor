@@ -143,7 +143,7 @@ const BasePointsConverter::PointsToRecordBatchesConversionOptions
         "time", "name"};
 
 StatefulThresholdRequestHandler::StatefulThresholdRequestHandler(
-    const std::shared_ptr<IUDFAgent>& agent)
+    IUDFAgent* agent)
     : StreamRecordBatchRequestHandlerBase(agent, false) {
   setPointsConverter(std::make_shared<BasePointsConverter>(
       DEFAULT_TO_RECORD_BATCHES_OPTIONS));

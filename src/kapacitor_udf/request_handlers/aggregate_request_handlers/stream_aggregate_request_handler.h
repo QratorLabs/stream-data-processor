@@ -17,8 +17,7 @@ namespace kapacitor_udf {
 class StreamAggregateRequestHandler
     : public TimerRecordBatchRequestHandlerBase {
  public:
-  explicit StreamAggregateRequestHandler(
-      const std::shared_ptr<IUDFAgent>& agent, uvw::Loop* loop);
+  explicit StreamAggregateRequestHandler(IUDFAgent* agent, uvw::Loop* loop);
 
   [[nodiscard]] agent::Response info() const override;
   [[nodiscard]] agent::Response init(

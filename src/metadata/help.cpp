@@ -35,10 +35,9 @@ arrow::Status replaceField(std::shared_ptr<arrow::RecordBatch>* record_batch,
         "No such field or the choice is ambiguous: {}", field->name()));
   }
 
-  std::shared_ptr<arrow::Schema> new_schema;
-
-  ARROW_ASSIGN_OR_RAISE(new_schema, record_batch->get()->schema()->SetField(
-                                        field_index, field));
+  ARROW_ASSIGN_OR_RAISE(
+      auto new_schema,
+      record_batch->get()->schema()->SetField(field_index, field));
 
   *record_batch =
       arrow::RecordBatch::Make(new_schema, record_batch->get()->num_rows(),

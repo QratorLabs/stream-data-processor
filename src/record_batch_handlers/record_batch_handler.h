@@ -19,8 +19,7 @@ class RecordBatchHandler {
       const arrow::RecordBatchVector& record_batches) {
     arrow::RecordBatchVector result;
     for (auto& record_batch : record_batches) {
-      arrow::RecordBatchVector batch_result;
-      ARROW_ASSIGN_OR_RAISE(batch_result, handle(record_batch));
+      ARROW_ASSIGN_OR_RAISE(auto batch_result, handle(record_batch));
       convert_utils::append(std::move(batch_result), result);
     }
 

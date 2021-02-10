@@ -23,7 +23,7 @@ class BatchAggregateUDFAgentClientFactory : public sdp::UnixSocketClientFactory 
         std::make_shared<udf::SocketBasedUDFAgent>(pipe_handle, pipe_handle);
 
     std::shared_ptr<udf::RequestHandler> handler =
-        std::make_shared<udf::BatchAggregateRequestHandler>(agent);
+        std::make_shared<udf::BatchAggregateRequestHandler>(agent.get());
 
     agent->setHandler(handler);
     return std::make_shared<udf::AgentClient>(agent);

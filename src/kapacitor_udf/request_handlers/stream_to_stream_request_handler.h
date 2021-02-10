@@ -17,8 +17,8 @@ class StreamToStreamRequestHandler
     : public TimerRecordBatchRequestHandlerBase {
  public:
   StreamToStreamRequestHandler(
-      const std::shared_ptr<IUDFAgent>& agent, uvw::Loop* loop,
-      const std::chrono::duration<uint64_t>& batch_interval);
+      IUDFAgent* agent, uvw::Loop* loop,
+      std::chrono::duration<uint64_t> batch_interval);
 
   [[nodiscard]] agent::Response info() const override;
   [[nodiscard]] agent::Response init(

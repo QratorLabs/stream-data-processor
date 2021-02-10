@@ -133,8 +133,7 @@ arrow::Result<std::unordered_map<std::string, ColumnType>> getColumnTypes(
 
 arrow::Result<std::string> getMeasurement(
     const arrow::RecordBatch& record_batch) {
-  std::string measurement_column_name;
-  ARROW_ASSIGN_OR_RAISE(measurement_column_name,
+  ARROW_ASSIGN_OR_RAISE(auto measurement_column_name,
                         getMeasurementColumnNameMetadata(record_batch));
 
   auto measurement_column =
@@ -153,18 +152,16 @@ arrow::Result<std::string> getMeasurement(
   }
 
   std::string measurement_value;
-  std::shared_ptr<arrow::Scalar> measurement_scalar;
-  ARROW_ASSIGN_OR_RAISE(measurement_scalar, measurement_column->GetScalar(0));
+  ARROW_ASSIGN_OR_RAISE(auto measurement_scalar,
+                        measurement_column->GetScalar(0));
   return measurement_scalar->ToString();
 }
 
 arrow::Result<std::string> getMeasurementAndValidate(
     const arrow::RecordBatch& record_batch) {
-  std::string measurement_value;
-  ARROW_ASSIGN_OR_RAISE(measurement_value, getMeasurement(record_batch));
+  ARROW_ASSIGN_OR_RAISE(auto measurement_value, getMeasurement(record_batch));
 
-  std::string measurement_column_name;
-  ARROW_ASSIGN_OR_RAISE(measurement_column_name,
+  ARROW_ASSIGN_OR_RAISE(auto measurement_column_name,
                         getMeasurementColumnNameMetadata(record_batch));
 
   auto measurement_column =

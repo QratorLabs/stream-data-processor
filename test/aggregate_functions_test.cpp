@@ -24,7 +24,8 @@ TEST_CASE( "mean of two even integers is integer", "[MeanAggregateFunction]" ) {
 
   std::shared_ptr<arrow::Scalar> result;
   arrowAssignOrRaise(result, mean_function->aggregate(*record_batch, "field_name"));
-  REQUIRE( std::static_pointer_cast<arrow::DoubleScalar>(result)->value == 1 );
+  arrowAssignOrRaise(result, result->CastTo(arrow::float64()));
+  REQUIRE( dynamic_cast<arrow::DoubleScalar*>(result.get())->value == 1 );
 }
 
 TEST_CASE( "mean of even and odd integers is non integer", "[MeanAggregateFunction]" ) {
@@ -42,5 +43,6 @@ TEST_CASE( "mean of even and odd integers is non integer", "[MeanAggregateFuncti
 
   std::shared_ptr<arrow::Scalar> result;
   arrowAssignOrRaise(result, mean_function->aggregate(*record_batch, "field_name"));
-  REQUIRE( std::static_pointer_cast<arrow::DoubleScalar>(result)->value == 0.5 );
+  arrowAssignOrRaise(result, result->CastTo(arrow::float64()));
+  REQUIRE( dynamic_cast<arrow::DoubleScalar*>(result.get())->value == 0.5 );
 }

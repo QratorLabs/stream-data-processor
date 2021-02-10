@@ -54,8 +54,7 @@ WindowOptions parseWindowOptions(
 class DynamicWindowRequestHandler
     : public TimerRecordBatchRequestHandlerBase {
  public:
-  DynamicWindowRequestHandler(const std::shared_ptr<IUDFAgent>& agent,
-                              uvw::Loop* loop);
+  DynamicWindowRequestHandler(IUDFAgent* agent, uvw::Loop* loop);
 
   [[nodiscard]] agent::Response info() const override;
   [[nodiscard]] agent::Response init(

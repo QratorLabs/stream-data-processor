@@ -42,14 +42,16 @@ arrow::Status setTimeUnitMetadata(std::shared_ptr<arrow::Field>* field,
   auto arrow_type = field->get()->type();
   bool is_arrow_time_type = true;
   arrow::TimeUnit::type arrow_duration_time_unit;
-  if (arrow_type->id() == arrow::Type::DURATION) {
-    arrow_duration_time_unit =
-        std::static_pointer_cast<arrow::DurationType>(arrow_type)->unit();
-  } else if (arrow_type->id() == arrow::Type::TIMESTAMP) {
-    arrow_duration_time_unit =
-        std::static_pointer_cast<arrow::TimestampType>(arrow_type)->unit();
-  } else {
-    is_arrow_time_type = false;
+  switch (arrow_type->id()) {
+    case arrow::Type::DURATION:
+      arrow_duration_time_unit =
+          dynamic_cast<arrow::DurationType*>(arrow_type.get())->unit();
+      break;
+    case arrow::Type::TIMESTAMP:
+      arrow_duration_time_unit =
+          dynamic_cast<arrow::TimestampType*>(arrow_type.get())->unit();
+      break;
+    default: is_arrow_time_type = false;
   }
 
   if (is_arrow_time_type &&

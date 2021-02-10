@@ -9,8 +9,7 @@
 namespace stream_data_processor {
 namespace kapacitor_udf {
 
-BatchToStreamRequestHandler::BatchToStreamRequestHandler(
-    const std::shared_ptr<IUDFAgent>& agent)
+BatchToStreamRequestHandler::BatchToStreamRequestHandler(IUDFAgent* agent)
     : RecordBatchRequestHandler(agent, false) {}
 
 agent::Response BatchToStreamRequestHandler::info() const {
@@ -31,9 +30,9 @@ agent::Response BatchToStreamRequestHandler::snapshot() const {
   agent::Response response;
   std::stringstream snapshot_builder;
   if (in_batch_) {
-    snapshot_builder << '1';
+    snapshot_builder.put('1');
   } else {
-    snapshot_builder << '0';
+    snapshot_builder.put('0');
   }
 
   snapshot_builder << getPoints().SerializeAsString();

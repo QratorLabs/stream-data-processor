@@ -35,7 +35,6 @@ WORKDIR /stream-data-processor/build/
 RUN if [ "${CMAKE_BUILD_BINARY_TARGET}" = "test_main" ]; then cmake .. -DENABLE_TESTS=ON -DCLANG_TIDY_LINT=OFF -DBUILD_SHARED_LIBS=OFF ; else cmake .. -DENABLE_TESTS=OFF -DCLANG_TIDY_LINT=OFF -DBUILD_SHARED_LIBS=OFF ; fi \
     && make "${CMAKE_BUILD_BINARY_TARGET}" -j$(( $(nproc) / 2 + 1 ))
 
-
 FROM alpine:${ALPINE_IMAGE_VERSION} AS app
 COPY --from=builder "/stream-data-processor/build/bin/${CMAKE_BUILD_BINARY_TARGET}" ./app/
 RUN apk add --no-cache bash libstdc++ spdlog libprotobuf zeromq catch2 re2

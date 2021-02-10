@@ -17,9 +17,9 @@ class IWindowHandler : public RecordBatchHandler {
   virtual std::chrono::seconds getPeriodOption() const = 0;
   virtual std::chrono::seconds getEveryOption() const = 0;
 
-  virtual void setPeriodOption(const std::chrono::seconds& new_period_option,
+  virtual void setPeriodOption(std::chrono::seconds new_period_option,
                                std::time_t change_ts) = 0;
-  virtual void setEveryOption(const std::chrono::seconds& new_every_option,
+  virtual void setEveryOption(std::chrono::seconds new_every_option,
                               std::time_t change_ts) = 0;
 };
 
@@ -46,7 +46,7 @@ class WindowHandler : public IWindowHandler {
     return options_.every;
   }
 
-  void setPeriodOption(const std::chrono::seconds& new_period_option,
+  void setPeriodOption(std::chrono::seconds new_period_option,
                        std::time_t change_ts) override {
     if (next_emit_ != 0 && !emitted_first_ && options_.fill_period &&
         next_emit_ + new_period_option.count() >= options_.period.count() &&
@@ -59,7 +59,7 @@ class WindowHandler : public IWindowHandler {
     options_.period = new_period_option;
   }
 
-  void setEveryOption(const std::chrono::seconds& new_every_option,
+  void setEveryOption(std::chrono::seconds new_every_option,
                       std::time_t change_ts) override {
     if (next_emit_ != 0 && (emitted_first_ || !options_.fill_period) &&
         next_emit_ + new_every_option.count() >= options_.every.count() &&
@@ -106,7 +106,7 @@ class DynamicWindowHandler : public RecordBatchHandler {
  private:
   arrow::Result<int64_t> findNewWindowOptionIndex(
       const arrow::RecordBatch& record_batch,
-      const std::chrono::seconds& current_option_value,
+      std::chrono::seconds current_option_value,
       const std::string& option_column_name,
       time_utils::TimeUnit option_time_unit) const;
 

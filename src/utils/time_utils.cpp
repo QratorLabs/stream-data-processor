@@ -83,37 +83,46 @@ arrow::Result<int64_t> convertTime(int64_t time, TimeUnit from, TimeUnit to) {
     return time;
   }
 
-  if (from == NANO) {
-    std::chrono::nanoseconds from_duration{time};
-    return convertToTimeUnit(from_duration, to);
-  } else if (from == MICRO) {
-    std::chrono::microseconds from_duration{time};
-    return convertToTimeUnit(from_duration, to);
-  } else if (from == MILLI) {
-    std::chrono::milliseconds from_duration{time};
-    return convertToTimeUnit(from_duration, to);
-  } else if (from == SECOND) {
-    std::chrono::seconds from_duration{time};
-    return convertToTimeUnit(from_duration, to);
-  } else if (from == MINUTE) {
-    std::chrono::minutes from_duration{time};
-    return convertToTimeUnit(from_duration, to);
-  } else if (from == HOUR) {
-    std::chrono::hours from_duration{time};
-    return convertToTimeUnit(from_duration, to);
-  } else if (from == DAY) {
-    std::chrono::duration<int64_t, std::ratio<SECONDS_IN_DAY>> from_duration{
-        time};
+  switch (from) {
+    case NANO: {
+      std::chrono::nanoseconds from_duration{time};
+      return convertToTimeUnit(from_duration, to);
+    }
+    case MICRO: {
+      std::chrono::microseconds from_duration{time};
+      return convertToTimeUnit(from_duration, to);
+    }
+    case MILLI: {
+      std::chrono::milliseconds from_duration{time};
+      return convertToTimeUnit(from_duration, to);
+    }
+    case SECOND: {
+      std::chrono::seconds from_duration{time};
+      return convertToTimeUnit(from_duration, to);
+    }
+    case MINUTE: {
+      std::chrono::minutes from_duration{time};
+      return convertToTimeUnit(from_duration, to);
+    }
+    case HOUR: {
+      std::chrono::hours from_duration{time};
+      return convertToTimeUnit(from_duration, to);
+    }
+    case DAY: {
+      std::chrono::duration<int64_t, std::ratio<SECONDS_IN_DAY>>
+          from_duration{time};
 
-    return convertToTimeUnit(from_duration, to);
-  } else if (from == WEEK) {
-    std::chrono::duration<int64_t, std::ratio<SECONDS_IN_WEEK>> from_duration{
-        time};
+      return convertToTimeUnit(from_duration, to);
+    }
+    case WEEK: {
+      std::chrono::duration<int64_t, std::ratio<SECONDS_IN_WEEK>>
+          from_duration{time};
 
-    return convertToTimeUnit(from_duration, to);
-  } else {
-    return arrow::Status::Invalid(
-        fmt::format("Unexpected \"from\" TimeUnit type: {}", from));
+      return convertToTimeUnit(from_duration, to);
+    }
+    default:
+      return arrow::Status::Invalid(
+          fmt::format("Unexpected \"from\" TimeUnit type: {}", from));
   }
 }
 

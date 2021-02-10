@@ -11,8 +11,7 @@ const BasePointsConverter::PointsToRecordBatchesConversionOptions
     BatchAggregateRequestHandler::DEFAULT_TO_RECORD_BATCHES_OPTIONS{"time",
                                                                     "name"};
 
-BatchAggregateRequestHandler::BatchAggregateRequestHandler(
-    const std::shared_ptr<IUDFAgent>& agent)
+BatchAggregateRequestHandler::BatchAggregateRequestHandler(IUDFAgent* agent)
     : RecordBatchRequestHandler(agent, false) {
   setPointsConverter(std::make_shared<BasePointsConverter>(
       DEFAULT_TO_RECORD_BATCHES_OPTIONS));
@@ -51,9 +50,9 @@ agent::Response BatchAggregateRequestHandler::snapshot() const {
   agent::Response response;
   std::stringstream snapshot_builder;
   if (in_batch_) {
-    snapshot_builder << '1';
+    snapshot_builder.put('1');
   } else {
-    snapshot_builder << '0';
+    snapshot_builder.put('0');
   }
 
   snapshot_builder << getPoints().SerializeAsString();

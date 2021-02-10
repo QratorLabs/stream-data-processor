@@ -80,8 +80,7 @@ arrow::Status appendToTimestampBuilder(
         "ArrayBuilder");
   }
 
-  std::shared_ptr<arrow::Scalar> timestamp_scalar;
-  ARROW_ASSIGN_OR_RAISE(timestamp_scalar, value->CastTo(arrow_type));
+  ARROW_ASSIGN_OR_RAISE(auto timestamp_scalar, value->CastTo(arrow_type));
 
   ARROW_RETURN_NOT_OK(
       std::static_pointer_cast<arrow::TimestampBuilder>(*builder)->Append(

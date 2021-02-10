@@ -46,8 +46,7 @@ arrow::Result<agent::PointBatch> BasePointsConverter::convertToPoints(
     points.mutable_points()->Reserve(
         static_cast<int>(points_count + record_batch->num_rows()));
 
-    std::string time_column_name;
-    ARROW_ASSIGN_OR_RAISE(time_column_name,
+    ARROW_ASSIGN_OR_RAISE(auto time_column_name,
                           metadata::getTimeColumnNameMetadata(*record_batch));
 
     std::string measurement_column_name;
@@ -55,8 +54,7 @@ arrow::Result<agent::PointBatch> BasePointsConverter::convertToPoints(
         measurement_column_name,
         metadata::getMeasurementColumnNameMetadata(*record_batch));
 
-    std::unordered_map<std::string, metadata::ColumnType> column_types;
-    ARROW_ASSIGN_OR_RAISE(column_types,
+    ARROW_ASSIGN_OR_RAISE(auto column_types,
                           metadata::getColumnTypes(*record_batch));
 
     auto group = metadata::extractGroup(*record_batch);
@@ -69,8 +67,7 @@ arrow::Result<agent::PointBatch> BasePointsConverter::convertToPoints(
       auto column_type = column_types[column_name];
 
       for (int j = 0; j < column->length(); ++j) {
-        std::shared_ptr<arrow::Scalar> scalar_value;
-        ARROW_ASSIGN_OR_RAISE(scalar_value, column->GetScalar(j));
+        ARROW_ASSIGN_OR_RAISE(auto scalar_value, column->GetScalar(j));
 
         if (i == 0) {
           auto point = points.mutable_points()->Add();
@@ -85,49 +82,45 @@ arrow::Result<agent::PointBatch> BasePointsConverter::convertToPoints(
           }
         }
 
-        auto& point = points.mutable_points()->operator[](points_count + j);
+        auto& point = (*points.mutable_points())[points_count + j];
         bool skip_column = false;
         switch (column_type) {
           case metadata::MEASUREMENT:
             point.set_name(scalar_value->ToString());
             break;
           case metadata::TIME: {
-            std::shared_ptr<arrow::Scalar> timestamp_scalar;
-            ARROW_ASSIGN_OR_RAISE(timestamp_scalar,
+            ARROW_ASSIGN_OR_RAISE(auto timestamp_scalar,
                                   arrow_utils::castTimestampScalar(
                                       scalar_value, arrow::TimeUnit::NANO));
 
             point.set_time(
-                std::static_pointer_cast<arrow::Int64Scalar>(timestamp_scalar)
+                dynamic_cast<arrow::TimestampScalar*>(timestamp_scalar.get())
                     ->value);
           }
 
           break;
           case metadata::TAG:
-            point.mutable_tags()->operator[](column_name) =
-                scalar_value->ToString();
+            (*point.mutable_tags())[column_name] = scalar_value->ToString();
             break;
           case metadata::FIELD:
             switch (column->type_id()) {
               case arrow::Type::INT64:
-                point.mutable_fieldsint()->operator[](column_name) =
-                    std::static_pointer_cast<arrow::Int64Scalar>(scalar_value)
+                (*point.mutable_fieldsint())[column_name] =
+                    dynamic_cast<arrow::Int64Scalar*>(scalar_value.get())
                         ->value;
                 break;
               case arrow::Type::DOUBLE:
-                point.mutable_fieldsdouble()->operator[](column_name) =
-                    std::static_pointer_cast<arrow::DoubleScalar>(
-                        scalar_value)
+                (*point.mutable_fieldsdouble())[column_name] =
+                    dynamic_cast<arrow::DoubleScalar*>(scalar_value.get())
                         ->value;
                 break;
               case arrow::Type::STRING:
-                point.mutable_fieldsstring()->operator[](column_name) =
+                (*point.mutable_fieldsstring())[column_name] =
                     scalar_value->ToString();
                 break;
               case arrow::Type::BOOL:
-                point.mutable_fieldsbool()->operator[](column_name) =
-                    std::static_pointer_cast<arrow::BooleanScalar>(
-                        scalar_value)
+                (*point.mutable_fieldsbool())[column_name] =
+                    dynamic_cast<arrow::BooleanScalar*>(scalar_value.get())
                         ->value;
                 break;
               default:

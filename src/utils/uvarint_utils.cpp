@@ -3,12 +3,18 @@
 namespace stream_data_processor {
 namespace uvarint_utils {
 
-const uint32_t UVarIntCoder::UINT32_MASK = UINT32_MAX;
-const uint8_t UVarIntCoder::SHIFT_SIZE = 7;
-const uint8_t UVarIntCoder::VARINT_MORE_MASK = (1 << 7);
-const uint8_t UVarIntCoder::VARINT_MASK = VARINT_MORE_MASK - 1;
+namespace {
 
-std::ostream& UVarIntCoder::encode(std::ostream& writer, uint32_t value) {
+constexpr uint32_t MAX_SHIFT_FOR_UINT32{32};
+constexpr uint32_t PREVENT_MAX_SHIFT{28};
+constexpr uint32_t UINT32_MASK = UINT32_MAX;
+constexpr uint8_t SHIFT_SIZE = 7;
+constexpr uint8_t VARINT_MORE_MASK = (1 << 7);
+constexpr uint8_t VARINT_MASK = VARINT_MORE_MASK - 1;
+
+}  // namespace
+
+std::ostream& encode(std::ostream& writer, uint32_t value) {
   uint8_t bits = value & VARINT_MASK;
   value >>= SHIFT_SIZE;
   while (value > 0) {
@@ -20,7 +26,7 @@ std::ostream& UVarIntCoder::encode(std::ostream& writer, uint32_t value) {
   return writer << bits;
 }
 
-uint32_t UVarIntCoder::decode(std::istream& reader) {
+uint32_t decode(std::istream& reader) {
   uint32_t result = 0;
   uint8_t shift = 0;
   while (true) {
