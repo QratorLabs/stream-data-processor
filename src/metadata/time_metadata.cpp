@@ -45,11 +45,11 @@ arrow::Status setTimeUnitMetadata(std::shared_ptr<arrow::Field>* field,
   switch (arrow_type->id()) {
     case arrow::Type::DURATION:
       arrow_duration_time_unit =
-          dynamic_cast<arrow::DurationType*>(arrow_type.get())->unit();
+          std::static_pointer_cast<arrow::DurationType>(arrow_type)->unit();
       break;
     case arrow::Type::TIMESTAMP:
       arrow_duration_time_unit =
-          dynamic_cast<arrow::TimestampType*>(arrow_type.get())->unit();
+          std::static_pointer_cast<arrow::TimestampType>(arrow_type)->unit();
       break;
     default: is_arrow_time_type = false;
   }

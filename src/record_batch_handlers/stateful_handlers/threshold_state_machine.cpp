@@ -29,7 +29,7 @@ arrow::Result<double> ThresholdState::getColumnValueAtRow(
 
   ARROW_ASSIGN_OR_RAISE(auto value, column->GetScalar(row_id));
   ARROW_ASSIGN_OR_RAISE(value, value->CastTo(arrow::float64()));
-  return dynamic_cast<arrow::DoubleScalar*>(value.get())->value;
+  return std::static_pointer_cast<arrow::DoubleScalar>(value)->value;
 }
 
 arrow::Result<std::time_t> ThresholdState::getTimeAtRow(
@@ -44,7 +44,7 @@ arrow::Result<std::time_t> ThresholdState::getTimeAtRow(
           record_batch.GetColumnByName(time_column_name)->GetScalar(row_id),
           arrow::TimeUnit::SECOND));
 
-  return dynamic_cast<arrow::TimestampScalar*>(time_scalar.get())->value;
+  return std::static_pointer_cast<arrow::TimestampScalar>(time_scalar)->value;
 }
 
 StateOK::StateOK(const std::shared_ptr<ThresholdStateMachine>& state_machine,

@@ -181,7 +181,7 @@ arrow::Result<int64_t> RecordBatchRequestHandler::getTMax(
   ARROW_ASSIGN_OR_RAISE(tmax_scalar, arrow_utils::castTimestampScalar(
                                          tmax_scalar, arrow::TimeUnit::NANO));
 
-  return dynamic_cast<arrow::TimestampScalar*>(tmax_scalar.get())->value;
+  return std::static_pointer_cast<arrow::TimestampScalar>(tmax_scalar)->value;
 }
 
 StreamRecordBatchRequestHandlerBase::StreamRecordBatchRequestHandlerBase(

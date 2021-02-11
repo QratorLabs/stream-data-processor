@@ -40,12 +40,16 @@ BasePointsConverter::convertToRecordBatches(
 
 arrow::Result<agent::PointBatch> BasePointsConverter::convertToPoints(
     const arrow::RecordBatchVector& record_batches) const {
-  int points_count = 0;
   agent::PointBatch points;
-  for (auto& record_batch : record_batches) {
-    points.mutable_points()->Reserve(
-        static_cast<int>(points_count + record_batch->num_rows()));
 
+  int total_points_size = 0;
+  for (auto& record_batch : record_batches) {
+    total_points_size += record_batch->num_rows();
+  }
+
+  points.mutable_points()->Reserve(total_points_size);
+  int points_count = 0;
+  for (auto& record_batch : record_batches) {
     ARROW_ASSIGN_OR_RAISE(auto time_column_name,
                           metadata::getTimeColumnNameMetadata(*record_batch));
 
@@ -93,9 +97,9 @@ arrow::Result<agent::PointBatch> BasePointsConverter::convertToPoints(
                                   arrow_utils::castTimestampScalar(
                                       scalar_value, arrow::TimeUnit::NANO));
 
-            point.set_time(
-                dynamic_cast<arrow::TimestampScalar*>(timestamp_scalar.get())
-                    ->value);
+            point.set_time(std::static_pointer_cast<arrow::TimestampScalar>(
+                               timestamp_scalar)
+                               ->value);
           }
 
           break;
@@ -106,12 +110,13 @@ arrow::Result<agent::PointBatch> BasePointsConverter::convertToPoints(
             switch (column->type_id()) {
               case arrow::Type::INT64:
                 (*point.mutable_fieldsint())[column_name] =
-                    dynamic_cast<arrow::Int64Scalar*>(scalar_value.get())
+                    std::static_pointer_cast<arrow::Int64Scalar>(scalar_value)
                         ->value;
                 break;
               case arrow::Type::DOUBLE:
                 (*point.mutable_fieldsdouble())[column_name] =
-                    dynamic_cast<arrow::DoubleScalar*>(scalar_value.get())
+                    std::static_pointer_cast<arrow::DoubleScalar>(
+                        scalar_value)
                         ->value;
                 break;
               case arrow::Type::STRING:
@@ -120,7 +125,8 @@ arrow::Result<agent::PointBatch> BasePointsConverter::convertToPoints(
                 break;
               case arrow::Type::BOOL:
                 (*point.mutable_fieldsbool())[column_name] =
-                    dynamic_cast<arrow::BooleanScalar*>(scalar_value.get())
+                    std::static_pointer_cast<arrow::BooleanScalar>(
+                        scalar_value)
                         ->value;
                 break;
               default:

@@ -21,7 +21,8 @@ arrow::Result<arrow::RecordBatchVector> WindowHandler::handle(
         auto min_ts, arrow_utils::castTimestampScalar(
                          time_column->GetScalar(0), arrow::TimeUnit::SECOND));
 
-    next_emit_ = dynamic_cast<arrow::TimestampScalar*>(min_ts.get())->value;
+    next_emit_ =
+        std::static_pointer_cast<arrow::TimestampScalar>(min_ts)->value;
     if (options_.fill_period) {
       next_emit_ += options_.period.count();
     } else {
@@ -37,7 +38,7 @@ arrow::Result<arrow::RecordBatchVector> WindowHandler::handle(
           arrow::TimeUnit::SECOND));
 
   std::time_t max_ts(
-      dynamic_cast<arrow::TimestampScalar*>(max_ts_scalar.get())->value);
+      std::static_pointer_cast<arrow::TimestampScalar>(max_ts_scalar)->value);
 
   arrow::RecordBatchVector result;
   while (max_ts >= next_emit_) {
@@ -86,7 +87,7 @@ arrow::Result<size_t> WindowHandler::tsLowerBound(
             arrow::TimeUnit::SECOND));
 
     std::time_t ts(
-        dynamic_cast<arrow::TimestampScalar*>(ts_scalar.get())->value);
+        std::static_pointer_cast<arrow::TimestampScalar>(ts_scalar)->value);
 
     if (pred(ts)) {
       right_bound = middle;
@@ -102,7 +103,7 @@ arrow::Result<size_t> WindowHandler::tsLowerBound(
                             arrow::TimeUnit::SECOND));
 
   std::time_t ts(
-      dynamic_cast<arrow::TimestampScalar*>(ts_scalar.get())->value);
+      std::static_pointer_cast<arrow::TimestampScalar>(ts_scalar)->value);
 
   if (pred(ts)) {
     return left_bound;
@@ -250,9 +251,9 @@ arrow::Result<arrow::RecordBatchVector> DynamicWindowHandler::handle(
         arrow_utils::castTimestampScalar(
             sorted_by_time->GetColumnByName(time_column_name)->GetScalar(0),
             arrow::TimeUnit::SECOND));
-    new_options_ts =
-        dynamic_cast<arrow::TimestampScalar*>(new_options_ts_scalar.get())
-            ->value;
+    new_options_ts = std::static_pointer_cast<arrow::TimestampScalar>(
+                         new_options_ts_scalar)
+                         ->value;
 
     if (is_new_period_possible && new_options_index == new_period_index) {
       ARROW_ASSIGN_OR_RAISE(
@@ -313,23 +314,26 @@ arrow::Result<std::chrono::seconds> DynamicWindowHandler::getDurationOption(
   switch (column->type_id()) {
     case arrow::Type::DURATION:
       duration =
-          dynamic_cast<arrow::DurationScalar*>(duration_scalar.get())->value;
+          std::static_pointer_cast<arrow::DurationScalar>(duration_scalar)
+              ->value;
       break;
     case arrow::Type::INT64:
-      duration =
-          dynamic_cast<arrow::Int64Scalar*>(duration_scalar.get())->value;
+      duration = std::static_pointer_cast<arrow::Int64Scalar>(duration_scalar)
+                     ->value;
       break;
     case arrow::Type::INT32:
-      duration =
-          dynamic_cast<arrow::Int32Scalar*>(duration_scalar.get())->value;
+      duration = std::static_pointer_cast<arrow::Int32Scalar>(duration_scalar)
+                     ->value;
       break;
     case arrow::Type::UINT64:
       duration =
-          dynamic_cast<arrow::UInt64Scalar*>(duration_scalar.get())->value;
+          std::static_pointer_cast<arrow::UInt64Scalar>(duration_scalar)
+              ->value;
       break;
     case arrow::Type::UINT32:
       duration =
-          dynamic_cast<arrow::UInt32Scalar*>(duration_scalar.get())->value;
+          std::static_pointer_cast<arrow::UInt32Scalar>(duration_scalar)
+              ->value;
       break;
     default:
       return arrow::Status::NotImplemented(
@@ -350,10 +354,10 @@ arrow::Result<time_utils::TimeUnit> DynamicWindowHandler::getColumnTimeUnit(
   switch (arrow_type->id()) {
     case arrow::Type::DURATION:
       return time_utils::mapArrowTimeUnit(
-          dynamic_cast<arrow::DurationType*>(arrow_type.get())->unit());
+          std::static_pointer_cast<arrow::DurationType>(arrow_type)->unit());
     case arrow::Type::TIMESTAMP:
       return time_utils::mapArrowTimeUnit(
-          dynamic_cast<arrow::TimestampType*>(arrow_type.get())->unit());
+          std::static_pointer_cast<arrow::TimestampType>(arrow_type)->unit());
     default: return metadata::getTimeUnitMetadata(record_batch, column_name);
   }
 }
