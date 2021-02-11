@@ -10,8 +10,7 @@ namespace stream_data_processor {
 arrow::Result<std::shared_ptr<arrow::Scalar>>
 FirstAggregateFunction::aggregate(const arrow::RecordBatch& data,
                                   const std::string& column_name) const {
-  std::string time_column_name;
-  ARROW_ASSIGN_OR_RAISE(time_column_name,
+  ARROW_ASSIGN_OR_RAISE(auto time_column_name,
                         metadata::getTimeColumnNameMetadata(data));
 
   auto ts_column = data.GetColumnByName(time_column_name);
@@ -20,8 +19,8 @@ FirstAggregateFunction::aggregate(const arrow::RecordBatch& data,
         "RecordBatch has not time column with name {}", time_column_name));
   }
 
-  std::pair<size_t, size_t> arg_min_max;
-  ARROW_ASSIGN_OR_RAISE(arg_min_max, compute_utils::argMinMax(ts_column));
+  ARROW_ASSIGN_OR_RAISE(auto arg_min_max,
+                        compute_utils::argMinMax(ts_column));
 
   return data.GetColumnByName(column_name)->GetScalar(arg_min_max.first);
 }
@@ -29,8 +28,7 @@ FirstAggregateFunction::aggregate(const arrow::RecordBatch& data,
 arrow::Result<std::shared_ptr<arrow::Scalar>>
 LastAggregateFunction::aggregate(const arrow::RecordBatch& data,
                                  const std::string& column_name) const {
-  std::string time_column_name;
-  ARROW_ASSIGN_OR_RAISE(time_column_name,
+  ARROW_ASSIGN_OR_RAISE(auto time_column_name,
                         metadata::getTimeColumnNameMetadata(data));
 
   auto ts_column = data.GetColumnByName(time_column_name);
@@ -39,8 +37,8 @@ LastAggregateFunction::aggregate(const arrow::RecordBatch& data,
         "RecordBatch has not time column with name {}", time_column_name));
   }
 
-  std::pair<size_t, size_t> arg_min_max;
-  ARROW_ASSIGN_OR_RAISE(arg_min_max, compute_utils::argMinMax(ts_column));
+  ARROW_ASSIGN_OR_RAISE(auto arg_min_max,
+                        compute_utils::argMinMax(ts_column));
 
   return data.GetColumnByName(column_name)->GetScalar(arg_min_max.second);
 }

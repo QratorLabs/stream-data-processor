@@ -1,3 +1,4 @@
+#include <iterator>
 #include <sstream>
 
 #include "string_utils.h"
@@ -35,6 +36,23 @@ std::string concatenateStrings(const std::vector<std::string>& parts,
   }
 
   builder << parts.back();
+  return builder.str();
+}
+
+std::string concatenateStrings(const std::unordered_set<std::string>& parts,
+                               const std::string& delimiter) {
+  if (parts.empty()) {
+    return "";
+  }
+
+  std::stringstream builder;
+  for (auto iter = parts.begin(); iter != parts.end(); ++iter) {
+    builder << *iter;
+    if (std::next(iter) != parts.end()) {
+      builder << delimiter;
+    }
+  }
+
   return builder.str();
 }
 

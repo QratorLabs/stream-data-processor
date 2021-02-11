@@ -1,3 +1,5 @@
+#include <sstream>
+
 #include <spdlog/spdlog.h>
 
 #include "batch_to_stream_request_handler.h"
@@ -8,11 +10,8 @@ namespace stream_data_processor {
 namespace kapacitor_udf {
 
 BatchToStreamRequestHandler::BatchToStreamRequestHandler(
-    const std::shared_ptr<IUDFAgent>& agent,
-    const PointsConverter::PointsToRecordBatchesConversionOptions&
-        to_record_batches_options,
-    const std::shared_ptr<RecordBatchHandler>& handler)
-    : RecordBatchRequestHandler(agent, to_record_batches_options, handler) {}
+    const IUDFAgent* agent)
+    : RecordBatchRequestHandler(agent, false) {}
 
 agent::Response BatchToStreamRequestHandler::info() const {
   agent::Response response;
@@ -30,8 +29,15 @@ agent::Response BatchToStreamRequestHandler::init(
 
 agent::Response BatchToStreamRequestHandler::snapshot() const {
   agent::Response response;
-  response.mutable_snapshot()->set_snapshot(
-      (in_batch_ ? "1" : "0") + batch_points_.SerializeAsString());
+  std::stringstream snapshot_builder;
+  if (in_batch_) {
+    snapshot_builder.put('1');
+  } else {
+    snapshot_builder.put('0');
+  }
+
+  snapshot_builder << getPoints().SerializeAsString();
+  response.mutable_snapshot()->set_snapshot(snapshot_builder.str());
   return response;
 }
 
@@ -53,8 +59,7 @@ agent::Response BatchToStreamRequestHandler::restore(
   }
 
   in_batch_ = restore_request.snapshot()[0] == '1';
-  batch_points_.mutable_points()->Clear();
-  batch_points_.ParseFromString(restore_request.snapshot().substr(1));
+  restorePointsFromSnapshotData(restore_request.snapshot().substr(1));
   response.mutable_restore()->set_success(true);
   return response;
 }
@@ -65,12 +70,11 @@ void BatchToStreamRequestHandler::beginBatch(const agent::BeginBatch& batch) {
 
 void BatchToStreamRequestHandler::point(const agent::Point& point) {
   if (in_batch_) {
-    auto new_point = batch_points_.mutable_points()->Add();
-    new_point->CopyFrom(point);
+    addPoint(point);
   } else {
     agent::Response response;
     response.mutable_error()->set_error("Can't add point: not in batch");
-    agent_.lock()->writeResponse(response);
+    getAgent()->writeResponse(response);
   }
 }
 

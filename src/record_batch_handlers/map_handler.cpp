@@ -23,8 +23,7 @@ arrow::Result<arrow::RecordBatchVector> MapHandler::handle(
   ARROW_RETURN_NOT_OK(gandiva::Projector::Make(result_record_batch->schema(),
                                                expressions_, &projector));
 
-  std::shared_ptr<arrow::Schema> result_schema;
-  ARROW_ASSIGN_OR_RAISE(result_schema,
+  ARROW_ASSIGN_OR_RAISE(auto result_schema,
                         createResultSchema(result_record_batch->schema()));
 
   ARROW_RETURN_NOT_OK(eval(&result_record_batch, projector, result_schema));

@@ -25,4 +25,8 @@ void Node::addConsumer(std::shared_ptr<Consumer> consumer) {
 
 const std::string& Node::getName() const { return name_; }
 
+void Node::stopConsumers() {
+  for (auto& consumer : consumers_) { consumer->stop(); }
+}
+
 }  // namespace stream_data_processor

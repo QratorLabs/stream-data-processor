@@ -1,5 +1,6 @@
 #include <chrono>
 #include <csignal>
+#include <exception>
 #include <iostream>
 #include <memory>
 
@@ -22,7 +23,7 @@ class BatchAggregateUDFAgentClientFactory : public sdp::UnixSocketClientFactory 
         std::make_shared<udf::SocketBasedUDFAgent>(pipe_handle, pipe_handle);
 
     std::shared_ptr<udf::RequestHandler> handler =
-        std::make_shared<udf::BatchAggregateRequestHandler>(agent);
+        std::make_shared<udf::BatchAggregateRequestHandler>(agent.get());
 
     agent->setHandler(handler);
     return std::make_shared<udf::AgentClient>(agent);
@@ -31,29 +32,37 @@ class BatchAggregateUDFAgentClientFactory : public sdp::UnixSocketClientFactory 
 
 class StreamAggregateUDFAgentClientFactory : public sdp::UnixSocketClientFactory {
  public:
+  explicit StreamAggregateUDFAgentClientFactory(uvw::Loop* loop)
+      : loop_(loop) {
+
+  }
+
   std::shared_ptr<sdp::UnixSocketClient> createClient(
       const std::shared_ptr<uvw::PipeHandle>& pipe_handle) override {
     auto agent =
         std::make_shared<udf::SocketBasedUDFAgent>(pipe_handle, pipe_handle);
 
     std::shared_ptr<udf::RequestHandler> handler =
-        std::make_shared<udf::StreamAggregateRequestHandler>(agent);
+        std::make_shared<udf::StreamAggregateRequestHandler>(agent, loop_);
 
     agent->setHandler(handler);
     return std::make_shared<udf::AgentClient>(agent);
   }
+
+ private:
+  uvw::Loop* loop_;
 };
 
 int main(int argc, char** argv) {
   cxxopts::Options options("AggregateUDF", "Aggregates data from kapacitor");
   options.add_options()
-  ("b,batch", "Unix socket path for batch data",
-      cxxopts::value<std::string>())
-  ("s,stream", "Unix socket path for stream data",
-      cxxopts::value<std::string>())
-  ("v,verbose", "Enable detailed logging")
-  ("h,help", "Print this message")
-  ;
+      ("b,batch", "Unix socket path for batch data",
+       cxxopts::value<std::string>())
+      ("s,stream", "Unix socket path for stream data",
+       cxxopts::value<std::string>())
+      ("v,verbose", "Enable detailed logging")
+      ("h,help", "Print this message")
+      ;
 
   std::string batch_socket_path, stream_socket_path;
   try {
@@ -69,7 +78,7 @@ int main(int argc, char** argv) {
 
     batch_socket_path = arguments_parse_result["batch"].as<std::string>();
     stream_socket_path = arguments_parse_result["stream"].as<std::string>();
-  } catch (const cxxopts::OptionException& exc) {
+  } catch (const std::exception& exc) {
     std::cerr << exc.what() << std::endl;
     std::cout << options.help() << std::endl;
     return 1;
@@ -84,14 +93,14 @@ int main(int argc, char** argv) {
       batch_socket_path, loop.get());
 
   sdp::UnixSocketServer stream_server(
-      std::make_shared<StreamAggregateUDFAgentClientFactory>(),
+      std::make_shared<StreamAggregateUDFAgentClientFactory>(loop.get()),
       stream_socket_path, loop.get());
 
   auto signal_handle = loop->resource<uvw::SignalHandle>();
   signal_handle->on<uvw::SignalEvent>(
       [&](const uvw::SignalEvent& event, uvw::SignalHandle& handle) {
-        if (event.signum == SIGINT) {
-          spdlog::info("Caught SIGINT signal. Terminating...");
+        if (event.signum == SIGINT || event.signum == SIGTERM) {
+          spdlog::info("Caught stop signal. Terminating...");
           batch_server.stop();
           stream_server.stop();
           signal_handle->stop();
@@ -100,10 +109,18 @@ int main(int argc, char** argv) {
       });
 
   signal_handle->start(SIGINT);
+  signal_handle->start(SIGTERM);
   batch_server.start();
   stream_server.start();
 
-  loop->run();
+  try {
+    loop->run();
+  } catch (const std::exception& exc) {
+    batch_server.stop();
+    stream_server.stop();
+    std::cerr << exc.what() << std::endl;
+    return 1;
+  }
 
   return 0;
 }

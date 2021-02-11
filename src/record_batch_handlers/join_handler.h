@@ -26,7 +26,7 @@ class JoinHandler : public RecordBatchHandler {
  private:
   struct JoinKey {
     std::string key_string;
-    int64_t time;
+    int64_t time{0};
   };
 
   struct JoinValue {

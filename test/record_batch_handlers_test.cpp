@@ -1,20 +1,19 @@
 #include <chrono>
 #include <ctime>
-#include <deque>
 #include <memory>
 #include <vector>
 
 #include <arrow/api.h>
 #include <gandiva/tree_expr_builder.h>
-
+#include <gmock/gmock.h>
 #include <catch2/catch.hpp>
 
 #include "metadata/column_typing.h"
 #include "metadata/grouping.h"
+#include "metadata/time_metadata.h"
 #include "record_batch_handlers/record_batch_handlers.h"
 #include "record_batch_handlers/stateful_handlers/threshold_state_machine.h"
 #include "test_help.h"
-#include "utils/serialize_utils.h"
 #include "record_batch_builder.h"
 
 using namespace stream_data_processor;
@@ -87,10 +86,10 @@ TEST_CASE ( "split one record batch to separate ones by grouping on column with 
   auto record_batch = arrow::RecordBatch::Make(schema, 2, {array});
 
   std::vector<std::string> grouping_columns{"field_name"};
-  std::shared_ptr<RecordBatchHandler> filter_handler = std::make_shared<GroupHandler>(std::move(grouping_columns));
+  std::shared_ptr<RecordBatchHandler> group_handler = std::make_shared<GroupHandler>(std::move(grouping_columns));
 
   arrow::RecordBatchVector result;
-  arrowAssignOrRaise(result, filter_handler->handle({record_batch}));
+  arrowAssignOrRaise(result, group_handler->handle({record_batch}));
 
   REQUIRE( result.size() == 2 );
   checkSize(result[0], 1, 1);
@@ -586,7 +585,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
 
       arrowAssertNotOk(builder.buildColumn<int64_t>(options.watch_column_name,
                                                     {value}));
-      arrowAssertNotOk(builder.getResult(&record_batch));
+      arrowAssignOrRaise(record_batch, builder.getResult());
 
       WHEN("ThresholdStateMachine is applied to the RecordBatch") {
         arrowAssignOrRaise(result, state_machine->handle(record_batch));
@@ -623,7 +622,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
 
       arrowAssertNotOk(builder.buildColumn<int64_t>(options.watch_column_name,
                                                     {value}));
-      arrowAssertNotOk(builder.getResult(&record_batch));
+      arrowAssignOrRaise(record_batch, builder.getResult());
 
       WHEN("ThresholdStateMachine is applied to the RecordBatch") {
         arrowAssignOrRaise(result, state_machine->handle(record_batch));
@@ -658,7 +657,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
 
             arrowAssertNotOk(builder.buildColumn<int64_t>(options.watch_column_name,
                                                           {value}));
-            arrowAssertNotOk(builder.getResult(&record_batch));
+            arrowAssignOrRaise(record_batch, builder.getResult());
 
             result.clear();
             arrowAssignOrRaise(result, state_machine->handle(record_batch));
@@ -698,7 +697,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
 
             arrowAssertNotOk(builder.buildColumn<int64_t>(options.watch_column_name,
                                                           {value}));
-            arrowAssertNotOk(builder.getResult(&record_batch));
+            arrowAssignOrRaise(record_batch, builder.getResult());
 
             result.clear();
             arrowAssignOrRaise(result, state_machine->handle(record_batch));
@@ -740,7 +739,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
 
       arrowAssertNotOk(builder.buildColumn<double>(options.watch_column_name,
                                                     {value}));
-      arrowAssertNotOk(builder.getResult(&record_batch));
+      arrowAssignOrRaise(record_batch, builder.getResult());
 
       WHEN("ThresholdStateMachine is applied to the RecordBatch") {
         arrowAssignOrRaise(result, state_machine->handle(record_batch));
@@ -778,7 +777,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
 
             arrowAssertNotOk(builder.buildColumn<double>(options.watch_column_name,
                                                          {value}));
-            arrowAssertNotOk(builder.getResult(&record_batch));
+            arrowAssignOrRaise(record_batch, builder.getResult());
 
             result.clear();
             arrowAssignOrRaise(result, state_machine->handle(record_batch));
@@ -818,7 +817,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
 
             arrowAssertNotOk(builder.buildColumn<double>(options.watch_column_name,
                                                           {value}));
-            arrowAssertNotOk(builder.getResult(&record_batch));
+            arrowAssignOrRaise(record_batch, builder.getResult());
 
             result.clear();
             arrowAssignOrRaise(result, state_machine->handle(record_batch));
@@ -878,7 +877,7 @@ TEST_CASE( "threshold not increasing over max", "[ThresholdStateMachine]" ) {
       options.watch_column_name, {40, 50}));
 
   std::shared_ptr<arrow::RecordBatch> record_batch;
-  arrowAssertNotOk(builder.getResult(&record_batch));
+  arrowAssignOrRaise(record_batch, builder.getResult());
 
   arrow::RecordBatchVector result;
   arrowAssignOrRaise(result, state_machine->handle(record_batch));
@@ -938,7 +937,7 @@ TEST_CASE( "threshold not decreasing over min", "[ThresholdStateMachine]" ) {
       options.watch_column_name, {5, 3}));
 
   std::shared_ptr<arrow::RecordBatch> record_batch;
-  arrowAssertNotOk(builder.getResult(&record_batch));
+  arrowAssignOrRaise(record_batch, builder.getResult());
 
   arrow::RecordBatchVector result;
   arrowAssignOrRaise(result, state_machine->handle(record_batch));
@@ -969,4 +968,867 @@ TEST_CASE( "threshold not decreasing over min", "[ThresholdStateMachine]" ) {
       result[0],
       options.threshold_column_name,
       1);
+}
+
+SCENARIO( "WindowHandler behaviour with true fill_period flag", "[WindowHandler]" ) {
+  GIVEN( "WindowHandler with fill_period flag set to true" ) {
+    WindowHandler::WindowOptions options{5s, 3s, true};
+
+    std::unique_ptr<RecordBatchHandler> handler =
+        std::make_unique<WindowHandler>(std::move(options));
+
+    RecordBatchBuilder builder;
+    std::string time_column_name{"time"};
+    std::shared_ptr<arrow::RecordBatch> record_batch;
+    arrow::RecordBatchVector result;
+    WHEN( "pass batch with part of window" ) {
+      builder.reset();
+      arrowAssertNotOk(builder.setRowNumber(2));
+
+      arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+          time_column_name, {0, 4}, arrow::TimeUnit::SECOND));
+
+      arrowAssignOrRaise(record_batch, builder.getResult());
+      arrowAssignOrRaise(result, handler->handle(record_batch));
+
+      THEN( "handler returns empty result" ) {
+        REQUIRE(result.size() == 0);
+
+        AND_WHEN( "pass batch with bigger timestamps" ) {
+          builder.reset();
+          arrowAssertNotOk(builder.setRowNumber(2));
+
+          arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+              time_column_name, {5, 6}, arrow::TimeUnit::SECOND));
+
+          arrowAssignOrRaise(record_batch, builder.getResult());
+          arrowAssignOrRaise(result, handler->handle(record_batch));
+
+          THEN( "window is emitted" ) {
+            REQUIRE(result.size() == 1);
+            checkSize(result[0], 2, 1);
+            checkColumnsArePresent(result[0], {time_column_name});
+
+            checkValue<int64_t, arrow::Int64Scalar>(
+                0, result[0], time_column_name, 0);
+            checkValue<int64_t, arrow::Int64Scalar>(
+                4, result[0], time_column_name, 1);
+          }
+        }
+      }
+    }
+
+    WHEN( "record batch contains several windows" ) {
+      builder.reset();
+      arrowAssertNotOk(builder.setRowNumber(4));
+
+      arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+          time_column_name, {0, 4, 6, 8}, arrow::TimeUnit::SECOND));
+
+      arrowAssignOrRaise(record_batch, builder.getResult());
+      arrowAssignOrRaise(result, handler->handle(record_batch));
+
+      THEN( "all of them are emitted" ) {
+        REQUIRE( result.size() == 2 );
+
+        checkSize(result[0], 2, 1);
+        checkColumnsArePresent(result[0], {time_column_name});
+        checkValue<int64_t, arrow::Int64Scalar>(
+            0, result[0], time_column_name, 0);
+        checkValue<int64_t, arrow::Int64Scalar>(
+            4, result[0], time_column_name, 1);
+
+        checkSize(result[1], 2, 1);
+        checkColumnsArePresent(result[1], {time_column_name});
+        checkValue<int64_t, arrow::Int64Scalar>(
+            4, result[1], time_column_name, 0);
+        checkValue<int64_t, arrow::Int64Scalar>(
+            6, result[1], time_column_name, 1);
+      }
+    }
+  }
+}
+
+SCENARIO( "WindowHandler behaviour with false fill_period flag", "[WindowHandler]" ) {
+  GIVEN( "WindowHandler with fill_period flag set to false" ) {
+    WindowHandler::WindowOptions options{5s, 3s, false};
+
+    std::unique_ptr<RecordBatchHandler> handler =
+        std::make_unique<WindowHandler>(std::move(options));
+
+    RecordBatchBuilder builder;
+    std::string time_column_name{"time"};
+    std::shared_ptr<arrow::RecordBatch> record_batch;
+    arrow::RecordBatchVector result;
+    WHEN( "pass batch with part of window" ) {
+      builder.reset();
+      arrowAssertNotOk(builder.setRowNumber(2));
+
+      arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+          time_column_name, {0, 4}, arrow::TimeUnit::SECOND));
+
+      arrowAssignOrRaise(record_batch, builder.getResult());
+      arrowAssignOrRaise(result, handler->handle(record_batch));
+
+      THEN( "handler emits truncated window" ) {
+        REQUIRE(result.size() == 1);
+
+        checkSize(result[0], 1, 1);
+        checkColumnsArePresent(result[0], {time_column_name});
+
+        checkValue<int64_t, arrow::Int64Scalar>(
+            0, result[0], time_column_name, 0);
+
+        AND_WHEN( "pass batch with bigger timestamps" ) {
+          builder.reset();
+          arrowAssertNotOk(builder.setRowNumber(2));
+
+          arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+              time_column_name, {5, 6}, arrow::TimeUnit::SECOND));
+
+          arrowAssignOrRaise(record_batch, builder.getResult());
+          arrowAssignOrRaise(result, handler->handle(record_batch));
+
+          THEN( "another window is emitted" ) {
+            REQUIRE(result.size() == 1);
+            checkSize(result[0], 2, 1);
+            checkColumnsArePresent(result[0], {time_column_name});
+
+            checkValue<int64_t, arrow::Int64Scalar>(
+                4, result[0], time_column_name, 0);
+            checkValue<int64_t, arrow::Int64Scalar>(
+                5, result[0], time_column_name, 1);
+          }
+        }
+      }
+    }
+  }
+}
+
+SCENARIO( "GroupHandler preserves old group metadata", "[GroupHandler]") {
+  GIVEN( "RecordBatch with two columns" ) {
+    RecordBatchBuilder builder;
+    builder.reset();
+    arrowAssertNotOk(builder.setRowNumber(1));
+
+    std::string column_name_1{"column_1"};
+    std::string column_name_2{"column_2"};
+    arrowAssertNotOk(builder.buildColumn<int64_t>(column_name_1, {1}));
+    arrowAssertNotOk(builder.buildColumn<int64_t>(column_name_2, {2}));
+    std::shared_ptr<arrow::RecordBatch> record_batch;
+    arrowAssignOrRaise(record_batch, builder.getResult());
+
+    WHEN ( "groups by first column" ) {
+      std::vector<std::string> grouping_columns_1{column_name_1};
+      std::shared_ptr<RecordBatchHandler> group_handler =
+          std::make_shared<GroupHandler>(std::move(grouping_columns_1));
+
+      arrow::RecordBatchVector result;
+      arrowAssignOrRaise(result, group_handler->handle(record_batch));
+
+      THEN ( "group metadata is set" ) {
+        REQUIRE(result.size() == 1);
+        checkSize(result[0], 1, 2);
+        checkColumnsArePresent(result[0], {column_name_1, column_name_2});
+        checkValue<int64_t, arrow::Int64Scalar>(1, result[0],
+                                                column_name_1, 0);
+        checkValue<int64_t, arrow::Int64Scalar>(2, result[0],
+                                                column_name_2, 0);
+
+        auto group_column_names =
+            metadata::extractGroupingColumnsNames(*result[0]);
+        REQUIRE(group_column_names.size() == 1);
+        REQUIRE(group_column_names[0] == column_name_1);
+
+        AND_WHEN( "group by second column" ) {
+          std::vector<std::string> grouping_columns_2{column_name_2};
+          group_handler =
+              std::make_shared<GroupHandler>(std::move(grouping_columns_2));
+
+          arrowAssignOrRaise(result, group_handler->handle(result[0]));
+
+          THEN ( "group metadata from first grouping is preserved and the metadata from second grouping is added" ) {
+            REQUIRE(result.size() == 1);
+            checkSize(result[0], 1, 2);
+            checkColumnsArePresent(result[0], {column_name_1, column_name_2});
+            checkValue<int64_t, arrow::Int64Scalar>(1, result[0],
+                                                    column_name_1, 0);
+            checkValue<int64_t, arrow::Int64Scalar>(2, result[0],
+                                                    column_name_2, 0);
+
+            group_column_names =
+                metadata::extractGroupingColumnsNames(*result[0]);
+            REQUIRE(group_column_names.size() == 2);
+            if (group_column_names[0] != column_name_1) {
+              std::swap(group_column_names[0], group_column_names[1]);
+            }
+
+            REQUIRE(group_column_names[0] == column_name_1);
+            REQUIRE(group_column_names[1] == column_name_2);
+          }
+        }
+      }
+    }
+  }
+}
+
+TEST_CASE( "aggregating grouped by time column", "[AggregateHandler]" ) {
+  RecordBatchBuilder builder;
+  builder.reset();
+  arrowAssertNotOk(builder.setRowNumber(1));
+
+  std::string time_column_name{"time"};
+  std::vector<std::time_t> time_values{100};
+  arrowAssertNotOk(builder.buildTimeColumn(time_column_name, time_values, arrow::TimeUnit::SECOND));
+
+  std::shared_ptr<arrow::RecordBatch> record_batch;
+  arrowAssignOrRaise(record_batch, builder.getResult());
+  arrowAssertNotOk(metadata::fillGroupMetadata(&record_batch, {time_column_name}));
+
+  AggregateHandler::AggregateOptions options;
+  std::unique_ptr<RecordBatchHandler> handler = std::make_unique<AggregateHandler>(options);
+
+  arrow::RecordBatchVector result;
+  arrowAssignOrRaise(result, handler->handle(record_batch));
+
+  REQUIRE( result.size() == 1 );
+  checkSize(result[0], 1, 1);
+  checkColumnsArePresent(result[0], {options.result_time_column_rule.result_column_name});
+  checkValue<int64_t, arrow::Int64Scalar>(
+      100, result[0],
+      options.result_time_column_rule.result_column_name, 0);
+}
+
+SCENARIO( "WindowHandler behaviour with empty window", "[WindowHandler]" ) {
+  GIVEN( "WindowHandler with fill_period flag set to true" ) {
+    WindowHandler::WindowOptions options{5s, 3s, true};
+
+    std::unique_ptr<RecordBatchHandler> handler =
+        std::make_unique<WindowHandler>(std::move(options));
+
+    RecordBatchBuilder builder;
+    std::string time_column_name{"time"};
+    std::shared_ptr<arrow::RecordBatch> record_batch;
+    arrow::RecordBatchVector result;
+    WHEN( "pass batch with empty window range inside" ) {
+      builder.reset();
+      arrowAssertNotOk(builder.setRowNumber(3));
+
+      arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+          time_column_name, {0, 10, 11}, arrow::TimeUnit::SECOND));
+
+      arrowAssignOrRaise(record_batch, builder.getResult());
+      arrowAssignOrRaise(result, handler->handle(record_batch));
+
+      THEN( "handler emits both windows" ) {
+        REQUIRE(result.size() == 2);
+
+        checkSize(result[0], 1, 1);
+        checkColumnsArePresent(result[0], {time_column_name});
+
+        checkValue<int64_t, arrow::Int64Scalar>(
+            0, result[0], time_column_name, 0);
+
+        checkSize(result[1], 1, 1);
+        checkColumnsArePresent(result[1], {time_column_name});
+
+        checkValue<int64_t, arrow::Int64Scalar>(
+            10, result[1], time_column_name, 0);
+      }
+    }
+  }
+}
+
+SCENARIO( "WindowHandler correctly handles timestamps with arrow time type different from SECONDS", "[WindowHandler]" ) {
+  GIVEN( "WindowHandler with fill_period flag set to false" ) {
+    WindowHandler::WindowOptions options{5s, 3s, false};
+
+    std::unique_ptr<RecordBatchHandler> handler =
+        std::make_unique<WindowHandler>(std::move(options));
+
+    RecordBatchBuilder builder;
+    std::string time_column_name{"time"};
+    std::shared_ptr<arrow::RecordBatch> record_batch;
+    arrow::RecordBatchVector result;
+    WHEN( "pass batch with part of window" ) {
+      builder.reset();
+      arrowAssertNotOk(builder.setRowNumber(2));
+
+      arrowAssertNotOk(builder.buildTimeColumn<int64_t>(
+          time_column_name, {0, 4000000000}, arrow::TimeUnit::NANO));
+
+      arrowAssignOrRaise(record_batch, builder.getResult());
+      arrowAssignOrRaise(result, handler->handle(record_batch));
+
+      THEN( "handler emits truncated window" ) {
+        REQUIRE(result.size() == 1);
+
+        checkSize(result[0], 1, 1);
+        checkColumnsArePresent(result[0], {time_column_name});
+
+        checkValue<int64_t, arrow::Int64Scalar>(
+            0, result[0], time_column_name, 0);
+
+        AND_WHEN( "pass batch with bigger timestamps" ) {
+          builder.reset();
+          arrowAssertNotOk(builder.setRowNumber(2));
+
+          arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+              time_column_name, {5000000000, 6000000000}, arrow::TimeUnit::NANO));
+
+          arrowAssignOrRaise(record_batch, builder.getResult());
+          arrowAssignOrRaise(result, handler->handle(record_batch));
+
+          THEN( "another window is emitted" ) {
+            REQUIRE(result.size() == 1);
+            checkSize(result[0], 2, 1);
+            checkColumnsArePresent(result[0], {time_column_name});
+
+            checkValue<int64_t, arrow::Int64Scalar>(
+                4000000000, result[0], time_column_name, 0);
+            checkValue<int64_t, arrow::Int64Scalar>(
+                5000000000, result[0], time_column_name, 1);
+          }
+        }
+      }
+    }
+  }
+}
+
+class MockWindowHandler : public IWindowHandler {
+ public:
+  MOCK_METHOD(arrow::Result<arrow::RecordBatchVector>, handle, (const std::shared_ptr<arrow::RecordBatch>& record_batch), (override));
+  MOCK_METHOD(std::chrono::seconds, getEveryOption, (), (const, override));
+  MOCK_METHOD(std::chrono::seconds, getPeriodOption, (), (const, override));
+  MOCK_METHOD(void, setEveryOption, (std::chrono::seconds new_every_option, std::time_t change_ts), (override));
+  MOCK_METHOD(void, setPeriodOption, (std::chrono::seconds new_period_option, std::time_t change_ts), (override));
+};
+
+SCENARIO("DynamicWindowHandler tries to change WindowHandler options when new options are arrived",
+         "[DynamicWindowHandler]") {
+  GIVEN("WindowHandler and RecordBatch with new options") {
+    using namespace ::testing;
+
+    std::shared_ptr<MockWindowHandler> mock_window_handler =
+        std::make_shared<NiceMock<MockWindowHandler>>();
+
+    std::string period_column_name{"period"};
+    std::string every_column_name{"every"};
+
+    int64_t new_every_option = 10;
+    int64_t new_period_option = 15;
+
+    RecordBatchBuilder builder;
+    builder.reset();
+    arrowAssertNotOk(builder.setRowNumber(1));
+    arrowAssertNotOk(builder.buildTimeColumn<int64_t>("time",
+                                                      {100},
+                                                      arrow::TimeUnit::SECOND));
+    arrowAssertNotOk(builder.buildColumn<int64_t>(
+        every_column_name, {new_every_option}));
+    arrowAssertNotOk(builder.buildColumn<int64_t>(
+        period_column_name, {new_period_option}));
+    std::shared_ptr<arrow::RecordBatch> record_batch;
+    arrowAssignOrRaise(record_batch, builder.getResult());
+    arrowAssertNotOk(metadata::setTimeUnitMetadata(
+        &record_batch,
+        every_column_name,
+        time_utils::SECOND));
+    arrowAssertNotOk(metadata::setTimeUnitMetadata(
+        &record_batch,
+        period_column_name,
+        time_utils::SECOND));
+
+    std::chrono::seconds current_every_duration{5};
+    std::chrono::seconds new_every_duration{new_every_option};
+
+    std::chrono::seconds current_period_duration{10};
+    std::chrono::seconds new_period_duration{new_period_option};
+
+    AND_GIVEN("DynamicWindowHandler with both columns configured") {
+      DynamicWindowHandler::DynamicWindowOptions dynamic_window_options{
+          period_column_name, every_column_name
+      };
+
+      std::unique_ptr<RecordBatchHandler> handler =
+          std::make_unique<DynamicWindowHandler>(
+              mock_window_handler, dynamic_window_options
+          );
+
+      WHEN("RecordBatch with new options is passed to handler") {
+        THEN("DynamicWindowHandler is trying to change WindowHandler options") {
+          ON_CALL(*mock_window_handler,
+                  getEveryOption())
+              .WillByDefault([&]() { return current_every_duration; });
+
+          ON_CALL(*mock_window_handler,
+                  setEveryOption(Eq(new_every_duration), _))
+              .WillByDefault([&]() {
+                current_every_duration = new_every_duration;
+              });
+
+          EXPECT_CALL(*mock_window_handler,
+                      getEveryOption())
+              .Times(AtLeast(1));
+
+          EXPECT_CALL(*mock_window_handler,
+                      setEveryOption(Eq(new_every_duration), _))
+              .Times(AtLeast(1));
+
+          ON_CALL(*mock_window_handler,
+                  getPeriodOption())
+              .WillByDefault([&]() { return current_period_duration; });
+
+          ON_CALL(*mock_window_handler,
+                  setPeriodOption(Eq(new_period_duration), _))
+              .WillByDefault([&]() {
+                current_period_duration = new_period_duration;
+              });
+
+          EXPECT_CALL(*mock_window_handler,
+                      getPeriodOption())
+              .Times(AtLeast(1));
+
+          EXPECT_CALL(*mock_window_handler,
+                      setPeriodOption(Eq(new_period_duration), _))
+              .Times(AtLeast(1));
+
+          EXPECT_CALL(*mock_window_handler,
+                      handle(_))
+              .WillOnce(Return(arrow::RecordBatchVector{}));
+        }
+
+        auto result = handler->handle(record_batch);
+        arrowAssertNotOk(result.status());
+      }
+    }
+
+    AND_GIVEN("DynamicWindowHandler with period column configured only") {
+      DynamicWindowHandler::DynamicWindowOptions dynamic_window_options{
+          period_column_name, std::nullopt
+      };
+
+      std::unique_ptr<RecordBatchHandler> handler =
+          std::make_unique<DynamicWindowHandler>(
+              mock_window_handler, dynamic_window_options
+          );
+
+      WHEN("RecordBatch with new options is passed to handler") {
+        THEN("DynamicWindowHandler is trying to change WindowHandler period option only") {
+          EXPECT_CALL(*mock_window_handler,
+                      setEveryOption(_, _)).Times(0);
+
+          ON_CALL(*mock_window_handler,
+                  getPeriodOption())
+              .WillByDefault([&]() { return current_period_duration; });
+
+          ON_CALL(*mock_window_handler,
+                  setPeriodOption(Eq(new_period_duration), _))
+              .WillByDefault([&]() {
+                current_period_duration = new_period_duration;
+              });
+
+          EXPECT_CALL(*mock_window_handler,
+                      getPeriodOption())
+              .Times(AtLeast(1));
+
+          EXPECT_CALL(*mock_window_handler,
+                      setPeriodOption(Eq(new_period_duration), _))
+              .Times(AtLeast(1));
+
+          EXPECT_CALL(*mock_window_handler,
+                      handle(_))
+              .WillOnce(Return(arrow::RecordBatchVector{}));
+        }
+
+        auto result = handler->handle(record_batch);
+        arrowAssertNotOk(result.status());
+      }
+    }
+
+    AND_GIVEN("DynamicWindowHandler with every column configured only") {
+      DynamicWindowHandler::DynamicWindowOptions dynamic_window_options{
+          std::nullopt, every_column_name
+      };
+
+      std::unique_ptr<RecordBatchHandler> handler =
+          std::make_unique<DynamicWindowHandler>(
+              mock_window_handler, dynamic_window_options
+          );
+
+      WHEN("RecordBatch with new options is passed to handler") {
+        THEN("DynamicWindowHandler is trying to change WindowHandler period option only") {
+          ON_CALL(*mock_window_handler,
+                  getEveryOption())
+              .WillByDefault([&]() { return current_every_duration; });
+
+          ON_CALL(*mock_window_handler,
+                  setEveryOption(Eq(new_every_duration), _))
+              .WillByDefault([&]() {
+                current_every_duration = new_every_duration;
+              });
+
+          EXPECT_CALL(*mock_window_handler,
+                      getEveryOption())
+              .Times(AtLeast(1));
+
+          EXPECT_CALL(*mock_window_handler,
+                      setEveryOption(Eq(new_every_duration), _))
+              .Times(AtLeast(1));
+
+          EXPECT_CALL(*mock_window_handler,
+                      setPeriodOption(_, _)).Times(0);
+
+          EXPECT_CALL(*mock_window_handler,
+                      handle(_))
+              .WillOnce(Return(arrow::RecordBatchVector{}));
+        }
+
+        auto result = handler->handle(record_batch);
+        arrowAssertNotOk(result.status());
+      }
+    }
+
+    AND_GIVEN("DynamicWindowHandler with both columns are not configured") {
+      DynamicWindowHandler::DynamicWindowOptions dynamic_window_options{
+          std::nullopt, std::nullopt
+      };
+
+      std::unique_ptr<RecordBatchHandler> handler =
+          std::make_unique<DynamicWindowHandler>(
+              mock_window_handler, dynamic_window_options
+          );
+
+      WHEN("RecordBatch with new options is passed to handler") {
+        THEN("DynamicWindowHandler is not trying to change WindowHandler options") {
+          EXPECT_CALL(*mock_window_handler,
+                      setEveryOption(_, _)).Times(0);
+
+          EXPECT_CALL(*mock_window_handler,
+                      setPeriodOption(_, _)).Times(0);
+
+          EXPECT_CALL(*mock_window_handler,
+                      handle(_))
+              .WillOnce(Return(arrow::RecordBatchVector{}));
+        }
+
+        auto result = handler->handle(record_batch);
+        arrowAssertNotOk(result.status());
+      }
+    }
+  }
+}
+
+SCENARIO("DynamicWindowHandler handles record batches with missing columns successfully",
+         "[DynamicWindowHandler]") {
+  GIVEN("WindowHandler and RecordBatch without new options") {
+    using namespace ::testing;
+
+    std::shared_ptr<MockWindowHandler> mock_window_handler =
+        std::make_shared<NiceMock<MockWindowHandler>>();
+
+    std::string period_column_name{"period"};
+    std::string every_column_name{"every"};
+
+    RecordBatchBuilder builder;
+    builder.reset();
+    arrowAssertNotOk(builder.setRowNumber(1));
+    arrowAssertNotOk(builder.buildTimeColumn<int64_t>("time",
+                                                      {100},
+                                                      arrow::TimeUnit::SECOND));
+    std::shared_ptr<arrow::RecordBatch> record_batch;
+    arrowAssignOrRaise(record_batch, builder.getResult());
+
+    AND_GIVEN("DynamicWindowHandler with both columns configured") {
+      DynamicWindowHandler::DynamicWindowOptions dynamic_window_options{
+          period_column_name, every_column_name
+      };
+
+      std::unique_ptr<RecordBatchHandler> handler =
+          std::make_unique<DynamicWindowHandler>(
+              mock_window_handler, dynamic_window_options
+          );
+
+      WHEN("RecordBatch without new options is passed to handler") {
+        THEN("DynamicWindowHandler is not trying to change WindowHandler options") {
+          EXPECT_CALL(*mock_window_handler,
+                      setEveryOption(_, _)).Times(0);
+
+          EXPECT_CALL(*mock_window_handler,
+                      setPeriodOption(_, _)).Times(0);
+
+          EXPECT_CALL(*mock_window_handler,
+                      handle(_))
+              .WillOnce(Return(arrow::RecordBatchVector{}));
+        }
+
+        auto result = handler->handle(record_batch);
+        arrowAssertNotOk(result.status());
+      }
+    }
+  }
+}
+
+TEST_CASE("WindowHandler preserves metadata", "[WindowHandler]") {
+  WindowHandler::WindowOptions options{5s, 3s, true};
+
+  std::unique_ptr<RecordBatchHandler> handler =
+      std::make_unique<WindowHandler>(std::move(options));
+
+  RecordBatchBuilder builder;
+  builder.reset();
+  arrowAssertNotOk(builder.setRowNumber(2));
+
+  std::string time_column_name{"time"};
+  arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+      time_column_name, {0, 10}, arrow::TimeUnit::SECOND));
+
+  std::string tag_column_name{"tag"};
+  arrowAssertNotOk(builder.buildColumn<std::string>(
+      tag_column_name, {"tag_value", "tag_value"}));
+
+  std::string duration_column_name{"duration"};
+  arrowAssertNotOk(builder.buildColumn<int64_t>(
+      duration_column_name, {60, 120}));
+
+  std::shared_ptr<arrow::RecordBatch> record_batch;
+  arrowAssignOrRaise(record_batch, builder.getResult());
+
+  arrowAssertNotOk(metadata::fillGroupMetadata(&record_batch, {tag_column_name}));
+  arrowAssertNotOk(metadata::setTimeUnitMetadata(&record_batch, duration_column_name, time_utils::MINUTE));
+
+  arrow::RecordBatchVector result;
+  arrowAssignOrRaise(result, handler->handle(record_batch));
+
+  REQUIRE(result.size() == 1);
+  assertMetadataIsEqual(*record_batch, *result[0]);
+}
+
+TEST_CASE("DynamicWindowHandler preserves metadata", "[DynamicWindowHandler]") {
+  WindowHandler::WindowOptions options{5s, 3s, false};
+
+  DynamicWindowHandler::DynamicWindowOptions dynamic_window_options{
+      "period", "every"
+  };
+
+  std::unique_ptr<RecordBatchHandler> handler =
+      std::make_unique<DynamicWindowHandler>(
+          std::make_shared<WindowHandler>(std::move(options)),
+              dynamic_window_options);
+
+  RecordBatchBuilder builder;
+  builder.reset();
+  arrowAssertNotOk(builder.setRowNumber(2));
+
+  std::string time_column_name{"time"};
+  arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+      time_column_name, {0, 10}, arrow::TimeUnit::SECOND));
+
+  std::string tag_column_name{"tag"};
+  arrowAssertNotOk(builder.buildColumn<std::string>(
+      tag_column_name, {"tag_value", "tag_value"}));
+
+  arrowAssertNotOk(builder.buildColumn<int64_t>(
+      dynamic_window_options.every_column_name.value(), {3000, 3000}));
+
+  arrowAssertNotOk(builder.buildColumn<int64_t>(
+      dynamic_window_options.period_column_name.value(), {5000, 5000}));
+
+  std::shared_ptr<arrow::RecordBatch> record_batch;
+  arrowAssignOrRaise(record_batch, builder.getResult());
+
+  arrowAssertNotOk(metadata::fillGroupMetadata(&record_batch, {tag_column_name}));
+  arrowAssertNotOk(metadata::setTimeUnitMetadata(
+      &record_batch, dynamic_window_options.every_column_name.value(), time_utils::MILLI));
+  arrowAssertNotOk(metadata::setTimeUnitMetadata(
+      &record_batch, dynamic_window_options.period_column_name.value(), time_utils::MILLI));
+
+  arrow::RecordBatchVector result;
+  arrowAssignOrRaise(result, handler->handle(record_batch));
+
+  REQUIRE(result.size() == 1);
+  assertMetadataIsEqual(*record_batch, *result[0]);
+}
+
+TEST_CASE("when every option is decreased window is emitted sooner", "[DynamicWindowHandler]") {
+  WindowHandler::WindowOptions options{7s, 5s, false};
+
+  DynamicWindowHandler::DynamicWindowOptions dynamic_window_options{
+      "period", "every"
+  };
+
+  std::unique_ptr<RecordBatchHandler> handler =
+      std::make_unique<DynamicWindowHandler>(
+          std::make_shared<WindowHandler>(std::move(options)),
+              dynamic_window_options);
+
+  RecordBatchBuilder builder;
+  builder.reset();
+  arrowAssertNotOk(builder.setRowNumber(3));
+
+  std::string time_column_name{"time"};
+  arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+      time_column_name, {0, 3, 5}, arrow::TimeUnit::SECOND));
+
+  arrowAssertNotOk(builder.buildColumn<int64_t>(
+      dynamic_window_options.every_column_name.value(), {5, 3, 3}));
+
+  arrowAssertNotOk(builder.buildColumn<int64_t>(
+      dynamic_window_options.period_column_name.value(), {7, 7, 7}));
+
+  std::shared_ptr<arrow::RecordBatch> record_batch;
+  arrowAssignOrRaise(record_batch, builder.getResult());
+
+  arrowAssertNotOk(metadata::setTimeUnitMetadata(
+      &record_batch, dynamic_window_options.every_column_name.value(), time_utils::SECOND));
+  arrowAssertNotOk(metadata::setTimeUnitMetadata(
+      &record_batch, dynamic_window_options.period_column_name.value(), time_utils::SECOND));
+
+  arrow::RecordBatchVector result;
+  arrowAssignOrRaise(result, handler->handle(record_batch));
+
+  REQUIRE(result.size() == 1);
+  checkSize(result[0], 1, 3);
+  checkColumnsArePresent(result[0], {time_column_name});
+
+  checkValue<int64_t, arrow::Int64Scalar>(
+      0, result[0], time_column_name, 0);
+}
+
+TEST_CASE("when every option is increased window is emitted later", "[DynamicWindowHandler]") {
+  WindowHandler::WindowOptions options{7s, 5s, false};
+
+  DynamicWindowHandler::DynamicWindowOptions dynamic_window_options{
+      "period", "every"
+  };
+
+  std::unique_ptr<RecordBatchHandler> handler =
+      std::make_unique<DynamicWindowHandler>(
+          std::make_shared<WindowHandler>(std::move(options)),
+              dynamic_window_options);
+
+  RecordBatchBuilder builder;
+  builder.reset();
+  arrowAssertNotOk(builder.setRowNumber(2));
+
+  std::string time_column_name{"time"};
+  arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+      time_column_name, {0, 5}, arrow::TimeUnit::SECOND));
+
+  arrowAssertNotOk(builder.buildColumn<int64_t>(
+      dynamic_window_options.every_column_name.value(), {5, 7}));
+
+  arrowAssertNotOk(builder.buildColumn<int64_t>(
+      dynamic_window_options.period_column_name.value(), {7, 7}));
+
+  std::shared_ptr<arrow::RecordBatch> record_batch;
+  arrowAssignOrRaise(record_batch, builder.getResult());
+
+  arrowAssertNotOk(metadata::setTimeUnitMetadata(
+      &record_batch, dynamic_window_options.every_column_name.value(), time_utils::SECOND));
+  arrowAssertNotOk(metadata::setTimeUnitMetadata(
+      &record_batch, dynamic_window_options.period_column_name.value(), time_utils::SECOND));
+
+  arrow::RecordBatchVector result;
+  arrowAssignOrRaise(result, handler->handle(record_batch));
+
+  REQUIRE(result.size() == 0);
+}
+
+TEST_CASE("when period option is decreased emitted window is shorter", "[DynamicWindowHandler]") {
+  WindowHandler::WindowOptions options{7s, 5s, true};
+
+  DynamicWindowHandler::DynamicWindowOptions dynamic_window_options{
+      "period", "every"
+  };
+
+  std::unique_ptr<RecordBatchHandler> handler =
+      std::make_unique<DynamicWindowHandler>(
+          std::make_shared<WindowHandler>(std::move(options)),
+              dynamic_window_options);
+
+  RecordBatchBuilder builder;
+  builder.reset();
+  arrowAssertNotOk(builder.setRowNumber(4));
+
+  std::string time_column_name{"time"};
+  arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+      time_column_name, {0, 1, 6, 7}, arrow::TimeUnit::SECOND));
+
+  arrowAssertNotOk(builder.buildColumn<int64_t>(
+      dynamic_window_options.every_column_name.value(), {5, 5, 5, 5}));
+
+  arrowAssertNotOk(builder.buildColumn<int64_t>(
+      dynamic_window_options.period_column_name.value(), {7, 7, 6, 6}));
+
+  std::shared_ptr<arrow::RecordBatch> record_batch;
+  arrowAssignOrRaise(record_batch, builder.getResult());
+
+  arrowAssertNotOk(metadata::setTimeUnitMetadata(
+      &record_batch, dynamic_window_options.every_column_name.value(), time_utils::SECOND));
+  arrowAssertNotOk(metadata::setTimeUnitMetadata(
+      &record_batch, dynamic_window_options.period_column_name.value(), time_utils::SECOND));
+
+  arrow::RecordBatchVector result;
+  arrowAssignOrRaise(result, handler->handle(record_batch));
+
+  REQUIRE(result.size() == 1);
+  checkSize(result[0], 2, 3);
+  checkColumnsArePresent(result[0], {time_column_name});
+
+  checkValue<int64_t, arrow::Int64Scalar>(
+      0, result[0], time_column_name, 0);
+  checkValue<int64_t, arrow::Int64Scalar>(
+      1, result[0], time_column_name, 1);
+}
+
+TEST_CASE( "WindowHandler behaviour with different schemas", "[WindowHandler]" ) {
+  WindowHandler::WindowOptions options{5s, 3s, true};
+
+  std::unique_ptr<RecordBatchHandler> handler =
+      std::make_unique<WindowHandler>(std::move(options));
+
+  RecordBatchBuilder builder;
+  std::string time_column_name{"time"};
+
+  std::shared_ptr<arrow::RecordBatch> record_batch_0;
+  builder.reset();
+  arrowAssertNotOk(builder.setRowNumber(2));
+  arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+      time_column_name, {0, 1}, arrow::TimeUnit::SECOND));
+  arrowAssignOrRaise(record_batch_0, builder.getResult());
+
+  std::string new_column_name{"new_column"};
+
+  std::shared_ptr<arrow::RecordBatch> record_batch_1;
+  builder.reset();
+  arrowAssertNotOk(builder.setRowNumber(2));
+  arrowAssertNotOk(builder.buildTimeColumn<std::time_t>(
+      time_column_name, {3, 6}, arrow::TimeUnit::SECOND));
+  arrowAssertNotOk(builder.buildColumn<int64_t>(new_column_name, {0, 1}));
+  arrowAssignOrRaise(record_batch_1, builder.getResult());
+
+  arrow::RecordBatchVector result_0;
+  arrowAssignOrRaise(result_0, handler->handle(record_batch_0));
+  REQUIRE(result_0.empty());
+
+  arrow::RecordBatchVector result_1;
+  arrowAssignOrRaise(result_1, handler->handle(record_batch_1));
+  REQUIRE(result_1.size() == 2);
+
+  checkSize(result_1[0], 2, 1);
+  checkColumnsArePresent(result_1[0], {time_column_name});
+
+  checkValue<int64_t, arrow::Int64Scalar>(
+      0, result_1[0], time_column_name, 0);
+  checkValue<int64_t, arrow::Int64Scalar>(
+      1, result_1[0], time_column_name, 1);
+
+  checkSize(result_1[1], 1, 2);
+  checkColumnsArePresent(result_1[1], {time_column_name, new_column_name});
+
+  checkValue<int64_t, arrow::Int64Scalar>(
+      3, result_1[1], time_column_name, 0);
+  checkValue<int64_t, arrow::Int64Scalar>(
+      0, result_1[1], new_column_name, 0);
 }

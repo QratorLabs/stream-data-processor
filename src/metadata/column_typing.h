@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include <arrow/api.h>
 
@@ -19,7 +20,7 @@ arrow::Status setColumnTypeMetadata(
 
 arrow::Status setColumnTypeMetadata(
     std::shared_ptr<arrow::RecordBatch>* record_batch,
-    std::string column_name, ColumnType type);
+    const std::string& column_name, ColumnType type);
 
 ColumnType getColumnType(const arrow::Field& column_field);
 
@@ -35,6 +36,15 @@ arrow::Status setMeasurementColumnNameMetadata(
     const std::string& measurement_column_name);
 
 arrow::Result<std::string> getMeasurementColumnNameMetadata(
+    const arrow::RecordBatch& record_batch);
+
+arrow::Result<std::unordered_map<std::string, ColumnType>> getColumnTypes(
+    const arrow::RecordBatch& record_batch);
+
+arrow::Result<std::string> getMeasurement(
+    const arrow::RecordBatch& record_batch);
+
+arrow::Result<std::string> getMeasurementAndValidate(
     const arrow::RecordBatch& record_batch);
 
 }  // namespace metadata

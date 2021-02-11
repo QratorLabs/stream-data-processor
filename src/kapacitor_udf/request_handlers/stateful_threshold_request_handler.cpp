@@ -27,27 +27,27 @@ inline const std::string MIN_LEVEL_OPTION_NAME{"minLevel"};
 inline const std::string MAX_LEVEL_OPTION_NAME{"maxLevel"};
 
 inline const std::unordered_set<std::string> REQUIRED_THRESHOLD_OPTIONS{
-    WATCH_COLUMN_OPTION_NAME,      THRESHOLD_COLUMN_OPTION_NAME,
+    WATCH_COLUMN_OPTION_NAME, THRESHOLD_COLUMN_OPTION_NAME,
     DEFAULT_THRESHOLD_OPTION_NAME, INCREASE_SCALE_OPTION_NAME,
-    INCREASE_AFTER_OPTION_NAME,    MIN_LEVEL_OPTION_NAME,
-    MAX_LEVEL_OPTION_NAME};
+    INCREASE_AFTER_OPTION_NAME};
 
 inline const std::unordered_map<std::string, agent::ValueType>
-    THRESHOLD_OPTIONS_TYPES{{WATCH_COLUMN_OPTION_NAME, agent::STRING},
-                            {THRESHOLD_COLUMN_OPTION_NAME, agent::STRING},
-                            {DEFAULT_THRESHOLD_OPTION_NAME, agent::DOUBLE},
-                            {INCREASE_SCALE_OPTION_NAME, agent::DOUBLE},
-                            {INCREASE_AFTER_OPTION_NAME, agent::DURATION},
-                            {DECREASE_SCALE_OPTION_NAME, agent::DOUBLE},
-                            {DECREASE_TRIGGER_OPTION_NAME, agent::DOUBLE},
-                            {DECREASE_AFTER_OPTION_NAME, agent::DURATION},
-                            {MIN_LEVEL_OPTION_NAME, agent::DOUBLE},
-                            {MAX_LEVEL_OPTION_NAME, agent::DOUBLE}};
+    STREAM_AGGREGATE_OPTIONS_TYPES{
+        {WATCH_COLUMN_OPTION_NAME, agent::STRING},
+        {THRESHOLD_COLUMN_OPTION_NAME, agent::STRING},
+        {DEFAULT_THRESHOLD_OPTION_NAME, agent::DOUBLE},
+        {INCREASE_SCALE_OPTION_NAME, agent::DOUBLE},
+        {INCREASE_AFTER_OPTION_NAME, agent::DURATION},
+        {DECREASE_SCALE_OPTION_NAME, agent::DOUBLE},
+        {DECREASE_TRIGGER_OPTION_NAME, agent::DOUBLE},
+        {DECREASE_AFTER_OPTION_NAME, agent::DURATION},
+        {MIN_LEVEL_OPTION_NAME, agent::DOUBLE},
+        {MAX_LEVEL_OPTION_NAME, agent::DOUBLE}};
 
 google::protobuf::Map<std::string, agent::OptionInfo>
 getThresholdOptionsMap() {
   google::protobuf::Map<std::string, agent::OptionInfo> options_map;
-  for (auto& [option_name, option_type] : THRESHOLD_OPTIONS_TYPES) {
+  for (auto& [option_name, option_type] : STREAM_AGGREGATE_OPTIONS_TYPES) {
     options_map[option_name].add_valuetypes(option_type);
   }
 
@@ -61,8 +61,8 @@ ThresholdStateMachine::Options parseThresholdOptions(
   std::unordered_set<std::string> parsed_options;
   for (auto& option : request_options) {
     auto& option_name = option.name();
-    auto option_type = THRESHOLD_OPTIONS_TYPES.find(option_name);
-    if (option_type == THRESHOLD_OPTIONS_TYPES.end()) {
+    auto option_type = STREAM_AGGREGATE_OPTIONS_TYPES.find(option_name);
+    if (option_type == STREAM_AGGREGATE_OPTIONS_TYPES.end()) {
       throw InvalidOptionException(
           fmt::format("Unexpected option name: {}", option_name));
     }
@@ -124,6 +124,13 @@ ThresholdStateMachine::Options parseThresholdOptions(
     }
   }
 
+  for (auto& required_option : REQUIRED_THRESHOLD_OPTIONS) {
+    if (parsed_options.find(required_option) == parsed_options.end()) {
+      throw InvalidOptionException(
+          fmt::format("Missed required option: {}", required_option));
+    }
+  }
+
   threshold_options.threshold_column_type = metadata::FIELD;
 
   return threshold_options;
@@ -131,19 +138,21 @@ ThresholdStateMachine::Options parseThresholdOptions(
 
 }  // namespace
 
-const PointsConverter::PointsToRecordBatchesConversionOptions
+const BasePointsConverter::PointsToRecordBatchesConversionOptions
     StatefulThresholdRequestHandler::DEFAULT_TO_RECORD_BATCHES_OPTIONS{
         "time", "name"};
 
 StatefulThresholdRequestHandler::StatefulThresholdRequestHandler(
-    const std::shared_ptr<IUDFAgent>& agent)
-    : StreamRecordBatchRequestHandlerBase(
-          agent, DEFAULT_TO_RECORD_BATCHES_OPTIONS) {}
+    const IUDFAgent* agent)
+    : StreamRecordBatchRequestHandlerBase(agent, false) {
+  setPointsConverter(std::make_shared<BasePointsConverter>(
+      DEFAULT_TO_RECORD_BATCHES_OPTIONS));
+}
 
 agent::Response StatefulThresholdRequestHandler::info() const {
   agent::Response response;
   response.mutable_info()->set_wants(agent::STREAM);
-  response.mutable_info()->set_provides(agent::BATCH);
+  response.mutable_info()->set_provides(agent::STREAM);
   *response.mutable_info()->mutable_options() = getThresholdOptionsMap();
 
   return response;
@@ -162,17 +171,16 @@ agent::Response StatefulThresholdRequestHandler::init(
     return response;
   }
 
-  handler_ = std::make_shared<GroupDispatcher>(
+  setHandler(std::make_shared<GroupDispatcher>(
       std::make_shared<ThresholdStateMachineFactory>(
-          std::move(threshold_options)));
+          std::move(threshold_options))));
 
   response.mutable_init()->set_success(true);
   return response;
 }
 
 void StatefulThresholdRequestHandler::point(const agent::Point& point) {
-  auto new_point = batch_points_.mutable_points()->Add();
-  new_point->CopyFrom(point);
+  addPoint(point);
   handleBatch();
 }
 

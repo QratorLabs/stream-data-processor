@@ -90,5 +90,13 @@ void AggregateOptionsParser::parseTimeAggregateRule(
       FUNCTION_NAMES_TO_TYPES.at(time_aggregate_function_name);
 }
 
+void AggregateOptionsParser::addResponseOptions(
+    google::protobuf::Map<std::string, agent::OptionInfo>* options_map) {
+  auto aggregate_options_map = getResponseOptionsMap();
+  for (auto& [option_name, option_info] : aggregate_options_map) {
+    (*options_map)[option_name] = option_info;
+  }
+}
+
 }  // namespace kapacitor_udf
 }  // namespace stream_data_processor

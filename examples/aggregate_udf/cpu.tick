@@ -56,10 +56,12 @@ var cputime_host_calc = cputime_host
         .aggregate('last(wait) as wait.last')
         .aggregate('mean(wait) as wait.mean')
         .timeAggregateRule('last')
+        .emitTimeout(10s)
     |default()
         .field('info_host_level', info_host_level)
      	.field('warn_host_level', warn_host_level)
      	.field('crit_host_level', crit_host_level)
+    |log()
 
 var cputime_all_win = cputime_all
     |groupBy('cpu', 'host', 'type')
@@ -87,6 +89,7 @@ var cputime_win_calc = cputime_all_win
         .aggregate('last(wait) as wait.last')
         .aggregate('mean(wait) as wait.mean')
         .timeAggregateRule('last')
+    |log()
 
 cputime_win_calc
     |default()

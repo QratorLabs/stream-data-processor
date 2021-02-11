@@ -77,6 +77,7 @@ template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::setHandler(
 
 template <typename UVWHandleType, typename LibuvHandleType>
 void UDFAgent<UVWHandleType, LibuvHandleType>::start() {
+  request_handler_->start();
   in_->read();
 }
 
@@ -89,6 +90,7 @@ void UDFAgent<UVWHandleType, LibuvHandleType>::stop() {
   out_->shutdown();
   in_->stop();
   out_->stop();
+  request_handler_->stop();
 }
 
 template void UDFAgent<uvw::TTYHandle, uv_tty_t>::stop();
@@ -96,19 +98,19 @@ template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::stop();
 
 template <typename UVWHandleType, typename LibuvHandleType>
 void UDFAgent<UVWHandleType, LibuvHandleType>::writeResponse(
-    const agent::Response& response) {
+    const agent::Response& response) const {
   auto response_data = response.SerializeAsString();
   std::ostringstream out_stream;
-  uvarint_utils::UVarIntCoder::encode(out_stream, response_data.length());
+  uvarint_utils::encode(out_stream, response_data.length());
   out_stream << response_data;
   spdlog::debug("Response: {}", response.DebugString());
   out_->write(out_stream.str().data(), out_stream.str().length());
 }
 
 template void UDFAgent<uvw::TTYHandle, uv_tty_t>::writeResponse(
-    const agent::Response& response);
+    const agent::Response& response) const;
 template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::writeResponse(
-    const agent::Response& response);
+    const agent::Response& response) const;
 
 template <typename UVWHandleType, typename LibuvHandleType>
 bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(
@@ -116,9 +118,9 @@ bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(
   agent::Request request;
   while (true) {
     try {
-      uint32_t request_size;
+      uint32_t request_size = 0;
       if (residual_request_size_ == 0) {
-        request_size = uvarint_utils::UVarIntCoder::decode(input_stream);
+        request_size = uvarint_utils::decode(input_stream);
       } else {
         request_size = residual_request_size_;
         residual_request_size_ = 0;

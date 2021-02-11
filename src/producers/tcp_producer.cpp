@@ -20,27 +20,26 @@ void TCPProducer::start() { listener_->listen(); }
 
 void TCPProducer::stop() {
   listener_->close();
-  node_->stop();
+  getNode()->stop();
 }
 
 void TCPProducer::configureListener() {
   listener_->once<uvw::ListenEvent>([this](const uvw::ListenEvent& event,
                                            uvw::TCPHandle& server) {
-    node_->log("New client connection", spdlog::level::info);
+    log("New client connection", spdlog::level::info);
 
     auto client = server.loop().resource<uvw::TCPHandle>();
 
     client->on<uvw::DataEvent>(
         [this](const uvw::DataEvent& event, uvw::TCPHandle& client) {
-          node_->log("Data received, size: " + std::to_string(event.length),
-                     spdlog::level::info);
+          log("Data received, size: " + std::to_string(event.length),
+              spdlog::level::info);
           handleData(event.data.get(), event.length);
         });
 
     client->once<uvw::ErrorEvent>([this](const uvw::ErrorEvent& event,
                                          uvw::TCPHandle& client) {
-      node_->log(
-          "Error code: " + std::to_string(event.code()) + ". " + event.what(),
+      log("Error code: " + std::to_string(event.code()) + ". " + event.what(),
           spdlog::level::err);
       stop();
       client.close();
@@ -48,7 +47,7 @@ void TCPProducer::configureListener() {
 
     client->once<uvw::EndEvent>(
         [this](const uvw::EndEvent& event, uvw::TCPHandle& client) {
-          node_->log("Closing connection with client", spdlog::level::info);
+          log("Closing connection with client", spdlog::level::info);
           stop();
           client.close();
         });
@@ -60,10 +59,10 @@ void TCPProducer::configureListener() {
 
 void TCPProducer::handleData(const char* data, size_t length) {
   if (is_external_) {
-    node_->handleData(data, length);
+    getNode()->handleData(data, length);
   } else {
     for (auto& [data, length] : TransportUtils::splitMessage(data, length)) {
-      node_->handleData(data, length);
+      getNode()->handleData(data, length);
     }
   }
 }

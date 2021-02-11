@@ -13,8 +13,7 @@ class IUDFAgent;
 
 class RequestHandler {
  public:
-  explicit RequestHandler(const std::shared_ptr<IUDFAgent>& agent)
-      : agent_(agent) {}
+  explicit RequestHandler(const IUDFAgent* agent) : agent_(agent) {}
 
   ~RequestHandler() = default;
 
@@ -38,7 +37,10 @@ class RequestHandler {
   virtual void stop() {}
 
  protected:
-  std::weak_ptr<IUDFAgent> agent_;
+  const IUDFAgent* getAgent() const { return agent_; }
+
+ private:
+  const IUDFAgent* agent_;
 };
 
 }  // namespace kapacitor_udf

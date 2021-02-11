@@ -46,7 +46,8 @@ class AggregateHandler : public RecordBatchHandler {
       const arrow::RecordBatchVector& record_batches,
       const std::vector<std::string>& grouping_columns,
       bool explicitly_add_measurement,
-      const std::string& measurement_column_name) const;
+      const std::string& measurement_column_name,
+      const std::string& time_column_name) const;
 
   static arrow::Status fillGroupingColumns(
       const arrow::RecordBatchVector& grouped,

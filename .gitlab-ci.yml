@@ -12,7 +12,11 @@ variables:
   - docker network prune --filter "label=project=${CI_PROJECT_PATH}" --force
 
 .setup_image: &setup_image
-  - docker image build --build-arg GCC_IMAGE_VERSION=10.2.0 -t "${DOCKER_IMAGE_NAME}" .
+  - |
+    docker image build \
+        --build-arg ALPINE_IMAGE_VERSION=3.12.1 \
+        --target system-config \
+        -t "${DOCKER_IMAGE_NAME}" .
   - docker image list --filter=reference="${DOCKER_IMAGE_NAME}" --filter=before="${DOCKER_IMAGE_NAME}:latest"
   - |
     for image in $(

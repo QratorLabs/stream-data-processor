@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 
 #include "grouping.h"
+#include "help.h"
 
 namespace stream_data_processor {
 namespace metadata {
@@ -24,9 +25,8 @@ arrow::Status fillGroupMap(std::map<std::string, std::string>* group_map,
       continue;
     }
 
-    std::shared_ptr<arrow::Scalar> column_value;
-    ARROW_ASSIGN_OR_RAISE(column_value, column->GetScalar(0));
-    group_map->operator[](grouping_column_name) = column_value->ToString();
+    ARROW_ASSIGN_OR_RAISE(auto column_value, column->GetScalar(0));
+    (*group_map)[grouping_column_name] = column_value->ToString();
   }
 
   return arrow::Status::OK();
@@ -110,16 +110,8 @@ RecordBatchGroup constructGroupFromOrderedMap(
 arrow::Status setGroupMetadata(
     std::shared_ptr<arrow::RecordBatch>* record_batch,
     const RecordBatchGroup& group) {
-  std::shared_ptr<arrow::KeyValueMetadata> arrow_metadata = nullptr;
-  if (record_batch->get()->schema()->HasMetadata()) {
-    arrow_metadata = record_batch->get()->schema()->metadata()->Copy();
-  } else {
-    arrow_metadata = std::make_shared<arrow::KeyValueMetadata>();
-  }
-
-  ARROW_RETURN_NOT_OK(
-      arrow_metadata->Set(GROUP_METADATA_KEY, group.SerializeAsString()));
-  *record_batch = record_batch->get()->ReplaceSchemaMetadata(arrow_metadata);
+  ARROW_RETURN_NOT_OK(help::setSchemaMetadata(
+      record_batch, GROUP_METADATA_KEY, group.SerializeAsString()));
 
   return arrow::Status::OK();
 }

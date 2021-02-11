@@ -10,8 +10,7 @@ namespace stream_data_processor {
 arrow::Result<arrow::RecordBatchVector> FilterHandler::handle(
     const std::shared_ptr<arrow::RecordBatch>& record_batch) {
   auto pool = arrow::default_memory_pool();
-  std::shared_ptr<gandiva::Filter> filter;
-  ARROW_ASSIGN_OR_RAISE(filter, createFilter(record_batch->schema()));
+  ARROW_ASSIGN_OR_RAISE(auto filter, createFilter(record_batch->schema()));
 
   std::shared_ptr<gandiva::SelectionVector> selection;
   ARROW_RETURN_NOT_OK(gandiva::SelectionVector::MakeInt64(

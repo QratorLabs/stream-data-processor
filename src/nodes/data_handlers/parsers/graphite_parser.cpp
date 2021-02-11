@@ -69,7 +69,7 @@ arrow::Result<arrow::RecordBatchVector> GraphiteParser::parseRecordBatches(
     }
   }
 
-  char* str_end;
+  char* str_end = nullptr;
   arrow::TimestampBuilder timestamp_builder(
       arrow::timestamp(arrow::TimeUnit::SECOND), pool);
   arrow::StringBuilder measurement_name_builder;
@@ -102,8 +102,8 @@ arrow::Result<arrow::RecordBatchVector> GraphiteParser::parseRecordBatches(
           case arrow::Type::INT64:
             ARROW_RETURN_NOT_OK(
                 std::static_pointer_cast<arrow::Int64Builder>(field.second)
-                    ->Append(
-                        std::strtoll(field_value.c_str(), &str_end, 10)));
+                    ->Append(std::strtoll(field_value.c_str(), &str_end,
+                                          NUMBER_PARSING_BASE)));
             break;
           case arrow::Type::DOUBLE:
             ARROW_RETURN_NOT_OK(
@@ -194,8 +194,9 @@ arrow::Type::type GraphiteParser::determineFieldType(
     return arrow::Type::INT64;
   }
 
-  char* str_end;
-  auto int64_value = std::strtoll(value.c_str(), &str_end, 10);
+  char* str_end = nullptr;
+  auto int64_value =
+      std::strtoll(value.c_str(), &str_end, NUMBER_PARSING_BASE);
   if (errno != ERANGE && int64_value != 0 && str_end == &*value.end()) {
     return arrow::Type::INT64;
   }
@@ -444,9 +445,10 @@ GraphiteParser::MetricTemplate::buildMetric(
     metric->fields[DEFAULT_FIELD_NAME] = metric_parts[1];
   }
 
-  char* str_end;
+  char* str_end = nullptr;
   if (metric_parts.size() == 3) {
-    metric->timestamp = std::strtoll(metric_parts[2].c_str(), &str_end, 10);
+    metric->timestamp =
+        std::strtoll(metric_parts[2].c_str(), &str_end, NUMBER_PARSING_BASE);
   }
 
   return metric;

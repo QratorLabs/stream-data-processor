@@ -20,8 +20,7 @@ arrow::Result<arrow::RecordBatchVector> PipelineHandler::handle(
   arrow::RecordBatchVector current_result(record_batches);
 
   for (auto& handler : pipeline_handlers_) {
-    arrow::RecordBatchVector tmp_result;
-    ARROW_ASSIGN_OR_RAISE(tmp_result, handler->handle(current_result));
+    ARROW_ASSIGN_OR_RAISE(auto tmp_result, handler->handle(current_result));
     current_result = std::move(tmp_result);
   }
 

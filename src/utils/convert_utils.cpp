@@ -9,8 +9,7 @@ namespace convert_utils {
 
 arrow::Result<std::shared_ptr<arrow::RecordBatch>> convertTableToRecordBatch(
     const arrow::Table& table) {
-  std::shared_ptr<arrow::Table> prepared_table;
-  ARROW_ASSIGN_OR_RAISE(prepared_table, table.CombineChunks());
+  ARROW_ASSIGN_OR_RAISE(auto prepared_table, table.CombineChunks());
   arrow::ArrayVector table_columns;
   if (table.num_rows() != 0) {
     for (auto& column : prepared_table->columns()) {
@@ -24,8 +23,7 @@ arrow::Result<std::shared_ptr<arrow::RecordBatch>> convertTableToRecordBatch(
 
 arrow::Result<std::shared_ptr<arrow::RecordBatch>> concatenateRecordBatches(
     const std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches) {
-  std::shared_ptr<arrow::Table> table;
-  ARROW_ASSIGN_OR_RAISE(table,
+  ARROW_ASSIGN_OR_RAISE(auto table,
                         arrow::Table::FromRecordBatches(record_batches));
 
   return convertTableToRecordBatch(*table);

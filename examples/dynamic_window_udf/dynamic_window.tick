@@ -1,0 +1,39 @@
+dbrp "graphite"."default"
+
+var default_period = 2m
+var default_every = 1m
+
+var cputime_all = stream
+    |from()
+        .measurement('cpu')
+        .groupBy(*)
+
+var cputime_all_win = cputime_all
+    |groupBy('cpu', 'host', 'type')
+    |flatten().tolerance(5s)
+
+var cpu_window_options = cputime_all_win
+    |sideload()
+        .source('file:///usr/kapacitor/cpus')
+        .order('{{.cpu}}.yml')
+        .field('period', 7)
+        .field('every', 2)
+
+var cpu_window = cpu_window_options
+    @dynamicWindowUDF()
+        .periodField('period')
+        .periodTimeUnit('m')
+        .defaultPeriod(default_period)
+        .staticEvery(30s)
+        .fillPeriod()
+        .emitTimeout(10s)
+
+var cpu_window_first = cpu_window
+    |first('user').as('user.first').usePointTimes()
+    |eval(lambda: "period", lambda: "every").as('period.first', 'every.first')
+    |log()
+
+var cpu_window_last = cpu_window
+    |last('user').as('user.last').usePointTimes()
+    |eval(lambda: "period", lambda: "every").as('period.last', 'every.last')
+    |log()

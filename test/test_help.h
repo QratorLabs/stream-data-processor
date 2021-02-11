@@ -90,3 +90,14 @@ template <class ExpectedType, class ExactType>
 [[ nodiscard ]] inline bool instanceOf(ExactType* object) {
   return dynamic_cast<const ExpectedType*>(object) != nullptr;
 }
+
+inline void assertMetadataIsEqual(
+    arrow::RecordBatch& expected,
+    arrow::RecordBatch& actual) {
+  REQUIRE( expected.schema()->Equals(actual.schema(), true) );
+  for (auto& expected_field : expected.schema()->fields()) {
+    auto actual_field = actual.schema()->GetFieldByName(expected_field->name());
+    REQUIRE( actual_field != nullptr );
+    REQUIRE( expected_field->Equals(actual_field, true) );
+  }
+}
