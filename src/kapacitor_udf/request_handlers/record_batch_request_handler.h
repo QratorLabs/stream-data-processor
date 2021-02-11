@@ -21,7 +21,7 @@ using convert_utils::BasePointsConverter;
 
 class RecordBatchRequestHandler : public RequestHandler {
  public:
-  RecordBatchRequestHandler(IUDFAgent* agent, bool provides_batch);
+  RecordBatchRequestHandler(const IUDFAgent* agent, bool provides_batch);
 
   template <class HandlerType>
   void setHandler(HandlerType&& handler) {
@@ -87,7 +87,7 @@ class RecordBatchRequestHandler : public RequestHandler {
 
 class StreamRecordBatchRequestHandlerBase : public RecordBatchRequestHandler {
  public:
-  explicit StreamRecordBatchRequestHandlerBase(IUDFAgent* agent,
+  explicit StreamRecordBatchRequestHandlerBase(const IUDFAgent* agent,
                                                bool provides_batch);
 
   [[nodiscard]] agent::Response snapshot() const override;
@@ -101,11 +101,11 @@ class StreamRecordBatchRequestHandlerBase : public RecordBatchRequestHandler {
 class TimerRecordBatchRequestHandlerBase
     : public StreamRecordBatchRequestHandlerBase {
  public:
-  TimerRecordBatchRequestHandlerBase(IUDFAgent* agent, bool provides_batch,
-                                     uvw::Loop* loop);
+  TimerRecordBatchRequestHandlerBase(const IUDFAgent* agent,
+                                     bool provides_batch, uvw::Loop* loop);
 
-  TimerRecordBatchRequestHandlerBase(IUDFAgent* agent, bool provides_batch,
-                                     uvw::Loop* loop,
+  TimerRecordBatchRequestHandlerBase(const IUDFAgent* agent,
+                                     bool provides_batch, uvw::Loop* loop,
                                      std::chrono::seconds batch_interval);
 
   void point(const agent::Point& point) override;

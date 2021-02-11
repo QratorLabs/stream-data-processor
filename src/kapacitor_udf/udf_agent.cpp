@@ -98,7 +98,7 @@ template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::stop();
 
 template <typename UVWHandleType, typename LibuvHandleType>
 void UDFAgent<UVWHandleType, LibuvHandleType>::writeResponse(
-    const agent::Response& response) {
+    const agent::Response& response) const {
   auto response_data = response.SerializeAsString();
   std::ostringstream out_stream;
   uvarint_utils::encode(out_stream, response_data.length());
@@ -108,9 +108,9 @@ void UDFAgent<UVWHandleType, LibuvHandleType>::writeResponse(
 }
 
 template void UDFAgent<uvw::TTYHandle, uv_tty_t>::writeResponse(
-    const agent::Response& response);
+    const agent::Response& response) const;
 template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::writeResponse(
-    const agent::Response& response);
+    const agent::Response& response) const;
 
 template <typename UVWHandleType, typename LibuvHandleType>
 bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(

@@ -13,7 +13,6 @@ RUN if [ "${ENV_ARROW_SHA256}" = "" ]; then echo "Arrow sha256 hash sum environm
     && mkdir "${ARROW_DIR_NAME}/cpp/release" && pushd "${ARROW_DIR_NAME}/cpp/release" \
     && cmake .. -DARROW_COMPUTE=ON -DARROW_CSV=ON -DARROW_IPC=ON -DARROW_GANDIVA=ON && make install
 
-
 FROM arrow-base AS system-config
 RUN apk add --no-cache ninja spdlog-dev git zeromq-dev catch2 clang-extra-tools
 ENV CPPZMQ_VERSION=4.6.0

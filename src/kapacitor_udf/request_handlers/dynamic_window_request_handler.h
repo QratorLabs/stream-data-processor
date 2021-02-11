@@ -54,7 +54,7 @@ WindowOptions parseWindowOptions(
 class DynamicWindowRequestHandler
     : public TimerRecordBatchRequestHandlerBase {
  public:
-  DynamicWindowRequestHandler(IUDFAgent* agent, uvw::Loop* loop);
+  DynamicWindowRequestHandler(const IUDFAgent* agent, uvw::Loop* loop);
 
   [[nodiscard]] agent::Response info() const override;
   [[nodiscard]] agent::Response init(

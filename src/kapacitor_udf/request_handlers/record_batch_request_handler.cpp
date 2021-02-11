@@ -11,7 +11,7 @@ namespace kapacitor_udf {
 
 using convert_utils::BasePointsConverter;
 
-RecordBatchRequestHandler::RecordBatchRequestHandler(IUDFAgent* agent,
+RecordBatchRequestHandler::RecordBatchRequestHandler(const IUDFAgent* agent,
                                                      bool provides_batch)
     : RequestHandler(agent), provides_batch_(provides_batch) {}
 
@@ -185,7 +185,7 @@ arrow::Result<int64_t> RecordBatchRequestHandler::getTMax(
 }
 
 StreamRecordBatchRequestHandlerBase::StreamRecordBatchRequestHandlerBase(
-    IUDFAgent* agent, bool provides_batch)
+    const IUDFAgent* agent, bool provides_batch)
     : RecordBatchRequestHandler(agent, provides_batch) {}
 
 agent::Response StreamRecordBatchRequestHandlerBase::snapshot() const {
@@ -228,7 +228,7 @@ void StreamRecordBatchRequestHandlerBase::endBatch(
 }
 
 TimerRecordBatchRequestHandlerBase::TimerRecordBatchRequestHandlerBase(
-    IUDFAgent* agent, bool provides_batch, uvw::Loop* loop)
+    const IUDFAgent* agent, bool provides_batch, uvw::Loop* loop)
     : StreamRecordBatchRequestHandlerBase(agent, provides_batch),
       emit_timer_(loop->resource<uvw::TimerHandle>()) {
   emit_timer_->on<uvw::TimerEvent>(
@@ -237,7 +237,7 @@ TimerRecordBatchRequestHandlerBase::TimerRecordBatchRequestHandlerBase(
 }
 
 TimerRecordBatchRequestHandlerBase::TimerRecordBatchRequestHandlerBase(
-    IUDFAgent* agent, bool provides_batch, uvw::Loop* loop,
+    const IUDFAgent* agent, bool provides_batch, uvw::Loop* loop,
     std::chrono::seconds batch_interval)
     : StreamRecordBatchRequestHandlerBase(agent, provides_batch),
       emit_timer_(loop->resource<uvw::TimerHandle>()),

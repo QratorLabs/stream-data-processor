@@ -13,7 +13,7 @@ class IUDFAgent;
 
 class RequestHandler {
  public:
-  explicit RequestHandler(IUDFAgent* agent) : agent_(agent) {}
+  explicit RequestHandler(const IUDFAgent* agent) : agent_(agent) {}
 
   ~RequestHandler() = default;
 
@@ -37,10 +37,10 @@ class RequestHandler {
   virtual void stop() {}
 
  protected:
-  IUDFAgent* getAgent() const { return agent_; }
+  const IUDFAgent* getAgent() const { return agent_; }
 
  private:
-  IUDFAgent* agent_;
+  const IUDFAgent* agent_;
 };
 
 }  // namespace kapacitor_udf

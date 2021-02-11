@@ -35,7 +35,7 @@ class MockUDFAgent : public IUDFAgent {
   MOCK_METHOD(void,
               writeResponse,
               (const agent::Response& response),
-              (override));
+              (const, override));
 };
 
 SCENARIO("UDFAgent with RequestHandler interaction",

@@ -267,8 +267,8 @@ const BasePointsConverter::PointsToRecordBatchesConversionOptions
     DynamicWindowRequestHandler::DEFAULT_TO_RECORD_BATCHES_OPTIONS{"time",
                                                                    "name"};
 
-DynamicWindowRequestHandler::DynamicWindowRequestHandler(IUDFAgent* agent,
-                                                         uvw::Loop* loop)
+DynamicWindowRequestHandler::DynamicWindowRequestHandler(
+    const IUDFAgent* agent, uvw::Loop* loop)
     : TimerRecordBatchRequestHandlerBase(agent, true, loop) {}
 
 agent::Response DynamicWindowRequestHandler::info() const {

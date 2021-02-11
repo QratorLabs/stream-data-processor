@@ -19,7 +19,7 @@ class IUDFAgent {
  public:
   virtual void start() = 0;
   virtual void stop() = 0;
-  virtual void writeResponse(const agent::Response& response) = 0;
+  virtual void writeResponse(const agent::Response& response) const = 0;
 };
 
 class RequestHandler;
@@ -36,7 +36,7 @@ class UDFAgent : public IUDFAgent {
 
   void start() override;
   void stop() override;
-  void writeResponse(const agent::Response& response) override;
+  void writeResponse(const agent::Response& response) const override;
 
  private:
   bool readLoop(std::istream& input_stream);

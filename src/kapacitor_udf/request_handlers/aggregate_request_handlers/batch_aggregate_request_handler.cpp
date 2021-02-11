@@ -11,7 +11,8 @@ const BasePointsConverter::PointsToRecordBatchesConversionOptions
     BatchAggregateRequestHandler::DEFAULT_TO_RECORD_BATCHES_OPTIONS{"time",
                                                                     "name"};
 
-BatchAggregateRequestHandler::BatchAggregateRequestHandler(IUDFAgent* agent)
+BatchAggregateRequestHandler::BatchAggregateRequestHandler(
+    const IUDFAgent* agent)
     : RecordBatchRequestHandler(agent, false) {
   setPointsConverter(std::make_shared<BasePointsConverter>(
       DEFAULT_TO_RECORD_BATCHES_OPTIONS));

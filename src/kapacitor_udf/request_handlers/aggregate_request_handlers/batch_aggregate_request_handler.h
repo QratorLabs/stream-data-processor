@@ -12,7 +12,7 @@ namespace kapacitor_udf {
 
 class BatchAggregateRequestHandler : public RecordBatchRequestHandler {
  public:
-  explicit BatchAggregateRequestHandler(IUDFAgent* agent);
+  explicit BatchAggregateRequestHandler(const IUDFAgent* agent);
 
   [[nodiscard]] agent::Response info() const override;
   [[nodiscard]] agent::Response init(

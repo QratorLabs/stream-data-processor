@@ -9,7 +9,8 @@
 namespace stream_data_processor {
 namespace kapacitor_udf {
 
-BatchToStreamRequestHandler::BatchToStreamRequestHandler(IUDFAgent* agent)
+BatchToStreamRequestHandler::BatchToStreamRequestHandler(
+    const IUDFAgent* agent)
     : RecordBatchRequestHandler(agent, false) {}
 
 agent::Response BatchToStreamRequestHandler::info() const {
