@@ -53,10 +53,11 @@ inline const std::vector<std::vector<std::unordered_set<std::string>>>
         {{EMIT_TIMEOUT_OPTION_NAME}}};
 
 inline const std::unordered_map<std::string, time_utils::TimeUnit>
-    TIME_NAMES_TO_UNITS{{"ns", time_utils::NANO},  {"u", time_utils::MICRO},
-                        {"ms", time_utils::MILLI}, {"s", time_utils::SECOND},
-                        {"m", time_utils::MINUTE}, {"h", time_utils::HOUR},
-                        {"d", time_utils::DAY},    {"w", time_utils::WEEK}};
+    TIME_NAMES_TO_UNITS{{"ns", time_utils::NANO},   {"u", time_utils::MICRO},
+                        {"mcs", time_utils::MICRO}, {"ms", time_utils::MILLI},
+                        {"s", time_utils::SECOND},  {"m", time_utils::MINUTE},
+                        {"h", time_utils::HOUR},    {"d", time_utils::DAY},
+                        {"w", time_utils::WEEK}};
 
 }  // namespace
 
@@ -182,6 +183,13 @@ WindowOptions parseWindowOptions(
         window_options.convert_options.period_option.emplace();
       }
 
+      if (TIME_NAMES_TO_UNITS.find(option_value.stringvalue()) ==
+          TIME_NAMES_TO_UNITS.end()) {
+        throw InvalidOptionException(
+            fmt::format("Unexpected time unit shortcut: \"{}\"",
+                        option_value.stringvalue()));
+      }
+
       window_options.convert_options.period_option.value().second =
           TIME_NAMES_TO_UNITS.at(option_value.stringvalue());
     } else if (option_name == EVERY_FIELD_OPTION_NAME) {
@@ -194,6 +202,13 @@ WindowOptions parseWindowOptions(
     } else if (option_name == EVERY_TIME_UNIT_OPTION_NAME) {
       if (!window_options.convert_options.every_option.has_value()) {
         window_options.convert_options.every_option.emplace();
+      }
+
+      if (TIME_NAMES_TO_UNITS.find(option_value.stringvalue()) ==
+          TIME_NAMES_TO_UNITS.end()) {
+        throw InvalidOptionException(
+            fmt::format("Unexpected time unit shortcut: \"{}\"",
+                        option_value.stringvalue()));
       }
 
       window_options.convert_options.every_option.value().second =

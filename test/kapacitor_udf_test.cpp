@@ -318,19 +318,44 @@ TEST_CASE("successfully parses DynamicWindowUDF options", "[DynamicWindowUDF]") 
   std::string period_time_unit_option_name{"periodTimeUnit"};
   options[period_time_unit_option_name] = {};
   options[period_time_unit_option_name].set_type(agent::STRING);
-  options[period_time_unit_option_name].set_stringvalue("m");
 
-  std::string every_field_option_name{"everyField"};
-  options[every_field_option_name] = {};
-  options[every_field_option_name].set_type(agent::STRING);
-  options[every_field_option_name].set_stringvalue("every");
-
-  std::string every_time_unit_option_name{"everyTimeUnit"};
-  options[every_time_unit_option_name] = {};
-  options[every_time_unit_option_name].set_type(agent::STRING);
-  options[every_time_unit_option_name].set_stringvalue("ms");
-
-  std::string fill_period_option_name{"fillPeriod"};
+  time_utils::TimeUnit expected_period_time_unit;
+  SECTION( "set period time unit as \"ns\"" ) {
+    options[period_time_unit_option_name].set_stringvalue("ns");
+    expected_period_time_unit = time_utils::NANO;
+  }
+  SECTION( "set period time unit as \"mcs\"" ) {
+    options[period_time_unit_option_name].set_stringvalue("mcs");
+    expected_period_time_unit = time_utils::MICRO;
+  }
+  SECTION( "set period time unit as \"u\"" ) {
+    options[period_time_unit_option_name].set_stringvalue("u");
+    expected_period_time_unit = time_utils::MICRO;
+  }
+  SECTION( "set period time unit as \"ms\"" ) {
+    options[period_time_unit_option_name].set_stringvalue("ms");
+    expected_period_time_unit = time_utils::MILLI;
+  }
+  SECTION( "set period time unit as \"s\"" ) {
+    options[period_time_unit_option_name].set_stringvalue("s");
+    expected_period_time_unit = time_utils::SECOND;
+  }
+  SECTION( "set period time unit as \"m\"" ) {
+    options[period_time_unit_option_name].set_stringvalue("m");
+    expected_period_time_unit = time_utils::MINUTE;
+  }
+  SECTION( "set period time unit as \"h\"" ) {
+    options[period_time_unit_option_name].set_stringvalue("h");
+    expected_period_time_unit = time_utils::HOUR;
+  }
+  SECTION( "set period time unit as \"d\"" ) {
+    options[period_time_unit_option_name].set_stringvalue("d");
+    expected_period_time_unit = time_utils::DAY;
+  }
+  SECTION( "set period time unit as \"w\"" ) {
+    options[period_time_unit_option_name].set_stringvalue("w");
+    expected_period_time_unit = time_utils::WEEK;
+  }
 
   std::string default_period_option_name{"defaultPeriod"};
   options[default_period_option_name] = {};
@@ -338,11 +363,13 @@ TEST_CASE("successfully parses DynamicWindowUDF options", "[DynamicWindowUDF]") 
   options[default_period_option_name].set_durationvalue(
       std::chrono::duration_cast<std::chrono::nanoseconds>(60s).count());
 
-  std::string default_every_option_name{"defaultEvery"};
-  options[default_every_option_name] = {};
-  options[default_every_option_name].set_type(agent::DURATION);
-  options[default_every_option_name].set_durationvalue(
-      std::chrono::duration_cast<std::chrono::nanoseconds>(1s).count());
+  std::string static_every_option_name{"staticEvery"};
+  options[static_every_option_name] = {};
+  options[static_every_option_name].set_type(agent::DURATION);
+  options[static_every_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(30s).count());
+
+  std::string fill_period_option_name{"fillPeriod"};
 
   std::string emit_timeout_option_name{"emitTimeout"};
   options[emit_timeout_option_name] = {};
@@ -364,18 +391,15 @@ TEST_CASE("successfully parses DynamicWindowUDF options", "[DynamicWindowUDF]") 
   auto parsed_options = kapacitor_udf::internal::parseWindowOptions(request_options);
 
   REQUIRE( (60s).count() == parsed_options.window_handler_options.period.count()  );
-  REQUIRE( (1s).count() == parsed_options.window_handler_options.every.count() );
+  REQUIRE( (30s).count() == parsed_options.window_handler_options.every.count() );
   REQUIRE( parsed_options.window_handler_options.fill_period );
 
   REQUIRE( parsed_options.convert_options.period_option.has_value() );
   REQUIRE( options[period_field_option_name].stringvalue() ==
               parsed_options.convert_options.period_option.value().first );
-  REQUIRE( time_utils::MINUTE == parsed_options.convert_options.period_option.value().second );
+  REQUIRE( expected_period_time_unit == parsed_options.convert_options.period_option.value().second );
 
-  REQUIRE( parsed_options.convert_options.every_option.has_value() );
-  REQUIRE( options[every_field_option_name].stringvalue() ==
-      parsed_options.convert_options.every_option.value().first );
-  REQUIRE( time_utils::MILLI == parsed_options.convert_options.every_option.value().second );
+  REQUIRE( !parsed_options.convert_options.every_option.has_value() );
 }
 
 TEST_CASE("successfully parses DynamicWindowUDF options with alternative configuration", "[DynamicWindowUDF]") {
@@ -388,11 +412,59 @@ TEST_CASE("successfully parses DynamicWindowUDF options with alternative configu
   options[every_period_option_name].set_durationvalue(
       std::chrono::duration_cast<std::chrono::nanoseconds>(60s).count());
 
-  std::string static_every_option_name{"staticEvery"};
-  options[static_every_option_name] = {};
-  options[static_every_option_name].set_type(agent::DURATION);
-  options[static_every_option_name].set_durationvalue(
-      std::chrono::duration_cast<std::chrono::nanoseconds>(30s).count());
+  std::string every_field_option_name{"everyField"};
+  options[every_field_option_name] = {};
+  options[every_field_option_name].set_type(agent::STRING);
+  options[every_field_option_name].set_stringvalue("every");
+
+  std::string every_time_unit_option_name{"everyTimeUnit"};
+  options[every_time_unit_option_name] = {};
+  options[every_time_unit_option_name].set_type(agent::STRING);
+  options[every_time_unit_option_name].set_stringvalue("ms");
+
+  time_utils::TimeUnit expected_every_time_unit;
+  SECTION( "set every time unit as \"ns\"" ) {
+    options[every_time_unit_option_name].set_stringvalue("ns");
+    expected_every_time_unit = time_utils::NANO;
+  }
+  SECTION( "set every time unit as \"mcs\"" ) {
+    options[every_time_unit_option_name].set_stringvalue("mcs");
+    expected_every_time_unit = time_utils::MICRO;
+  }
+  SECTION( "set every time unit as \"u\"" ) {
+    options[every_time_unit_option_name].set_stringvalue("u");
+    expected_every_time_unit = time_utils::MICRO;
+  }
+  SECTION( "set every time unit as \"ms\"" ) {
+    options[every_time_unit_option_name].set_stringvalue("ms");
+    expected_every_time_unit = time_utils::MILLI;
+  }
+  SECTION( "set every time unit as \"s\"" ) {
+    options[every_time_unit_option_name].set_stringvalue("s");
+    expected_every_time_unit = time_utils::SECOND;
+  }
+  SECTION( "set every time unit as \"m\"" ) {
+    options[every_time_unit_option_name].set_stringvalue("m");
+    expected_every_time_unit = time_utils::MINUTE;
+  }
+  SECTION( "set every time unit as \"h\"" ) {
+    options[every_time_unit_option_name].set_stringvalue("h");
+    expected_every_time_unit = time_utils::HOUR;
+  }
+  SECTION( "set every time unit as \"d\"" ) {
+    options[every_time_unit_option_name].set_stringvalue("d");
+    expected_every_time_unit = time_utils::DAY;
+  }
+  SECTION( "set every time unit as \"w\"" ) {
+    options[every_time_unit_option_name].set_stringvalue("w");
+    expected_every_time_unit = time_utils::WEEK;
+  }
+
+  std::string default_every_option_name{"defaultEvery"};
+  options[default_every_option_name] = {};
+  options[default_every_option_name].set_type(agent::DURATION);
+  options[default_every_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(1s).count());
 
   std::string emit_timeout_option_name{"emitTimeout"};
   options[emit_timeout_option_name] = {};
@@ -411,11 +483,18 @@ TEST_CASE("successfully parses DynamicWindowUDF options with alternative configu
   auto parsed_options = kapacitor_udf::internal::parseWindowOptions(request_options);
 
   REQUIRE( (60s).count() == parsed_options.window_handler_options.period.count()  );
-  REQUIRE( (30s).count() == parsed_options.window_handler_options.every.count() );
+  REQUIRE( (1s).count() == parsed_options.window_handler_options.every.count() );
   REQUIRE( !parsed_options.window_handler_options.fill_period );
   REQUIRE( !parsed_options.convert_options.period_option.has_value() );
-  REQUIRE( !parsed_options.convert_options.every_option.has_value() );
+
+  REQUIRE( parsed_options.convert_options.every_option.has_value() );
+  REQUIRE( options[every_field_option_name].stringvalue() ==
+      parsed_options.convert_options.every_option.value().first );
+  REQUIRE( expected_every_time_unit == parsed_options.convert_options.every_option.value().second );
 }
+
+using Catch::Matchers::Contains;
+using Catch::Matchers::Equals;
 
 TEST_CASE("static and dynamic configurations conflict", "[DynamicWindowUDF]") {
   using namespace std::chrono_literals;
@@ -466,6 +545,11 @@ TEST_CASE("static and dynamic configurations conflict", "[DynamicWindowUDF]") {
   REQUIRE_THROWS_AS(
       kapacitor_udf::internal::parseWindowOptions(request_options),
       InvalidOptionException);
+
+  REQUIRE_THROWS_WITH(
+      kapacitor_udf::internal::parseWindowOptions(request_options),
+      Contains("exactly one") && (
+          Contains("every") || Contains("Every")));
 }
 
 TEST_CASE("when property configuration is missing exception is thrown", "[DynamicWindowUDF]") {
@@ -495,6 +579,60 @@ TEST_CASE("when property configuration is missing exception is thrown", "[Dynami
   REQUIRE_THROWS_AS(
       kapacitor_udf::internal::parseWindowOptions(request_options),
       InvalidOptionException);
+
+  REQUIRE_THROWS_WITH(
+      kapacitor_udf::internal::parseWindowOptions(request_options),
+      Contains("exactly one") && (
+          Contains("every") || Contains("Every")));
+}
+
+TEST_CASE("when unexpected time unit is set exception is thrown", "[DynamicWindowUDF]") {
+  using namespace std::chrono_literals;
+
+  std::unordered_map<std::string, agent::OptionValue> options;
+  std::string every_period_option_name{"staticPeriod"};
+  options[every_period_option_name] = {};
+  options[every_period_option_name].set_type(agent::DURATION);
+  options[every_period_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(60s).count());
+
+  std::string every_field_option_name{"everyField"};
+  options[every_field_option_name] = {};
+  options[every_field_option_name].set_type(agent::STRING);
+  options[every_field_option_name].set_stringvalue("every");
+
+  std::string every_time_unit_option_name{"everyTimeUnit"};
+  options[every_time_unit_option_name] = {};
+  options[every_time_unit_option_name].set_type(agent::STRING);
+  options[every_time_unit_option_name].set_stringvalue("y");
+
+  std::string default_every_option_name{"defaultEvery"};
+  options[default_every_option_name] = {};
+  options[default_every_option_name].set_type(agent::DURATION);
+  options[default_every_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(30s).count());
+
+  std::string emit_timeout_option_name{"emitTimeout"};
+  options[emit_timeout_option_name] = {};
+  options[emit_timeout_option_name].set_type(agent::DURATION);
+  options[emit_timeout_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(10s).count());
+
+  google::protobuf::RepeatedPtrField<agent::Option> request_options;
+  for (auto& [option_name, option_value] : options) {
+    auto new_option = request_options.Add();
+    new_option->set_name(option_name);
+    auto new_option_value = new_option->mutable_values()->Add();
+    *new_option_value = option_value;
+  }
+
+  REQUIRE_THROWS_AS(
+      kapacitor_udf::internal::parseWindowOptions(request_options),
+      InvalidOptionException);
+
+  REQUIRE_THROWS_WITH(
+      kapacitor_udf::internal::parseWindowOptions(request_options),
+      Equals("Unexpected time unit shortcut: \"y\""));
 }
 
 TEST_CASE("DynamicWindowUDF info response is right", "[DynamicWindowUDF]") {
