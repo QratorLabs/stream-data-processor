@@ -15,7 +15,7 @@ class RequestHandler {
  public:
   explicit RequestHandler(const IUDFAgent* agent) : agent_(agent) {}
 
-  ~RequestHandler() = default;
+  virtual ~RequestHandler() = default;
 
   RequestHandler(const RequestHandler&) = delete;
   RequestHandler& operator=(const RequestHandler&) = delete;
@@ -41,6 +41,15 @@ class RequestHandler {
 
  private:
   const IUDFAgent* agent_;
+};
+
+class StreamRequestHandlerBase : public RequestHandler {
+ public:
+  explicit StreamRequestHandlerBase(const IUDFAgent* agent)
+      : RequestHandler(agent) {}
+
+  void beginBatch(const agent::BeginBatch& batch) override;
+  void endBatch(const agent::EndBatch& batch) override;
 };
 
 }  // namespace kapacitor_udf

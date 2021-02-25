@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <istream>
 #include <memory>
 #include <mutex>
@@ -9,6 +10,7 @@
 
 #include "request_handlers/request_handler.h"
 #include "server/unix_socket_client.h"
+#include "utils/rw_utils.h"
 
 #include "udf.pb.h"
 
@@ -39,15 +41,18 @@ class UDFAgent : public IUDFAgent {
   void writeResponse(const agent::Response& response) const override;
 
  private:
-  bool readLoop(std::istream& input_stream);
   void reportError(const std::string& error_message);
+  void handleRequest(const agent::Request& request) const;
 
  private:
+  const std::function<void(const agent::Request&)> handle_function_{
+      [this](const agent::Request& request) { handleRequest(request); }};
+
   std::shared_ptr<uvw::StreamHandle<UVWHandleType, LibuvHandleType>> in_;
   std::shared_ptr<uvw::StreamHandle<UVWHandleType, LibuvHandleType>> out_;
+  std::unique_ptr<rw_utils::IKapacitorRequestReader>
+      kapacitor_request_reader_;
   std::shared_ptr<RequestHandler> request_handler_;
-  std::string residual_request_data_;
-  size_t residual_request_size_{0};
 };
 
 using ChildProcessBasedUDFAgent = UDFAgent<uvw::TTYHandle, uv_tty_t>;

@@ -13,6 +13,8 @@
 namespace stream_data_processor {
 namespace kapacitor_udf {
 
+using convert_utils::BasePointsConverter;
+
 namespace internal {
 
 using convert_utils::BasePointsConverterDecorator;

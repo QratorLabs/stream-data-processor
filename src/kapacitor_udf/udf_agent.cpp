@@ -27,7 +27,10 @@ template <typename UVWHandleType, typename LibuvHandleType>
 UDFAgent<UVWHandleType, LibuvHandleType>::UDFAgent(
     std::shared_ptr<uvw::StreamHandle<UVWHandleType, LibuvHandleType>> in,
     std::shared_ptr<uvw::StreamHandle<UVWHandleType, LibuvHandleType>> out)
-    : in_(std::move(in)), out_(std::move(out)) {
+    : in_(std::move(in)),
+      out_(std::move(out)),
+      kapacitor_request_reader_(
+          std::make_unique<rw_utils::KapacitorRequestReader>()) {
   in_->template on<uvw::DataEvent>(
       [this](
           const uvw::DataEvent& event,
@@ -35,7 +38,12 @@ UDFAgent<UVWHandleType, LibuvHandleType>::UDFAgent(
         spdlog::debug("New data of size {}", event.length);
         std::istringstream data_stream(
             std::string(event.data.get(), event.length));
-        if (!readLoop(data_stream)) {
+        try {
+          kapacitor_request_reader_->readRequests(data_stream,
+                                                  handle_function_);
+        } catch (const std::exception& exc) {
+          reportError(
+              fmt::format("error processing request: {}", exc.what()));
           stop();
         }
       });
@@ -86,11 +94,11 @@ template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::start();
 
 template <typename UVWHandleType, typename LibuvHandleType>
 void UDFAgent<UVWHandleType, LibuvHandleType>::stop() {
+  request_handler_->stop();
   in_->shutdown();
   out_->shutdown();
   in_->stop();
   out_->stop();
-  request_handler_->stop();
 }
 
 template void UDFAgent<uvw::TTYHandle, uv_tty_t>::stop();
@@ -101,8 +109,7 @@ void UDFAgent<UVWHandleType, LibuvHandleType>::writeResponse(
     const agent::Response& response) const {
   auto response_data = response.SerializeAsString();
   std::ostringstream out_stream;
-  uvarint_utils::encode(out_stream, response_data.length());
-  out_stream << response_data;
+  rw_utils::writeToStreamWithUvarintLength(out_stream, response_data);
   spdlog::debug("Response: {}", response.DebugString());
   out_->write(out_stream.str().data(), out_stream.str().length());
 }
@@ -111,87 +118,6 @@ template void UDFAgent<uvw::TTYHandle, uv_tty_t>::writeResponse(
     const agent::Response& response) const;
 template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::writeResponse(
     const agent::Response& response) const;
-
-template <typename UVWHandleType, typename LibuvHandleType>
-bool UDFAgent<UVWHandleType, LibuvHandleType>::readLoop(
-    std::istream& input_stream) {
-  agent::Request request;
-  while (true) {
-    try {
-      uint32_t request_size = 0;
-      if (residual_request_size_ == 0) {
-        request_size = uvarint_utils::decode(input_stream);
-      } else {
-        request_size = residual_request_size_;
-        residual_request_size_ = 0;
-      }
-
-      std::string request_data;
-      request_data.resize(request_size);
-      input_stream.read(request_data.data(), request_size);
-      if (!residual_request_data_.empty()) {
-        residual_request_data_.append(request_data);
-        request_data = std::move(residual_request_data_);
-        residual_request_data_.clear();
-      }
-
-      if (input_stream.gcount() < request_size) {
-        residual_request_size_ = request_size - input_stream.gcount();
-        residual_request_data_ =
-            std::move(request_data.substr(0, input_stream.gcount()));
-        return true;
-      }
-
-      request.ParseFromString(request_data);
-      spdlog::debug("Request: {}", request.DebugString());
-      agent::Response response;
-      switch (request.message_case()) {
-        case agent::Request::kInfo:
-          response = request_handler_->info();
-          writeResponse(response);
-          break;
-        case agent::Request::kInit:
-          response = request_handler_->init(request.init());
-          writeResponse(response);
-          break;
-        case agent::Request::kKeepalive:
-          response.mutable_keepalive()->set_time(request.keepalive().time());
-          writeResponse(response);
-          break;
-        case agent::Request::kSnapshot:
-          response = request_handler_->snapshot();
-          writeResponse(response);
-          break;
-        case agent::Request::kRestore:
-          response = request_handler_->restore(request.restore());
-          writeResponse(response);
-          break;
-        case agent::Request::kBegin:
-          request_handler_->beginBatch(request.begin());
-          break;
-        case agent::Request::kPoint:
-          request_handler_->point(request.point());
-          break;
-        case agent::Request::kEnd:
-          request_handler_->endBatch(request.end());
-          break;
-        default:
-          spdlog::error("received unhandled request with enum number {}",
-                        request.message_case());
-      }
-    } catch (const uvarint_utils::EOFException&) {
-      return true;
-    } catch (const std::exception& exc) {
-      reportError(fmt::format("error processing request: {}", exc.what()));
-      return false;
-    }
-  }
-}
-
-template bool UDFAgent<uvw::TTYHandle, uv_tty_t>::readLoop(
-    std::istream& input_stream);
-template bool UDFAgent<uvw::PipeHandle, uv_pipe_t>::readLoop(
-    std::istream& input_stream);
 
 template <typename UVWHandleType, typename LibuvHandleType>
 void UDFAgent<UVWHandleType, LibuvHandleType>::reportError(
@@ -206,6 +132,52 @@ template void UDFAgent<uvw::TTYHandle, uv_tty_t>::reportError(
     const std::string& error_message);
 template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::reportError(
     const std::string& error_message);
+
+template <typename UVWHandleType, typename LibuvHandleType>
+void UDFAgent<UVWHandleType, LibuvHandleType>::handleRequest(
+    const agent::Request& request) const {
+  spdlog::debug("Request: {}", request.DebugString());
+  agent::Response response;
+  switch (request.message_case()) {
+    case agent::Request::kInfo:
+      response = request_handler_->info();
+      writeResponse(response);
+      break;
+    case agent::Request::kInit:
+      response = request_handler_->init(request.init());
+      writeResponse(response);
+      break;
+    case agent::Request::kKeepalive:
+      response.mutable_keepalive()->set_time(request.keepalive().time());
+      writeResponse(response);
+      break;
+    case agent::Request::kSnapshot:
+      response = request_handler_->snapshot();
+      writeResponse(response);
+      break;
+    case agent::Request::kRestore:
+      response = request_handler_->restore(request.restore());
+      writeResponse(response);
+      break;
+    case agent::Request::kBegin:
+      request_handler_->beginBatch(request.begin());
+      break;
+    case agent::Request::kPoint:
+      request_handler_->point(request.point());
+      break;
+    case agent::Request::kEnd:
+      request_handler_->endBatch(request.end());
+      break;
+    default:
+      spdlog::error("received unhandled request with enum number {}",
+                    request.message_case());
+  }
+}
+
+template void UDFAgent<uvw::TTYHandle, uv_tty_t>::handleRequest(
+    const agent::Request& request) const;
+template void UDFAgent<uvw::PipeHandle, uv_pipe_t>::handleRequest(
+    const agent::Request& request) const;
 
 void AgentClient::start() { agent_->start(); }
 

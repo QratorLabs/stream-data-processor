@@ -91,10 +91,7 @@ const BasePointsConverter::PointsToRecordBatchesConversionOptions
 
 StreamAggregateRequestHandler::StreamAggregateRequestHandler(
     const IUDFAgent* agent, uvw::Loop* loop)
-    : TimerRecordBatchRequestHandlerBase(agent, false, loop) {
-  setPointsConverter(std::make_shared<BasePointsConverter>(
-      DEFAULT_TO_RECORD_BATCHES_OPTIONS));
-}
+    : TimerRecordBatchRequestHandlerBase(agent, loop) {}
 
 agent::Response StreamAggregateRequestHandler::info() const {
   agent::Response response;
@@ -131,7 +128,7 @@ agent::Response StreamAggregateRequestHandler::init(
 
   setEmitTimeout(stream_aggregate_options[EMIT_TIMEOUT_OPTION_NAME]);
 
-  auto pipeline_handler = std::make_shared<PipelineHandler>();
+  auto pipeline_handler = std::make_unique<PipelineHandler>();
 
   WindowHandler::WindowOptions window_options{
       stream_aggregate_options[TOLERANCE_OPTION_NAME],
@@ -143,7 +140,12 @@ agent::Response StreamAggregateRequestHandler::init(
   pipeline_handler->pushBackHandler(
       std::make_shared<AggregateHandler>(std::move(aggregate_options)));
 
-  setHandler(std::move(pipeline_handler));
+  setPointsStorage(std::make_unique<storage_utils::PointsStorage>(
+      getAgent(),
+      std::make_unique<BasePointsConverter>(
+          DEFAULT_TO_RECORD_BATCHES_OPTIONS),
+      std::move(pipeline_handler), false));
+
   response.mutable_init()->set_success(true);
   return response;
 }

@@ -162,15 +162,19 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   $<TARGET_OBJECTS:protofiles_object_library>
   kapacitor_udf/utils/grouping_utils.cpp
   kapacitor_udf/udf_agent.cpp
+  kapacitor_udf/utils/rw_utils.cpp
   kapacitor_udf/utils/points_converter.cpp
   kapacitor_udf/request_handlers/aggregate_request_handlers/aggregate_options_parser.cpp
   kapacitor_udf/request_handlers/aggregate_request_handlers/batch_aggregate_request_handler.cpp
   kapacitor_udf/request_handlers/aggregate_request_handlers/stream_aggregate_request_handler.cpp
   kapacitor_udf/request_handlers/dynamic_window_request_handler.cpp
+  kapacitor_udf/request_handlers/logging_request_handler.cpp
+  kapacitor_udf/utils/points_storage.cpp
   kapacitor_udf/request_handlers/record_batch_request_handler.cpp
+  kapacitor_udf/request_handlers/request_handler.cpp
   kapacitor_udf/request_handlers/stateful_threshold_request_handler.cpp
-  kapacitor_udf/request_handlers/batch_to_stream_request_handler.cpp
-  kapacitor_udf/request_handlers/stream_to_stream_request_handler.cpp
+  kapacitor_udf/request_handlers/batch_request_handler.cpp
+  kapacitor_udf/request_handlers/stream_request_handler.cpp
   metadata/column_typing.cpp
   metadata/time_metadata.cpp
   metadata/grouping.cpp
@@ -206,8 +210,5 @@ if (CLANG_TIDY_LINT)
 endif()
 
 foreach(library_name ${LIBRARIES_NAMES})
-  add_library("${library_name}" ${${library_name}_SOURCES})
-  target_include_directories("${library_name}" PUBLIC ${${library_name}_PUBLIC_INCLUDE_DIRS})
-  target_include_directories("${library_name}" PRIVATE ${${library_name}_PRIVATE_INCLUDE_DIRS})
-  target_link_libraries("${library_name}" ${${library_name}_DEPENDENCIES})
+  add_library_target("${library_name}")
 endforeach()

@@ -1,12 +1,17 @@
 #pragma once
 
-#include "record_batch_handlers/stateful_handlers/threshold_state_machine.h"
+#include <memory>
+
+#include "kapacitor_udf/utils/points_converter.h"
+#include "record_batch_handlers/record_batch_handler.h"
 #include "record_batch_request_handler.h"
 
 #include "udf.pb.h"
 
 namespace stream_data_processor {
 namespace kapacitor_udf {
+
+using convert_utils::BasePointsConverter;
 
 class StatefulThresholdRequestHandler
     : public StreamRecordBatchRequestHandlerBase {
