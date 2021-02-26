@@ -26,7 +26,7 @@ RUN if [ "${ENV_CPPZMQ_SHA256}" = "" ]; then echo "cppzmq sha256 hash sum enviro
 
 FROM system-config AS builder
 ARG CMAKE_BUILD_BINARY_TARGET="test_main"
-ARG PROJECT_ID
+ARG PROJECT_ID="sdp"
 LABEL stage="builder"
 LABEL project="${PROJECT_ID}"
 COPY . /stream-data-processor
@@ -35,5 +35,7 @@ RUN if [ "${CMAKE_BUILD_BINARY_TARGET}" = "test_main" ]; then cmake .. -DENABLE_
     && make "${CMAKE_BUILD_BINARY_TARGET}" -j$(( $(nproc) / 2 + 1 ))
 
 FROM alpine:${ALPINE_IMAGE_VERSION} AS app
+LABEL stage="app"
+LABEL project="${PROJECT_ID}"
 COPY --from=builder "/stream-data-processor/build/bin/${CMAKE_BUILD_BINARY_TARGET}" ./app/
 RUN apk add --no-cache bash libstdc++ spdlog libprotobuf zeromq catch2 re2
