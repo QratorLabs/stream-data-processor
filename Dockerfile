@@ -4,7 +4,7 @@ FROM alpine:${ALPINE_IMAGE_VERSION} AS arrow-base
 ENV ARROW_VERSION=3.0.0
 ENV ARROW_DIR_NAME="arrow-apache-arrow-${ARROW_VERSION}"
 ENV ENV_ARROW_SHA256="fc461c4f0a60e7470a7c58b28e9344aa8fb0be5cc982e9658970217e084c3a82"
-RUN apk add --no-cache wget tar autoconf bash cmake g++ gcc make protobuf-dev clang llvm-static llvm-dev python3 re2-dev
+RUN apk add --no-cache wget tar autoconf bash cmake g++ gcc make protobuf-dev clang llvm-static llvm-dev python3 re2-dev boost-dev
 SHELL ["bash", "-c"]
 RUN if [ "${ENV_ARROW_SHA256}" = "" ]; then echo "Arrow sha256 hash sum environment variable is empty. Exiting..." ; exit 1 ; fi \
     && wget -O "${ARROW_DIR_NAME}.tar.gz" "https://github.com/apache/arrow/archive/apache-arrow-${ARROW_VERSION}.tar.gz" \

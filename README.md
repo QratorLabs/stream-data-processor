@@ -28,7 +28,7 @@ Such design were used to separate parts that are responsible for data
 handling and data transfer. It allows user to create very flexible and 
 configurable computation graph.
 
-### `Node`
+### Node
 
 The `Node` is used to mutate data as soon as it arrives. It doesn't have 
 any internal state so it is easy to understand how it works. The `EvalNode` 
@@ -40,7 +40,7 @@ are two types of data handlers that are currently implemented:
    `arrow::Buffer` to the vector of `arrow::RecordBatch` that can be handled 
    by provided `RecordBatchHandler`.
 
-### `RecordBatchHandler`
+### RecordBatchHandler
 
 There is a full list of currently available handlers:
  - `AggregateHandler` - aggregates data using provided aggregate functions 
@@ -63,7 +63,7 @@ There is a full list of currently available handlers:
  - `LogHandler` - logs incoming data using
    [spdlog](https://github.com/gabime/spdlog) library.
  
-### `Producer`
+### Producer
 
 `Producer` provides data to the certain `Node`. There are two types of data 
 producers have been implemented:
@@ -76,7 +76,7 @@ producers have been implemented:
    (for more details see 
    [ZMQ Guide](http://zguide.zeromq.org/page:chapter2#Node-Coordination)).
     
-### `Consumer`
+### Consumer
 
 As opposite to `Producer` this class consumes data from `Node` and pass it to 
 the next destination. Available types of consumer:
