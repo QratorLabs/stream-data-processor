@@ -1,5 +1,8 @@
 # AggregateUDF
 
+This UDF aggregates incoming points **by groups** or **by batches** 
+(depending on input data type).
+
 ## Usage example
 
 Files in this directory represent AggregateUDF usage.
@@ -30,10 +33,11 @@ This UDF can be used with stream input edge only.
     .aggregate('mean(wait) as wait.mean')
     .timeAggregateRule('last')
     .emitTimeout(10s)
+    .tolerance(1s)
 ```
 
 * `aggregate` -- defines one aggregation using syntax: 
-  `<aggregateFunction>(fieldName) as <resultFieldName>`. Currently available 
+  `<aggregateFunction>(<fieldName>) as <resultFieldName>`. Currently available 
   aggregate functions are:
     * `first`
     * `last`
@@ -45,12 +49,15 @@ This UDF can be used with stream input edge only.
 * `emitTimeout` -–  UDF accumulates several points before processing.
   `emitTimeout` property defines timeout between two sequential processing
   moments
+* `tolerance` (optional) -- defines time interval between the first and the 
+  last points in aggregating batch. Default `tolerance` value is `0s` which
+  means that points aggregated together have equal timestamps.
   
 ### `batchAggregateUDF`
 
 This UDF can be used with batch input edge only. Its properties do not contain
-`emitTimeout` property as this UDF aggregate every batch it receives 
-separately.
+`emitTimeout` and `tolerance` properties as this UDF aggregate every batch it 
+receives separately.
 
 ```tickscript
 @batchAggregateUDF()
