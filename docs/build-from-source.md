@@ -25,7 +25,7 @@
 * `make <target>`
 * Executable file is located at the `bin` directory: `./bin/<target> --help`
 
-### Other instruments
+### Some instruments for development
 
 * `cmake` flag `-DENABLE_TESTS=ON` enables tests building
 * Running the [apply_clang_format.sh](../apply_clang_format.sh) script is 
