@@ -2,95 +2,227 @@
 
 ## Kapacitor UDF
 
-SDP library provides instruments for creating UDFs for Kapacitor data 
-processing engine. For detailed information see 
-[src/kapacitor_udf](src/kapacitor_udf) directory.
+### Example "Why you might want to use this library"
+
+Compare the following parts of TICK scripts:
+
+<table>
+<tr>
+<th>Vanilla TICK script</th>
+<th>TICK script with AggregateUDF from SPD library</th>
+</tr>
+<tr>
+<td>
+
+```tickscript
+var cputime_all = stream
+    |from()
+        .measurement('cpu')
+        .groupBy(*)
+
+var cputime_host = cputime_all
+    |groupBy('host', 'type')
+    |flatten().tolerance(5s)
+
+var cputime_host_last = cputime_host
+    |last('idle').as('idle')
+    |eval(
+        lambda: "idle", lambda: "interrupt", 
+        lambda: "nice", lambda: "softirq",
+        lambda: "steal", lambda: "system", 
+        lambda: "user", lambda: "wait"
+    ).as(
+        'idle.last', 'interrupt.last',
+        'nice.last', 'softirq.last',
+        'steal.last', 'system.last',
+        'user.last', 'wait.last'
+    )
+
+var cputime_host_mean_idle = cputime_host
+    |mean('idle').as('idle.mean')
+
+var cputime_host_mean_interrupt = cputime_host
+    |mean('interrupt').as('interrupt.mean')
+
+var cputime_host_mean_nice = cputime_host
+    |mean('nice').as('nice.mean')
+
+var cputime_host_mean_softirq = cputime_host
+    |mean('softirq').as('softirq.mean')
+
+var cputime_host_mean_steal = cputime_host
+    |mean('steal').as('steal.mean')
+
+var cputime_host_mean_system = cputime_host
+    |mean('system').as('system.mean')
+
+var cputime_host_mean_user = cputime_host
+    |mean('user').as('user.mean')
+
+var cputime_host_mean_wait = cputime_host
+    |mean('wait').as('wait.mean')
+
+var cputime_host_calc = cputime_host_mean_idle
+    |union(
+       cputime_host_last,
+       cputime_host_mean_interrupt,
+       cputime_host_mean_nice,
+       cputime_host_mean_softirq,
+       cputime_host_mean_steal,
+       cputime_host_mean_system,
+       cputime_host_mean_user,
+       cputime_host_mean_wait
+    )
+    |flatten().tolerance(1s)
+```
+
+</td>
+<td>
+
+```tickscript
+var cputime_all = stream
+    |from()
+        .measurement('cpu')
+        .groupBy(*)
+
+var cputime_host = cputime_all
+    |groupBy('host', 'type')
+    |flatten().tolerance(5s)
+
+var cputime_host_calc = cputime_host
+    @streamAggregateUDF()
+        .aggregate('last(idle) as idle.last')
+        .aggregate('mean(idle) as idle.mean')
+        .aggregate('last(interrupt) as interrupt.last')
+        .aggregate('mean(interrupt) as interrupt.mean')
+        .aggregate('last(nice) as nice.last')
+        .aggregate('mean(nice) as nice.mean')
+        .aggregate('last(softirq) as softirq.last')
+        .aggregate('mean(softirq) as softirq.mean')
+        .aggregate('last(steal) as steal.last')
+        .aggregate('mean(steal) as steal.mean')
+        .aggregate('last(system) as system.last')
+        .aggregate('mean(system) as system.mean')
+        .aggregate('last(user) as user.last')
+        .aggregate('mean(user) as user.mean')
+        .aggregate('last(wait) as wait.last')
+        .aggregate('mean(wait) as wait.mean')
+        .timeAggregateRule('last')
+        .emitTimeout(10s)
+```
+
+</td>
+</tr>
+</table>
+
+The left part of the table represents the possible way you can compute the 
+last and the average values of multiple fields using standard TICK syntax. It 
+is consisted of several 
+[InfluxQLNodes](https://docs.influxdata.com/kapacitor/v1.5/nodes/influx_q_l_node/), 
+which also consume pretty big amount of memory.
+
+On the opposite side of the side-by-side comparison you see AggregateUDF 
+usage implemented via SDP library. It looks less complicated and requires 
+less memory resources.
+
+SDP library provides some UDFs implemented and instruments for creating new 
+ones.
+
+### Available UDFs
+
+* [AggregateUDF](examples/aggregate_udf). Convenient instrument for computing 
+  aggregate functions like: `mean`, `first`, `last`, `min`, `max`; can apply 
+  number of aggregations at the same UDF call; two types of UDF is available 
+  for both input data formats: `streamAggragateUDF` and `batchAggregateUDF`.
+* [DynamicWindowUDF](examples/dynamic_window_udf). Analogue to Kapacitor's
+  [WindowNode](https://docs.influxdata.com/kapacitor/v1.5/nodes/window_node/) 
+  with ability to generate windows according to incoming data. For example, 
+  you can specify `period` and `every` properties for every group separately 
+  using [Kapacitor SideloadNode](https://docs.influxdata.com/kapacitor/v1.5/nodes/sideload_node/) 
+  and pass this data to the `dynamicWindowUDF` to form windows depending on 
+  grouping.
+* [ThresholdUDF](examples/threshold_udf). State machine for adjusting 
+  thresholds depending on the current value of specified field. May be useful 
+  for suppressing flooding alerts when observable value keeps out of alert 
+  range.
+  
+### UDF documentation
+
+* [UDF User Guide](docs/udf-user-guide.md) -- how to run UDFs
+* [UDF implementation](docs/udf-implementation.md) and [building from source
+  documentation](docs/build-from-source.md) may be useful for writing your 
+  onw UDF using SDP library
 
 ## Computation graph
 
 This library also provides instruments for creating distributed asynchronous 
-acyclic computation graphs to process continuous stream of arriving data. All 
-data passing through this graph is represented as `arrow::RecordBatch` - a 
-columnar format of Apache Arrow library. It has typed fields (columns) and 
-records (rows), can be serialized and deserialized from `arrow::Buffer` - an 
-object containing a pointer to a piece of contiguous memory with a particular 
-size.
+acyclic computation graphs to process continuous stream of arriving data.
 
-The main unit of the library is `NodePipeline` consisting of three parts: 
-`Producer`, `Node` and number of `Consumers`. In the certain pipeline 
-`Producer` provides data for `Node` from some kind of data source: external 
-TCP endpoint, another pipeline, etc. After that, `Node` is responsible for 
-handling the data according to the `Node`'s type. And finally, `Node` passes 
-the handled data to `Consumers`, which send it to the next pipeline or write 
-it to the file or something else.
+## Example
 
-Such design were used to separate parts that are responsible for data 
-handling and data transfer. It allows user to create very flexible and 
-configurable computation graph.
+Computation graph consisting of exactly one node which parses Graphite output 
+data format:
 
-### Node
+```c++
+#include <memory>
 
-The `Node` is used to mutate data as soon as it arrives. It doesn't have 
-any internal state so it is easy to understand how it works. The `EvalNode` 
-uses provided in the constructor `DataHandler` to handle arriving data. There
-are two types of data handlers that are currently implemented:
- - `DataParser` - parses data arriving in the certain format. For example, 
-   CSV or Graphite output data format.
- - `SerializedRecordBatchHandler` - deserialize arriving data from 
-   `arrow::Buffer` to the vector of `arrow::RecordBatch` that can be handled 
-   by provided `RecordBatchHandler`.
+#include <spdlog/spdlog.h>
 
-### RecordBatchHandler
+#include <uvw.hpp>
 
-There is a full list of currently available handlers:
- - `AggregateHandler` - aggregates data using provided aggregate functions 
-   (*first*, *last*, *mean*, *min*, *max*).
- - `DefaultHandler` - sets default values for columns. Analog of the 
-   Kapacitor node of the same name.
- - `FilterHandler` - filters rows with provided conditions. Use 
-   `arrow::gandiva` library to create conditions tree.
- - `GroupHandler` - splits record batches into groups with the same values in 
-   columns.
- - `MapHandler` - evaluates expressions with present columns as arguments. 
-   Use `arrow::gandiva` library to create expressions.
- - `SortHandler` - sorts rows by the certain column.
- - `JoinHandler` - joins received record batches on the set of columns.
- - `WindowHandler` - analogue of Kapacitor WindowNode.
- - `ThresholdStateMachine` - sets a threshold level adjusting it to the 
-   incoming data.
- - `GroupDispatcher` - splits incoming data into groups according to metadata 
-   and uses another `RecordBatchHandler` type to handle each group separately.
- - `LogHandler` - logs incoming data using
-   [spdlog](https://github.com/gabime/spdlog) library.
- 
-### Producer
+#include <zmq.hpp>
 
-`Producer` provides data to the certain `Node`. There are two types of data 
-producers have been implemented:
- - `TCPProducer` - listens on the certain endpoint for arriving data. It is 
-   mostly used to receive data from the external data source.
- - `SubscriberProducer` - producer based on ZeroMQ PUB-SUB pattern. Created 
-   for transferring data between pipelines. As argument it takes 
-   `transport_utils::Subscriber` class containing two ZMQ sockets: subscriber 
-   socket and synchronize socket. It needs for proper PUB-SUB communicating 
-   (for more details see 
-   [ZMQ Guide](http://zguide.zeromq.org/page:chapter2#Node-Coordination)).
-    
-### Consumer
+#include "consumers/consumers.h"
+#include "nodes/data_handlers/data_handlers.h"
+#include "node_pipeline/node_pipeline.h"
+#include "nodes/nodes.h"
+#include "nodes/data_handlers/parsers/graphite_parser.h"
+#include "producers/producers.h"
+#include "utils/utils.h"
 
-As opposite to `Producer` this class consumes data from `Node` and pass it to 
-the next destination. Available types of consumer:
- - `PrintConsumer` - write record batches to the output stream. 
-   `PrintFileConsumer` subclass is more convenient way of writing to the file.
- - `TCPConsumer` - writes data to the TCP socket.
- - `PublisherConsumer` - the second part of PUB-SUB pattern.
- 
-### Helpers
+namespace sdp = stream_data_processor;
 
- - As configuring PUB-SUB consumers and producers appears to be unhandy and 
-   massive the `NodePipeline::subscribeTo` method was implemented. It can be 
-   used after nodes of two pipelines have been set to create 
-   `PublisherConsumer`/`SubscriberProducer` pair for these pipelines without 
-   manual creating ZMQ sockets.
- - [src/utils](src/utils) directory is full of useful instruments if you are going to 
-   implement some additional functionality by yourself.
+int main(int argc, char** argv) {
+  auto loop = uvw::Loop::getDefault();
+  auto zmq_context = std::make_shared<zmq::context_t>(1);
+
+  std::unordered_map<std::string, sdp::NodePipeline> pipelines;
+
+  std::shared_ptr<sdp::Consumer> parse_graphite_consumer = std::make_shared<sdp::FilePrintConsumer>("result.txt");
+
+  sdp::GraphiteParser::GraphiteParserOptions parser_options{
+      {"*.cpu.*.percent.* host.measurement.cpu.type.field"}
+  };
+
+  std::shared_ptr<sdp::Node> parse_graphite_node = std::make_shared<sdp::EvalNode>(
+      "parse_graphite_node",
+      std::make_shared<sdp::DataParser>(std::make_shared<sdp::GraphiteParser>(parser_options))
+  );
+
+  sdp::transport_utils::IPv4Endpoint parse_graphite_producer_endpoint{"127.0.0.1", 4200};
+  std::shared_ptr<sdp::Producer> parse_graphite_producer = std::make_shared<sdp::TCPProducer>(
+      parse_graphite_node, parse_graphite_producer_endpoint, loop.get(), true
+  );
+
+  pipelines[parse_graphite_node->getName()] = sdp::NodePipeline();
+  pipelines[parse_graphite_node->getName()].addConsumer(parse_graphite_consumer);
+  pipelines[parse_graphite_node->getName()].setNode(parse_graphite_node);
+  pipelines[parse_graphite_node->getName()].setProducer(parse_graphite_producer);
+
+  for (auto& pipeline : pipelines) {
+    pipeline.second.start();
+  }
+
+  loop->run();
+
+  return 0;
+}
+```
+
+## Computation graph references
+
+* [Computation graphs documentation](docs/computation-graph.md) -- more 
+  information about computation graphs' architecture and how to write them.
+* [More complicated example](examples/tick_script_adapted.cpp) representing 
+  [cpu.tick](examples/aggregate_udf/cpu.tick) analogue written in C++ using 
+  Computation graphs from SDP library.

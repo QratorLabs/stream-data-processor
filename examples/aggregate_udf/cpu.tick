@@ -1,6 +1,6 @@
 dbrp "graphite"."default"
 
-var log_url = 'http://172.20.0.2:7777/'
+var log_url = 'http://127.0.0.1:7777/'
 
 var win_period = 7m
 var win_every = 2m
@@ -93,7 +93,6 @@ var cputime_win_calc = cputime_all_win
 
 cputime_win_calc
     |default()
-        .field('alert-author', '@kv:qrator.net')
         .field('incident-owners', 'nobody')
         .field('incident-is-expected', FALSE)
         .field('incident-comment', '')
@@ -117,7 +116,6 @@ cputime_win_calc
 
 cputime_host_calc
     |default()
-        .field('alert-author', '@kv:qrator.net')
         .field('incident-owners', 'nobody')
         .field('incident-is-expected', FALSE)
         .field('incident-comment', '')
@@ -131,7 +129,6 @@ cputime_host_calc
 
 load
     |default()
-        .field('alet-author', '@kv:qrator.net')
         .field('incident-owners', 'nobody')
         .field('incident-is-expected', FALSE)
         .field('incident-comment', '')
