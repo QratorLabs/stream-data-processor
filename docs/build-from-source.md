@@ -24,3 +24,11 @@
 * `cmake ..`
 * `make <target>`
 * Executable file is located at the `bin` directory: `./bin/<target> --help`
+
+### Other instruments
+
+* `cmake` flag `-DENABLE_TESTS=ON` enables tests building
+* Running the [apply_clang_format.sh](../apply_clang_format.sh) script is 
+  recommended before creating a Pull Request
+* [test_script.sh](../test_script.sh) allows you to run unit tests and lint 
+  checkers
