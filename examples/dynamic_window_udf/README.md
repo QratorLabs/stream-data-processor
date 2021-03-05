@@ -2,7 +2,7 @@
 
 ## Usage example
 
-Files in this directory represent DynamicWindowUDF usage in bundle with 
+Files in this directory represent DynamicWindowUDF usage in bundle with the 
 [Kapacitor SideloadNode](https://docs.influxdata.com/kapacitor/v1.5/nodes/sideload_node/)
 
 ### Properties

@@ -2,8 +2,8 @@
 
 ## Library architecture
 
-SDP library is implementing [`IUDFAgent`](udf_agent.h) for communicating with
-Kapacitor via Kapacitor's UDF RPC protocol. UDFs use
+SDP library is implementing [`IUDFAgent`](../src/kapacitor_udf/udf_agent.h) 
+for communicating with Kapacitor via Kapacitor's UDF RPC protocol. UDFs use
 [socket based approach](https://github.com/influxdata/kapacitor/tree/master/udf/agent#child-process-vs-socket)
 to communicate with Kapacitor, but `UDFAgent` is ready to work with child
 process based approach if needed.
@@ -31,7 +31,7 @@ the separate `IPointsStorage` interface):
   converting.
 
 Therefore, the most important part of every UDF is a
-`RecordBatchHandler` that is doing all useful work. See
+`RecordBatchHandler` that is doing all useful work. See the 
 [full list](computation-graph.md#RecordBatchHandler) of currently implemented
 `RecordBatchHandler`s.
 

@@ -136,15 +136,16 @@ ones.
   for both input data formats: `streamAggragateUDF` and `batchAggregateUDF`.
 * [DynamicWindowUDF](examples/dynamic_window_udf). Analogue to Kapacitor's
   [WindowNode](https://docs.influxdata.com/kapacitor/v1.5/nodes/window_node/) 
-  with ability to generate windows according to incoming data. For example, 
-  you can specify `period` and `every` properties for every group separately 
-  using [Kapacitor SideloadNode](https://docs.influxdata.com/kapacitor/v1.5/nodes/sideload_node/) 
+  with ability to generate windows according to the incoming data. For 
+  example, you can specify `period` and `every` properties for every group 
+  separately using the 
+  [Kapacitor SideloadNode](https://docs.influxdata.com/kapacitor/v1.5/nodes/sideload_node/) 
   and pass this data to the `dynamicWindowUDF` to form windows depending on 
   grouping.
 * [ThresholdUDF](examples/threshold_udf). State machine for adjusting 
   thresholds depending on the current value of specified field. May be useful 
-  for suppressing flooding alerts when observable value keeps out of alert 
-  range.
+  for suppressing flooding alerts when the observable value keeps out of 
+  alert range.
   
 ### UDF documentation
 
@@ -167,9 +168,7 @@ data format:
 #include <memory>
 
 #include <spdlog/spdlog.h>
-
 #include <uvw.hpp>
-
 #include <zmq.hpp>
 
 #include "consumers/consumers.h"
