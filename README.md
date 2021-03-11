@@ -16,64 +16,64 @@ Compare the following parts of TICK scripts:
 
 ```tickscript
 var cputime_all = stream
-  |from()
-    .measurement('cpu')
-    .groupBy(*)
+ |from()
+  .measurement('cpu')
+  .groupBy(*)
 
 var cputime_host = cputime_all
-  |groupBy('host', 'type')
-  |flatten().tolerance(5s)
+ |groupBy('host', 'type')
+ |flatten().tolerance(5s)
 
 var cputime_last = cputime_host
-  |last('idle').as('idle')
-  |eval(
-    lambda: "idle", lambda: "interrupt", 
-    lambda: "nice", lambda: "softirq",
-    lambda: "steal", lambda: "system", 
-    lambda: "user", lambda: "wait"
-  ).as(
-    'idle.last', 'interrupt.last',
-    'nice.last', 'softirq.last',
-    'steal.last', 'system.last',
-    'user.last', 'wait.last'
-  )
+ |last('idle').as('idle')
+ |eval(
+  lambda: "idle", lambda: "interrupt", 
+  lambda: "nice", lambda: "softirq",
+  lambda: "steal", lambda: "system", 
+  lambda: "user", lambda: "wait"
+ ).as(
+  'idle.last', 'interrupt.last',
+  'nice.last', 'softirq.last',
+  'steal.last', 'system.last',
+  'user.last', 'wait.last'
+ )
 
 var cputime_mean_idle = cputime_host
-  |mean('idle').as('idle.mean')
+ |mean('idle').as('idle.mean')
 
 var cputime_mean_interrupt = cputime_host
-  |mean('interrupt').as('interrupt.mean')
+ |mean('interrupt').as('interrupt.mean')
 
 var cputime_mean_nice = cputime_host
-  |mean('nice').as('nice.mean')
+ |mean('nice').as('nice.mean')
 
 var cputime_mean_softirq = cputime_host
-  |mean('softirq').as('softirq.mean')
+ |mean('softirq').as('softirq.mean')
 
 var cputime_mean_steal = cputime_host
-  |mean('steal').as('steal.mean')
+ |mean('steal').as('steal.mean')
 
 var cputime_mean_system = cputime_host
-  |mean('system').as('system.mean')
+ |mean('system').as('system.mean')
 
 var cputime_mean_user = cputime_host
-  |mean('user').as('user.mean')
+ |mean('user').as('user.mean')
 
 var cputime_mean_wait = cputime_host
-  |mean('wait').as('wait.mean')
+ |mean('wait').as('wait.mean')
 
 var cputime_calc = cputime_mean_idle
-  |union(
-    cputime_last,
-    cputime_mean_interrupt,
-    cputime_mean_nice,
-    cputime_mean_softirq,
-    cputime_mean_steal,
-    cputime_mean_system,
-    cputime_mean_user,
-    cputime_mean_wait
-  )
-  |flatten().tolerance(1s)
+ |union(
+  cputime_last,
+  cputime_mean_interrupt,
+  cputime_mean_nice,
+  cputime_mean_softirq,
+  cputime_mean_steal,
+  cputime_mean_system,
+  cputime_mean_user,
+  cputime_mean_wait
+ )
+ |flatten().tolerance(1s)
 ```
 
 </td>
@@ -81,34 +81,34 @@ var cputime_calc = cputime_mean_idle
 
 ```tickscript
 var cputime_all = stream
-  |from()
-    .measurement('cpu')
-    .groupBy(*)
+ |from()
+  .measurement('cpu')
+  .groupBy(*)
 
 var cputime_host = cputime_all
-  |groupBy('host', 'type')
-  |flatten().tolerance(5s)
+ |groupBy('host', 'type')
+ |flatten().tolerance(5s)
 
 var cputime_calc = cputime_host
-  @streamAggregateUDF()
-    .aggregate('last(idle) as idle.last')
-    .aggregate('mean(idle) as idle.mean')
-    .aggregate('last(interrupt) as interrupt.last')
-    .aggregate('mean(interrupt) as interrupt.mean')
-    .aggregate('last(nice) as nice.last')
-    .aggregate('mean(nice) as nice.mean')
-    .aggregate('last(softirq) as softirq.last')
-    .aggregate('mean(softirq) as softirq.mean')
-    .aggregate('last(steal) as steal.last')
-    .aggregate('mean(steal) as steal.mean')
-    .aggregate('last(system) as system.last')
-    .aggregate('mean(system) as system.mean')
-    .aggregate('last(user) as user.last')
-    .aggregate('mean(user) as user.mean')
-    .aggregate('last(wait) as wait.last')
-    .aggregate('mean(wait) as wait.mean')
-    .timeAggregateRule('last')
-    .emitTimeout(10s)
+ @streamAggregateUDF()
+  .aggregate('last(idle) as idle.last')
+  .aggregate('mean(idle) as idle.mean')
+  .aggregate('last(interrupt) as interrupt.last')
+  .aggregate('mean(interrupt) as interrupt.mean')
+  .aggregate('last(nice) as nice.last')
+  .aggregate('mean(nice) as nice.mean')
+  .aggregate('last(softirq) as softirq.last')
+  .aggregate('mean(softirq) as softirq.mean')
+  .aggregate('last(steal) as steal.last')
+  .aggregate('mean(steal) as steal.mean')
+  .aggregate('last(system) as system.last')
+  .aggregate('mean(system) as system.mean')
+  .aggregate('last(user) as user.last')
+  .aggregate('mean(user) as user.mean')
+  .aggregate('last(wait) as wait.last')
+  .aggregate('mean(wait) as wait.mean')
+  .timeAggregateRule('last')
+  .emitTimeout(10s)
 ```
 
 </td>
