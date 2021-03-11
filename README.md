@@ -27,22 +27,19 @@ var cputime_host = cputime_all
 var cputime_last = cputime_host
  |last('idle').as('idle')
  |eval(
-  lambda: "idle", lambda: "interrupt", 
-  lambda: "nice", lambda: "softirq",
-  lambda: "steal", lambda: "system", 
-  lambda: "user", lambda: "wait"
+  lambda: "idle", lambda: "nice",
+  lambda: "softirq", lambda: "steal",
+  lambda: "system", lambda: "user",
+  lambda: "wait"
  ).as(
-  'idle.last', 'interrupt.last',
-  'nice.last', 'softirq.last',
-  'steal.last', 'system.last',
-  'user.last', 'wait.last'
+  'idle.last', 'nice.last',
+  'softirq.last', 'steal.last',
+  'system.last', 'user.last',
+  'wait.last'
  )
 
 var cputime_mean_idle = cputime_host
  |mean('idle').as('idle.mean')
-
-var cputime_mean_interrupt = cputime_host
- |mean('interrupt').as('interrupt.mean')
 
 var cputime_mean_nice = cputime_host
  |mean('nice').as('nice.mean')
@@ -65,7 +62,6 @@ var cputime_mean_wait = cputime_host
 var cputime_calc = cputime_mean_idle
  |union(
   cputime_last,
-  cputime_mean_interrupt,
   cputime_mean_nice,
   cputime_mean_softirq,
   cputime_mean_steal,
@@ -93,8 +89,6 @@ var cputime_calc = cputime_host
  @streamAggregateUDF()
   .aggregate('last(idle) as idle.last')
   .aggregate('mean(idle) as idle.mean')
-  .aggregate('last(interrupt) as interrupt.last')
-  .aggregate('mean(interrupt) as interrupt.mean')
   .aggregate('last(nice) as nice.last')
   .aggregate('mean(nice) as nice.mean')
   .aggregate('last(softirq) as softirq.last')
