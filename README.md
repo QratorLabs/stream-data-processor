@@ -11,7 +11,7 @@ Compare the following parts of TICK scripts:
 <th>Vanilla TICK script</th>
 <th>TICK script with AggregateUDF from SPD library</th>
 </tr>
-<tr>
+<tr valign="top">
 <td>
 
 ```tickscript
