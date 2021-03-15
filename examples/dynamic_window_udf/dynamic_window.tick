@@ -22,7 +22,7 @@ var cpu_window_options = cputime_all_win
 var cpu_window = cpu_window_options
     @dynamicWindowUDF()
         .periodField('period')
-        .periodTimeUnit('m')
+        .periodTimeUnit('mcs')
         .defaultPeriod(default_period)
         .staticEvery(30s)
         .fillPeriod()

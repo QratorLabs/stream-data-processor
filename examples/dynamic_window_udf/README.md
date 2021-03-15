@@ -27,7 +27,7 @@ Files in this directory represent DynamicWindowUDF usage in bundle with the
 
 * `periodField` –- `period` field name
 * `periodTimeUnit` –- `period` values time unit to interpret them correctly: ns 
-  – nanoseconds, u – microseconds, ms – milliseconds, s – seconds, m – 
+  – nanoseconds, u/mcs/us – microseconds, ms – milliseconds, s – seconds, m – 
   minutes, h – hours, d – days, w – weeks
 * `defaultPeriod` –- `period` default value
 * `staticPeriod` -- sets `period` constant value, cannot be changed with 
