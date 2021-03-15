@@ -8,7 +8,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 option(ENABLE_TESTS "enables tests building" OFF)
 option(CLANG_TIDY_LINT "enables clang-tidy linter" OFF)
-option(ENABLE_BENCHMARKS "enables benchmarks building" OFF)
 
 if(NOT BUILD_SHARED_LIBS)
   message(STATUS "Building static version")
@@ -88,8 +87,4 @@ add_subdirectory(examples)
 if(ENABLE_TESTS)
   enable_testing()
   add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/test")
-endif()
-
-if(ENABLE_BENCHMARKS)
-  add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/benchmarks")
 endif()
