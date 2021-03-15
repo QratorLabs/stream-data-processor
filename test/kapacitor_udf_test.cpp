@@ -340,6 +340,10 @@ TEST_CASE("successfully parses DynamicWindowUDF options", "[DynamicWindowUDF]") 
     options[period_time_unit_option_name].set_stringvalue("u");
     expected_period_time_unit = time_utils::MICRO;
   }
+  SECTION( "set period time unit as \"us\"" ) {
+    options[period_time_unit_option_name].set_stringvalue("us");
+    expected_period_time_unit = time_utils::MICRO;
+  }
   SECTION( "set period time unit as \"ms\"" ) {
     options[period_time_unit_option_name].set_stringvalue("ms");
     expected_period_time_unit = time_utils::MILLI;
@@ -441,6 +445,10 @@ TEST_CASE("successfully parses DynamicWindowUDF options with alternative configu
   }
   SECTION( "set every time unit as \"u\"" ) {
     options[every_time_unit_option_name].set_stringvalue("u");
+    expected_every_time_unit = time_utils::MICRO;
+  }
+  SECTION( "set every time unit as \"us\"" ) {
+    options[every_time_unit_option_name].set_stringvalue("us");
     expected_every_time_unit = time_utils::MICRO;
   }
   SECTION( "set every time unit as \"ms\"" ) {

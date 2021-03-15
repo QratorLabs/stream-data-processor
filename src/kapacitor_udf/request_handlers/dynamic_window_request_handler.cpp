@@ -54,10 +54,10 @@ inline const std::vector<std::vector<std::unordered_set<std::string>>>
 
 inline const std::unordered_map<std::string, time_utils::TimeUnit>
     TIME_NAMES_TO_UNITS{{"ns", time_utils::NANO},   {"u", time_utils::MICRO},
-                        {"mcs", time_utils::MICRO}, {"ms", time_utils::MILLI},
-                        {"s", time_utils::SECOND},  {"m", time_utils::MINUTE},
-                        {"h", time_utils::HOUR},    {"d", time_utils::DAY},
-                        {"w", time_utils::WEEK}};
+                        {"mcs", time_utils::MICRO}, {"us", time_utils::MICRO},
+                        {"ms", time_utils::MILLI},  {"s", time_utils::SECOND},
+                        {"m", time_utils::MINUTE},  {"h", time_utils::HOUR},
+                        {"d", time_utils::DAY},     {"w", time_utils::WEEK}};
 
 }  // namespace
 
