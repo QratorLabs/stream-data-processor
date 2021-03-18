@@ -4,7 +4,22 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 echo "Entering build directory: ${SCRIPT_DIR}/build ..."
 mkdir -p "${SCRIPT_DIR}/build"
 pushd "${SCRIPT_DIR}/build" || exit 1
-cmake .. -D"ENABLE_TESTS"=ON -D"CLANG_TIDY_LINT"=OFF -D"CMAKE_EXPORT_COMPILE_COMMANDS"=ON -D"BUILD_SHARED_LIBS"=OFF
+
+if [[ "$OSTYPE" == "linux-musl" ]] || ! command -v clang++ &> /dev/null || ! command -v clang &> /dev/null; then
+  cmake .. -D"ENABLE_TESTS"=ON -D"CLANG_TIDY_LINT"=OFF \
+      -D"CMAKE_EXPORT_COMPILE_COMMANDS"=ON -D"BUILD_SHARED_LIBS"=OFF
+else
+  cmake .. -D"ENABLE_TESTS"=ON -D"CLANG_TIDY_LINT"=OFF \
+      -D"CMAKE_EXPORT_COMPILE_COMMANDS"=ON -D"BUILD_SHARED_LIBS"=OFF \
+      -D"CMAKE_CXX_COMPILER"=clang++ -D"CMAKE_C_COMPILER"=clang
+
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    export ASAN_OPTIONS="detect_leaks=0"
+  else
+    export ASAN_OPTIONS="detect_leaks=1"
+  fi
+fi
+
 NPROC=1
 if [[ "$OSTYPE" == "darwin"* ]]; then
   NPROC=$(sysctl -n hw.logicalcpu)

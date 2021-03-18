@@ -10,6 +10,8 @@ namespace stream_data_processor {
 
 namespace internal {
 
+ThresholdState::~ThresholdState() = default;
+
 arrow::Result<double> ThresholdState::getColumnValueAtRow(
     const arrow::RecordBatch& record_batch, const std::string& column_name,
     int row_id) {

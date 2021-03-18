@@ -1,6 +1,5 @@
 #include <memory>
 #include <utility>
-#include <vector>
 
 #include <arrow/csv/api.h>
 #include <arrow/io/api.h>

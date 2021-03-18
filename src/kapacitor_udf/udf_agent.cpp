@@ -5,10 +5,11 @@
 #include <spdlog/spdlog.h>
 
 #include "udf_agent.h"
-#include "utils/uvarint_utils.h"
 
 namespace stream_data_processor {
 namespace kapacitor_udf {
+
+IUDFAgent::~IUDFAgent() = default;
 
 template <typename UVWHandleType, typename LibuvHandleType>
 UDFAgent<UVWHandleType, LibuvHandleType>::UDFAgent(uvw::Loop* /* unused */) {

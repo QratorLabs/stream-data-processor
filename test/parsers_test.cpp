@@ -219,7 +219,7 @@ TEST_CASE( "parse timestamp", "[GraphiteParser]" ) {
                                                "region", 0);
   checkValue<int64_t, arrow::Int64Scalar>(100, record_batch_vector[0],
                                           "idle.percent", 0);
-  checkValue<int64_t, arrow::Int64Scalar>(now, record_batch_vector[0],
+  checkValue<int64_t, arrow::TimestampScalar>(now, record_batch_vector[0],
                                           "time", 0);
 }
 

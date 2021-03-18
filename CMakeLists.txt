@@ -9,6 +9,22 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 option(ENABLE_TESTS "enables tests building" OFF)
 option(CLANG_TIDY_LINT "enables clang-tidy linter" OFF)
 
+if(ENABLE_TESTS AND CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT "$ENV{OSTYPE}" STREQUAL "linux-musl")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer -g")
+  set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -fsanitize=address -fno-omit-frame-pointer -g")
+  message(STATUS "Enabled AddressSanitizer")
+
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined -fno-omit-frame-pointer -g")
+  set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -fsanitize=undefined -fno-omit-frame-pointer -g")
+  message(STATUS "Enabled UndefinedBehaviourSanitizer")
+
+  if(NOT APPLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=leak -fno-omit-frame-pointer -g")
+    set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -fsanitize=leak -fno-omit-frame-pointer -g")
+    message(STATUS "Enabled LeakSanitizer")
+  endif()
+endif()
+
 if(NOT BUILD_SHARED_LIBS)
   message(STATUS "Building static version")
 endif ()
@@ -85,6 +101,12 @@ add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src")
 add_subdirectory(examples)
 
 if(ENABLE_TESTS)
+
+#  if(LINUX)
+#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=leak -fno-omit-frame-pointer -g")
+#    message(STATUS "Enabled LeakSanitizer")
+#  endif()
+
   enable_testing()
   add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/test")
 endif()

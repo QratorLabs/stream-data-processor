@@ -22,6 +22,17 @@ class IUDFAgent {
   virtual void start() = 0;
   virtual void stop() = 0;
   virtual void writeResponse(const agent::Response& response) const = 0;
+
+  virtual ~IUDFAgent() = 0;
+
+ protected:
+  IUDFAgent() = default;
+
+  IUDFAgent(const IUDFAgent& /* non-used */) = default;
+  IUDFAgent& operator=(const IUDFAgent& /* non-used */) = default;
+
+  IUDFAgent(IUDFAgent&& /* non-used */) = default;
+  IUDFAgent& operator=(IUDFAgent&& /* non-used */) = default;
 };
 
 class RequestHandler;

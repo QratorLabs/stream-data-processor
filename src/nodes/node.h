@@ -31,6 +31,8 @@ class Node {
     logger_->info("Node created");
   }
 
+  virtual ~Node() = default;
+
   void log(const std::string& message,
            spdlog::level::level_enum level = spdlog::level::info);
 
@@ -45,6 +47,14 @@ class Node {
  protected:
   void passData(const std::vector<std::shared_ptr<arrow::Buffer>>& data);
   void stopConsumers();
+
+  Node() = default;
+
+  Node(const Node& /* non-used */) = delete;
+  Node& operator=(const Node& /* non-used */) = delete;
+
+  Node(Node&& /* non-used */) = default;
+  Node& operator=(Node&& /* non-used */) = default;
 
  private:
   std::string name_;

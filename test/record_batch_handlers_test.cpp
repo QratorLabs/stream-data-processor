@@ -229,7 +229,7 @@ TEST_CASE( "join on timestamp and tag column", "[JoinHandler]" ) {
   checkColumnsArePresent(result[0], {
       "time", "tag", "field_1", "field_2"
   });
-  checkValue<int64_t, arrow::Int64Scalar>(100, result[0],
+  checkValue<int64_t, arrow::TimestampScalar>(100, result[0],
                                           "time", 0);
   checkValue<std::string, arrow::StringScalar>("tag_value", result[0],
                                                "tag", 0);
@@ -298,7 +298,7 @@ TEST_CASE( "assign missed values to null", "[JoinHandler]" ) {
   checkColumnsArePresent(result[0], {
       "time", "tag", "field_1", "field_2"
   });
-  checkValue<int64_t, arrow::Int64Scalar>(105, result[0],
+  checkValue<int64_t, arrow::TimestampScalar>(105, result[0],
                                           "time", 0);
   checkValue<std::string, arrow::StringScalar>("tag_value", result[0],
                                                "tag", 0);
@@ -306,11 +306,11 @@ TEST_CASE( "assign missed values to null", "[JoinHandler]" ) {
                                           "field_1", 0);
   checkIsNull(result[0], "field_2", 0);
 
-  checkValue<int64_t, arrow::Int64Scalar>(110, result[0],
+  checkValue<int64_t, arrow::TimestampScalar>(110, result[0],
                                           "time", 1);
   checkIsValid(result[0],"tag", 1);
 
-  checkValue<int64_t, arrow::Int64Scalar>(110, result[0],
+  checkValue<int64_t, arrow::TimestampScalar>(110, result[0],
                                           "time", 2);
   checkIsValid(result[0],"tag", 2);
 }
@@ -459,8 +459,8 @@ SCENARIO( "groups aggregation", "[AggregateHandler]" ) {
         REQUIRE( result.size() == 1 );
         checkSize(result[0], 2, 2);
         checkColumnsArePresent(result[0], {time_field->name(), tag_field->name()});
-        checkValue<int64_t, arrow::Int64Scalar>(100, result[0], time_field->name(), 0);
-        checkValue<int64_t, arrow::Int64Scalar>(101, result[0], time_field->name(), 1);
+        checkValue<int64_t, arrow::TimestampScalar>(100, result[0], time_field->name(), 0);
+        checkValue<int64_t, arrow::TimestampScalar>(101, result[0], time_field->name(), 1);
         checkValue<std::string, arrow::StringScalar>(group_1, result[0], tag_field->name(), 0);
         checkValue<std::string, arrow::StringScalar>(group_1, result[0], tag_field->name(), 1);
         REQUIRE( !metadata::extractGroupMetadata(*result[0]).empty() );
@@ -480,13 +480,13 @@ SCENARIO( "groups aggregation", "[AggregateHandler]" ) {
 
         checkSize(result[0], 1, 2);
         checkColumnsArePresent(result[0], {time_field->name(), tag_field->name()});
-        checkValue<int64_t, arrow::Int64Scalar>(100, result[0], time_field->name(), 0);
+        checkValue<int64_t, arrow::TimestampScalar>(100, result[0], time_field->name(), 0);
         checkValue<std::string, arrow::StringScalar>(group_1, result[0], tag_field->name(), 0);
         REQUIRE( !metadata::extractGroupMetadata(*result[0]).empty() );
 
         checkSize(result[1], 1, 2);
         checkColumnsArePresent(result[1], {time_field->name(), tag_field->name()});
-        checkValue<int64_t, arrow::Int64Scalar>(102, result[1], time_field->name(), 0);
+        checkValue<int64_t, arrow::TimestampScalar>(102, result[1], time_field->name(), 0);
         checkValue<std::string, arrow::StringScalar>(group_2, result[1], tag_field->name(), 0);
         REQUIRE( !metadata::extractGroupMetadata(*result[1]).empty() );
       }
@@ -535,7 +535,7 @@ SCENARIO( "aggregating time", "[AggregateHandler]" ) {
           checkSize(result[0], 1, 1);
           checkColumnsArePresent(result[0],
                                  {new_time_column_name});
-          checkValue<int64_t, arrow::Int64Scalar>(100,
+          checkValue<int64_t, arrow::TimestampScalar>(100,
                                                   result[0],
                                                   new_time_column_name,
                                                   0);
@@ -600,7 +600,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
               options.threshold_column_name
           });
 
-          checkValue<int64_t, arrow::Int64Scalar>(
+          checkValue<int64_t, arrow::TimestampScalar>(
               now, result[0], time_column_name, 0);
           checkValue<int64_t, arrow::Int64Scalar>(
               value, result[0], options.watch_column_name, 0);
@@ -637,7 +637,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
               options.threshold_column_name
           });
 
-          checkValue<int64_t, arrow::Int64Scalar>(
+          checkValue<int64_t, arrow::TimestampScalar>(
               now, result[0], time_column_name, 0);
           checkValue<int64_t, arrow::Int64Scalar>(
               value, result[0], options.watch_column_name, 0);
@@ -672,7 +672,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
                   options.threshold_column_name
               });
 
-              checkValue<int64_t, arrow::Int64Scalar>(
+              checkValue<int64_t, arrow::TimestampScalar>(
                   next_time, result[0], time_column_name, 0);
               checkValue<int64_t, arrow::Int64Scalar>(
                   value, result[0], options.watch_column_name, 0);
@@ -712,7 +712,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
                   options.threshold_column_name
               });
 
-              checkValue<int64_t, arrow::Int64Scalar>(
+              checkValue<int64_t, arrow::TimestampScalar>(
                   next_time, result[0], time_column_name, 0);
               checkValue<int64_t, arrow::Int64Scalar>(
                   value, result[0], options.watch_column_name, 0);
@@ -754,7 +754,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
               options.threshold_column_name
           });
 
-          checkValue<int64_t, arrow::Int64Scalar>(
+          checkValue<int64_t, arrow::TimestampScalar>(
               now, result[0], time_column_name, 0);
           checkValue<double, arrow::DoubleScalar>(
               value, result[0], options.watch_column_name, 0);
@@ -792,7 +792,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
                   options.threshold_column_name
               });
 
-              checkValue<int64_t, arrow::Int64Scalar>(
+              checkValue<int64_t, arrow::TimestampScalar>(
                   next_time, result[0], time_column_name, 0);
               checkValue<double, arrow::DoubleScalar>(
                   value, result[0], options.watch_column_name, 0);
@@ -832,7 +832,7 @@ SCENARIO( "threshold state machine changes states", "[ThresholdStateMachine]" ) 
                   options.threshold_column_name
               });
 
-              checkValue<int64_t, arrow::Int64Scalar>(
+              checkValue<int64_t, arrow::TimestampScalar>(
                   next_time, result[0], time_column_name, 0);
               checkValue<double, arrow::DoubleScalar>(
                   value, result[0], options.watch_column_name, 0);
@@ -889,7 +889,7 @@ TEST_CASE( "threshold not increasing over max", "[ThresholdStateMachine]" ) {
       options.threshold_column_name
   });
 
-  checkValue<int64_t, arrow::Int64Scalar>(
+  checkValue<int64_t, arrow::TimestampScalar>(
       100, result[0], time_column_name, 0);
   checkValue<double, arrow::DoubleScalar>(
       40, result[0], options.watch_column_name, 0);
@@ -899,7 +899,7 @@ TEST_CASE( "threshold not increasing over max", "[ThresholdStateMachine]" ) {
       options.threshold_column_name,
       0);
 
-  checkValue<int64_t, arrow::Int64Scalar>(
+  checkValue<int64_t, arrow::TimestampScalar>(
       102, result[0], time_column_name, 1);
   checkValue<double, arrow::DoubleScalar>(
       50, result[0], options.watch_column_name, 1);
@@ -949,7 +949,7 @@ TEST_CASE( "threshold not decreasing over min", "[ThresholdStateMachine]" ) {
       options.threshold_column_name
   });
 
-  checkValue<int64_t, arrow::Int64Scalar>(
+  checkValue<int64_t, arrow::TimestampScalar>(
       100, result[0], time_column_name, 0);
   checkValue<double, arrow::DoubleScalar>(
       5, result[0], options.watch_column_name, 0);
@@ -959,7 +959,7 @@ TEST_CASE( "threshold not decreasing over min", "[ThresholdStateMachine]" ) {
       options.threshold_column_name,
       0);
 
-  checkValue<int64_t, arrow::Int64Scalar>(
+  checkValue<int64_t, arrow::TimestampScalar>(
       102, result[0], time_column_name, 1);
   checkValue<double, arrow::DoubleScalar>(
       3, result[0], options.watch_column_name, 1);
@@ -1009,9 +1009,9 @@ SCENARIO( "WindowHandler behaviour with true fill_period flag", "[WindowHandler]
             checkSize(result[0], 2, 1);
             checkColumnsArePresent(result[0], {time_column_name});
 
-            checkValue<int64_t, arrow::Int64Scalar>(
+            checkValue<int64_t, arrow::TimestampScalar>(
                 0, result[0], time_column_name, 0);
-            checkValue<int64_t, arrow::Int64Scalar>(
+            checkValue<int64_t, arrow::TimestampScalar>(
                 4, result[0], time_column_name, 1);
           }
         }
@@ -1033,16 +1033,16 @@ SCENARIO( "WindowHandler behaviour with true fill_period flag", "[WindowHandler]
 
         checkSize(result[0], 2, 1);
         checkColumnsArePresent(result[0], {time_column_name});
-        checkValue<int64_t, arrow::Int64Scalar>(
+        checkValue<int64_t, arrow::TimestampScalar>(
             0, result[0], time_column_name, 0);
-        checkValue<int64_t, arrow::Int64Scalar>(
+        checkValue<int64_t, arrow::TimestampScalar>(
             4, result[0], time_column_name, 1);
 
         checkSize(result[1], 2, 1);
         checkColumnsArePresent(result[1], {time_column_name});
-        checkValue<int64_t, arrow::Int64Scalar>(
+        checkValue<int64_t, arrow::TimestampScalar>(
             4, result[1], time_column_name, 0);
-        checkValue<int64_t, arrow::Int64Scalar>(
+        checkValue<int64_t, arrow::TimestampScalar>(
             6, result[1], time_column_name, 1);
       }
     }
@@ -1076,7 +1076,7 @@ SCENARIO( "WindowHandler behaviour with false fill_period flag", "[WindowHandler
         checkSize(result[0], 1, 1);
         checkColumnsArePresent(result[0], {time_column_name});
 
-        checkValue<int64_t, arrow::Int64Scalar>(
+        checkValue<int64_t, arrow::TimestampScalar>(
             0, result[0], time_column_name, 0);
 
         AND_WHEN( "pass batch with bigger timestamps" ) {
@@ -1094,9 +1094,9 @@ SCENARIO( "WindowHandler behaviour with false fill_period flag", "[WindowHandler
             checkSize(result[0], 2, 1);
             checkColumnsArePresent(result[0], {time_column_name});
 
-            checkValue<int64_t, arrow::Int64Scalar>(
+            checkValue<int64_t, arrow::TimestampScalar>(
                 4, result[0], time_column_name, 0);
-            checkValue<int64_t, arrow::Int64Scalar>(
+            checkValue<int64_t, arrow::TimestampScalar>(
                 5, result[0], time_column_name, 1);
           }
         }
@@ -1194,7 +1194,7 @@ TEST_CASE( "aggregating grouped by time column", "[AggregateHandler]" ) {
   REQUIRE( result.size() == 1 );
   checkSize(result[0], 1, 1);
   checkColumnsArePresent(result[0], {options.result_time_column_rule.result_column_name});
-  checkValue<int64_t, arrow::Int64Scalar>(
+  checkValue<int64_t, arrow::TimestampScalar>(
       100, result[0],
       options.result_time_column_rule.result_column_name, 0);
 }
@@ -1226,13 +1226,13 @@ SCENARIO( "WindowHandler behaviour with empty window", "[WindowHandler]" ) {
         checkSize(result[0], 1, 1);
         checkColumnsArePresent(result[0], {time_column_name});
 
-        checkValue<int64_t, arrow::Int64Scalar>(
+        checkValue<int64_t, arrow::TimestampScalar>(
             0, result[0], time_column_name, 0);
 
         checkSize(result[1], 1, 1);
         checkColumnsArePresent(result[1], {time_column_name});
 
-        checkValue<int64_t, arrow::Int64Scalar>(
+        checkValue<int64_t, arrow::TimestampScalar>(
             10, result[1], time_column_name, 0);
       }
     }
@@ -1266,7 +1266,7 @@ SCENARIO( "WindowHandler correctly handles timestamps with arrow time type diffe
         checkSize(result[0], 1, 1);
         checkColumnsArePresent(result[0], {time_column_name});
 
-        checkValue<int64_t, arrow::Int64Scalar>(
+        checkValue<int64_t, arrow::TimestampScalar>(
             0, result[0], time_column_name, 0);
 
         AND_WHEN( "pass batch with bigger timestamps" ) {
@@ -1284,9 +1284,9 @@ SCENARIO( "WindowHandler correctly handles timestamps with arrow time type diffe
             checkSize(result[0], 2, 1);
             checkColumnsArePresent(result[0], {time_column_name});
 
-            checkValue<int64_t, arrow::Int64Scalar>(
+            checkValue<int64_t, arrow::TimestampScalar>(
                 4000000000, result[0], time_column_name, 0);
-            checkValue<int64_t, arrow::Int64Scalar>(
+            checkValue<int64_t, arrow::TimestampScalar>(
                 5000000000, result[0], time_column_name, 1);
           }
         }
@@ -1691,7 +1691,7 @@ TEST_CASE("when every option is decreased window is emitted sooner", "[DynamicWi
   checkSize(result[0], 1, 3);
   checkColumnsArePresent(result[0], {time_column_name});
 
-  checkValue<int64_t, arrow::Int64Scalar>(
+  checkValue<int64_t, arrow::TimestampScalar>(
       0, result[0], time_column_name, 0);
 }
 
@@ -1776,9 +1776,9 @@ TEST_CASE("when period option is decreased emitted window is shorter", "[Dynamic
   checkSize(result[0], 2, 3);
   checkColumnsArePresent(result[0], {time_column_name});
 
-  checkValue<int64_t, arrow::Int64Scalar>(
+  checkValue<int64_t, arrow::TimestampScalar>(
       0, result[0], time_column_name, 0);
-  checkValue<int64_t, arrow::Int64Scalar>(
+  checkValue<int64_t, arrow::TimestampScalar>(
       1, result[0], time_column_name, 1);
 }
 
@@ -1819,15 +1819,15 @@ TEST_CASE( "WindowHandler behaviour with different schemas", "[WindowHandler]" )
   checkSize(result_1[0], 2, 1);
   checkColumnsArePresent(result_1[0], {time_column_name});
 
-  checkValue<int64_t, arrow::Int64Scalar>(
+  checkValue<int64_t, arrow::TimestampScalar>(
       0, result_1[0], time_column_name, 0);
-  checkValue<int64_t, arrow::Int64Scalar>(
+  checkValue<int64_t, arrow::TimestampScalar>(
       1, result_1[0], time_column_name, 1);
 
   checkSize(result_1[1], 1, 2);
   checkColumnsArePresent(result_1[1], {time_column_name, new_column_name});
 
-  checkValue<int64_t, arrow::Int64Scalar>(
+  checkValue<int64_t, arrow::TimestampScalar>(
       3, result_1[1], time_column_name, 0);
   checkValue<int64_t, arrow::Int64Scalar>(
       0, result_1[1], new_column_name, 0);

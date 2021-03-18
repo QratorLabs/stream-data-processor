@@ -10,16 +10,19 @@ arrow::Status DefaultHandler::addMissingColumn<int64_t>(
     const std::unordered_map<std::string, DefaultCase<int64_t>>&
         default_cases,
     std::shared_ptr<arrow::RecordBatch>* record_batch) const {
+  auto rows_number = record_batch->get()->num_rows();
   for (auto& [column_name, default_case] : default_cases) {
     if (record_batch->get()->schema()->GetFieldByName(column_name) !=
         nullptr) {
       continue;
     }
 
-    std::vector column_values(record_batch->get()->num_rows(),
-                              default_case.default_value);
     arrow::Int64Builder builder;
-    ARROW_RETURN_NOT_OK(builder.AppendValues(column_values));
+    if (rows_number > 0) {
+      std::vector column_values(rows_number, default_case.default_value);
+      ARROW_RETURN_NOT_OK(builder.AppendValues(column_values));
+    }
+
     std::shared_ptr<arrow::Array> array;
     ARROW_RETURN_NOT_OK(builder.Finish(&array));
 
@@ -40,16 +43,19 @@ template <>
 arrow::Status DefaultHandler::addMissingColumn<double>(
     const std::unordered_map<std::string, DefaultCase<double>>& default_cases,
     std::shared_ptr<arrow::RecordBatch>* record_batch) const {
+  auto rows_number = record_batch->get()->num_rows();
   for (auto& [column_name, default_case] : default_cases) {
     if (record_batch->get()->schema()->GetFieldByName(column_name) !=
         nullptr) {
       continue;
     }
 
-    std::vector column_values(record_batch->get()->num_rows(),
-                              default_case.default_value);
     arrow::DoubleBuilder builder;
-    ARROW_RETURN_NOT_OK(builder.AppendValues(column_values));
+    if (rows_number > 0) {
+      std::vector column_values(rows_number, default_case.default_value);
+      ARROW_RETURN_NOT_OK(builder.AppendValues(column_values));
+    }
+
     std::shared_ptr<arrow::Array> array;
     ARROW_RETURN_NOT_OK(builder.Finish(&array));
 
@@ -71,16 +77,19 @@ arrow::Status DefaultHandler::addMissingColumn<std::string>(
     const std::unordered_map<std::string, DefaultCase<std::string>>&
         default_cases,
     std::shared_ptr<arrow::RecordBatch>* record_batch) const {
+  auto rows_number = record_batch->get()->num_rows();
   for (auto& [column_name, default_case] : default_cases) {
     if (record_batch->get()->schema()->GetFieldByName(column_name) !=
         nullptr) {
       continue;
     }
 
-    std::vector column_values(record_batch->get()->num_rows(),
-                              default_case.default_value);
     arrow::StringBuilder builder;
-    ARROW_RETURN_NOT_OK(builder.AppendValues(column_values));
+    if (rows_number > 0) {
+      std::vector column_values(rows_number, default_case.default_value);
+      ARROW_RETURN_NOT_OK(builder.AppendValues(column_values));
+    }
+
     std::shared_ptr<arrow::Array> array;
     ARROW_RETURN_NOT_OK(builder.Finish(&array));
 
@@ -101,16 +110,19 @@ template <>
 arrow::Status DefaultHandler::addMissingColumn<bool>(
     const std::unordered_map<std::string, DefaultCase<bool>>& default_cases,
     std::shared_ptr<arrow::RecordBatch>* record_batch) const {
+  auto rows_number = record_batch->get()->num_rows();
   for (auto& [column_name, default_case] : default_cases) {
     if (record_batch->get()->schema()->GetFieldByName(column_name) !=
         nullptr) {
       continue;
     }
 
-    std::vector column_values(record_batch->get()->num_rows(),
-                              default_case.default_value);
     arrow::BooleanBuilder builder;
-    ARROW_RETURN_NOT_OK(builder.AppendValues(column_values));
+    if (rows_number > 0) {
+      std::vector column_values(rows_number, default_case.default_value);
+      ARROW_RETURN_NOT_OK(builder.AppendValues(column_values));
+    }
+
     std::shared_ptr<arrow::Array> array;
     ARROW_RETURN_NOT_OK(builder.Finish(&array));
 
