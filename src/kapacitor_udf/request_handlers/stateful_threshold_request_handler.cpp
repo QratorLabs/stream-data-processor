@@ -6,7 +6,9 @@
 #include <spdlog/spdlog.h>
 
 #include "invalid_option_exception.h"
+#include "kapacitor_udf/utils/points_storage.h"
 #include "record_batch_handlers/group_dispatcher.h"
+#include "record_batch_handlers/stateful_handlers/threshold_state_machine.h"
 #include "stateful_threshold_request_handler.h"
 
 namespace stream_data_processor {
@@ -144,10 +146,7 @@ const BasePointsConverter::PointsToRecordBatchesConversionOptions
 
 StatefulThresholdRequestHandler::StatefulThresholdRequestHandler(
     const IUDFAgent* agent)
-    : StreamRecordBatchRequestHandlerBase(agent, false) {
-  setPointsConverter(std::make_shared<BasePointsConverter>(
-      DEFAULT_TO_RECORD_BATCHES_OPTIONS));
-}
+    : StreamRecordBatchRequestHandlerBase(agent) {}
 
 agent::Response StatefulThresholdRequestHandler::info() const {
   agent::Response response;
@@ -171,16 +170,23 @@ agent::Response StatefulThresholdRequestHandler::init(
     return response;
   }
 
-  setHandler(std::make_shared<GroupDispatcher>(
-      std::make_shared<ThresholdStateMachineFactory>(
-          std::move(threshold_options))));
+  std::unique_ptr<RecordBatchHandler> handler =
+      std::make_unique<GroupDispatcher>(
+          std::make_shared<ThresholdStateMachineFactory>(
+              std::move(threshold_options)));
+
+  setPointsStorage(std::make_unique<storage_utils::PointsStorage>(
+      getAgent(),
+      std::make_unique<BasePointsConverter>(
+          DEFAULT_TO_RECORD_BATCHES_OPTIONS),
+      std::move(handler), false));
 
   response.mutable_init()->set_success(true);
   return response;
 }
 
 void StatefulThresholdRequestHandler::point(const agent::Point& point) {
-  addPoint(point);
+  getPointsStorage()->addPoint(point);
   handleBatch();
 }
 

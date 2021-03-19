@@ -3,8 +3,12 @@
 #include <iostream>
 
 #include <arrow/api.h>
-
 #include <catch2/catch.hpp>
+#include <gmock/gmock.h>
+
+#include "record_batch_handlers/record_batch_handler.h"
+
+namespace sdp = stream_data_processor;
 
 inline void arrowAssertNotOk(const arrow::Status& status) {
   INFO(status.message());
@@ -101,3 +105,16 @@ inline void assertMetadataIsEqual(
     REQUIRE( expected_field->Equals(actual_field, true) );
   }
 }
+
+class MockRecordBatchHandler : public sdp::RecordBatchHandler {
+ public:
+  MOCK_METHOD(arrow::Result<arrow::RecordBatchVector>,
+              handle,
+              (const std::shared_ptr<arrow::RecordBatch>& record_batch),
+              (override));
+
+  MOCK_METHOD(arrow::Result<arrow::RecordBatchVector>,
+              handle,
+              (const arrow::RecordBatchVector& record_batches),
+              (override));
+};

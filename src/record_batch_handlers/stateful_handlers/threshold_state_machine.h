@@ -24,6 +24,8 @@ class ThresholdState {
       const arrow::RecordBatch& record_batch, int row_id,
       arrow::DoubleBuilder* threshold_column_builder) = 0;
 
+  virtual ~ThresholdState() = 0;
+
  protected:
   arrow::Result<double> getColumnValueAtRow(
       const arrow::RecordBatch& record_batch, const std::string& column_name,
@@ -31,6 +33,14 @@ class ThresholdState {
 
   arrow::Result<std::time_t> getTimeAtRow(
       const arrow::RecordBatch& record_batch, int row_id);
+
+  ThresholdState() = default;
+
+  ThresholdState(const ThresholdState& /* non-used */) = default;
+  ThresholdState& operator=(const ThresholdState& /* non-used */) = default;
+
+  ThresholdState(ThresholdState&& /* non-used */) = default;
+  ThresholdState& operator=(ThresholdState&& /* non-used */) = default;
 };
 
 class StateOK : public ThresholdState {

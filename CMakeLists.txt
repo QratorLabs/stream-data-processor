@@ -9,6 +9,22 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 option(ENABLE_TESTS "enables tests building" OFF)
 option(CLANG_TIDY_LINT "enables clang-tidy linter" OFF)
 
+if(ENABLE_TESTS AND CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT "$ENV{OSTYPE}" STREQUAL "linux-musl")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer -g")
+  set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -fsanitize=address -fno-omit-frame-pointer -g")
+  message(STATUS "Enabled AddressSanitizer")
+
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined -fno-omit-frame-pointer -g")
+  set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -fsanitize=undefined -fno-omit-frame-pointer -g")
+  message(STATUS "Enabled UndefinedBehaviourSanitizer")
+
+  if(NOT APPLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=leak -fno-omit-frame-pointer -g")
+    set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -fsanitize=leak -fno-omit-frame-pointer -g")
+    message(STATUS "Enabled LeakSanitizer")
+  endif()
+endif()
+
 if(NOT BUILD_SHARED_LIBS)
   message(STATUS "Building static version")
 endif ()
@@ -64,10 +80,8 @@ protobuf_generate_cpp(ProtoSources ProtoHeaders
 add_library(protofiles_object_library OBJECT ${ProtoSources})
 set_target_properties(protofiles_object_library PROPERTIES CXX_CLANG_TIDY "")
 
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src")
-
 function(add_exec_target file_path)
-  message(STATUS "Adding target for source file: ${file_path}")
+  message(STATUS "Adding executable target for the source file: ${file_path}")
   get_filename_component(file_name "${file_path}" NAME_WE)
   add_executable("${file_name}" "${file_path}")
   foreach(library IN LISTS ARGN)
@@ -75,9 +89,24 @@ function(add_exec_target file_path)
   endforeach()
 endfunction()
 
+function(add_library_target library_name)
+  message(STATUS "Adding library target ${library_name}")
+  add_library("${library_name}" ${${library_name}_SOURCES})
+  target_include_directories("${library_name}" PUBLIC ${${library_name}_PUBLIC_INCLUDE_DIRS})
+  target_include_directories("${library_name}" PRIVATE ${${library_name}_PRIVATE_INCLUDE_DIRS})
+  target_link_libraries("${library_name}" ${${library_name}_DEPENDENCIES})
+endfunction()
+
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src")
 add_subdirectory(examples)
 
 if(ENABLE_TESTS)
+
+#  if(LINUX)
+#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=leak -fno-omit-frame-pointer -g")
+#    message(STATUS "Enabled LeakSanitizer")
+#  endif()
+
   enable_testing()
   add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/test")
 endif()

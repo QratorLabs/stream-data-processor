@@ -13,12 +13,13 @@
 namespace stream_data_processor {
 namespace kapacitor_udf {
 
-class StreamToStreamRequestHandler
-    : public TimerRecordBatchRequestHandlerBase {
+using storage_utils::IPointsStorage;
+
+class StreamRequestHandler : public TimerRecordBatchRequestHandlerBase {
  public:
-  StreamToStreamRequestHandler(
-      const IUDFAgent* agent, uvw::Loop* loop,
-      std::chrono::duration<uint64_t> batch_interval);
+  StreamRequestHandler(const IUDFAgent* agent, uvw::Loop* loop,
+                       std::chrono::duration<uint64_t> batch_interval,
+                       std::unique_ptr<IPointsStorage>&& points_storage);
 
   [[nodiscard]] agent::Response info() const override;
   [[nodiscard]] agent::Response init(

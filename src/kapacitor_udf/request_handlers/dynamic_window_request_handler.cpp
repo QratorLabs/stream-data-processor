@@ -284,7 +284,7 @@ const BasePointsConverter::PointsToRecordBatchesConversionOptions
 
 DynamicWindowRequestHandler::DynamicWindowRequestHandler(
     const IUDFAgent* agent, uvw::Loop* loop)
-    : TimerRecordBatchRequestHandlerBase(agent, true, loop) {}
+    : TimerRecordBatchRequestHandlerBase(agent, loop) {}
 
 agent::Response DynamicWindowRequestHandler::info() const {
   agent::Response response;
@@ -312,12 +312,6 @@ agent::Response DynamicWindowRequestHandler::init(
 
   setEmitTimeout(window_options.emit_timeout);
 
-  setPointsConverter(
-      std::make_shared<internal::WindowOptionsConverterDecorator>(
-          std::make_shared<BasePointsConverter>(
-              DEFAULT_TO_RECORD_BATCHES_OPTIONS),
-          window_options.convert_options));
-
   DynamicWindowHandler::DynamicWindowOptions dynamic_window_options;
   if (window_options.convert_options.period_option.has_value()) {
     dynamic_window_options.period_column_name =
@@ -328,10 +322,19 @@ agent::Response DynamicWindowRequestHandler::init(
         window_options.convert_options.every_option.value().first;
   }
 
-  setHandler(std::make_shared<GroupDispatcher>(
-      std::make_shared<DynamicWindowHandlerFactory>(
-          window_options.window_handler_options,
-          std::move(dynamic_window_options))));
+  std::unique_ptr<RecordBatchHandler> handler =
+      std::make_unique<GroupDispatcher>(
+          std::make_shared<DynamicWindowHandlerFactory>(
+              window_options.window_handler_options,
+              std::move(dynamic_window_options)));
+
+  setPointsStorage(std::make_unique<storage_utils::PointsStorage>(
+      getAgent(),
+      std::make_unique<internal::WindowOptionsConverterDecorator>(
+          std::make_shared<BasePointsConverter>(
+              DEFAULT_TO_RECORD_BATCHES_OPTIONS),
+          window_options.convert_options),
+      std::move(handler), true));
 
   response.mutable_init()->set_success(true);
   return response;

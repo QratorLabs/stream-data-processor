@@ -13,10 +13,7 @@ const BasePointsConverter::PointsToRecordBatchesConversionOptions
 
 BatchAggregateRequestHandler::BatchAggregateRequestHandler(
     const IUDFAgent* agent)
-    : RecordBatchRequestHandler(agent, false) {
-  setPointsConverter(std::make_shared<BasePointsConverter>(
-      DEFAULT_TO_RECORD_BATCHES_OPTIONS));
-}
+    : BatchRecordBatchRequestHandlerBase(agent) {}
 
 agent::Response BatchAggregateRequestHandler::info() const {
   agent::Response response;
@@ -41,68 +38,17 @@ agent::Response BatchAggregateRequestHandler::init(
     return response;
   }
 
-  setHandler(
-      std::make_shared<AggregateHandler>(std::move(aggregate_options)));
+  std::unique_ptr<RecordBatchHandler> handler =
+      std::make_unique<AggregateHandler>(std::move(aggregate_options));
+
+  setPointsStorage(std::make_unique<storage_utils::PointsStorage>(
+      getAgent(),
+      std::make_unique<BasePointsConverter>(
+          DEFAULT_TO_RECORD_BATCHES_OPTIONS),
+      std::move(handler), false));
+
   response.mutable_init()->set_success(true);
   return response;
-}
-
-agent::Response BatchAggregateRequestHandler::snapshot() const {
-  agent::Response response;
-  std::stringstream snapshot_builder;
-  if (in_batch_) {
-    snapshot_builder.put('1');
-  } else {
-    snapshot_builder.put('0');
-  }
-
-  snapshot_builder << getPoints().SerializeAsString();
-  response.mutable_snapshot()->set_snapshot(snapshot_builder.str());
-  return response;
-}
-
-agent::Response BatchAggregateRequestHandler::restore(
-    const agent::RestoreRequest& restore_request) {
-  agent::Response response;
-  if (restore_request.snapshot().empty()) {
-    response.mutable_restore()->set_success(false);
-    response.mutable_restore()->set_error(
-        "Can't restore from empty snapshot");
-    return response;
-  }
-
-  if (restore_request.snapshot()[0] != '0' &&
-      restore_request.snapshot()[0] != '1') {
-    response.mutable_restore()->set_success(false);
-    response.mutable_restore()->set_error("Invalid snapshot");
-    return response;
-  }
-
-  in_batch_ = restore_request.snapshot()[0] == '1';
-  restorePointsFromSnapshotData(restore_request.snapshot().substr(1));
-  response.mutable_restore()->set_success(true);
-  return response;
-}
-
-void BatchAggregateRequestHandler::beginBatch(
-    const agent::BeginBatch& batch) {
-  in_batch_ = true;
-}
-
-void BatchAggregateRequestHandler::point(const agent::Point& point) {
-  if (in_batch_) {
-    addPoint(point);
-  } else {
-    agent::Response response;
-    response.mutable_error()->set_error("Can't add point: not in batch");
-    getAgent()->writeResponse(response);
-  }
-}
-
-void BatchAggregateRequestHandler::endBatch(const agent::EndBatch& batch) {
-  in_batch_ = false;
-  setPointsName(batch.name());
-  handleBatch();
 }
 
 }  // namespace kapacitor_udf

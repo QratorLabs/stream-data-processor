@@ -22,7 +22,7 @@ class AggregateFunction {
   aggregate(const arrow::RecordBatch& data,
             const std::string& column_name) const = 0;
 
-  virtual ~AggregateFunction() = default;
+  virtual ~AggregateFunction() = 0;
 };
 
 }  // namespace stream_data_processor

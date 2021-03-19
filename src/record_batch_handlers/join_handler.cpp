@@ -3,7 +3,7 @@
 #include <unordered_map>
 
 #include "join_handler.h"
-#include "metadata/column_typing.h"
+#include "metadata/metadata.h"
 #include "utils/utils.h"
 
 namespace stream_data_processor {
@@ -176,9 +176,31 @@ arrow::Result<JoinHandler::JoinKey> JoinHandler::getJoinKey(
 
   ARROW_ASSIGN_OR_RAISE(auto value_scalar, time_column->GetScalar(row_idx));
 
-  join_key.time = std::static_pointer_cast<arrow::Int64Scalar>(value_scalar)
-                      ->value;  // TODO: it's a bug: we should synchronize
-                                // arrow::TimeUnit types
+  if (value_scalar->type->id() == arrow::Type::TIMESTAMP) {
+    ARROW_ASSIGN_OR_RAISE(
+        value_scalar,
+        value_scalar->CastTo(arrow::timestamp(arrow::TimeUnit::SECOND)));
+
+    join_key.time =
+        std::static_pointer_cast<arrow::TimestampScalar>(value_scalar)->value;
+  } else {
+    if (value_scalar->type->id() != arrow::Type::INT64) {
+      return arrow::Status::NotImplemented(
+          "JoinHandler currently supports arrow::Type::INT64 type as "
+          "non-timestamp time column's type only");
+    }
+
+    ARROW_ASSIGN_OR_RAISE(
+        auto value_time_unit,
+        metadata::getTimeUnitMetadata(*record_batch, time_column_name));
+
+    int64_t time_value =
+        std::static_pointer_cast<arrow::Int64Scalar>(value_scalar)->value;
+
+    ARROW_ASSIGN_OR_RAISE(join_key.time,
+                          time_utils::convertTime(time_value, value_time_unit,
+                                                  time_utils::SECOND));
+  }
 
   return join_key;
 }

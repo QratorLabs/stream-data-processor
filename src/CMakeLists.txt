@@ -112,12 +112,16 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_SOURCES"
   metadata/help.cpp
   nodes/node.cpp
   nodes/eval_node.cpp
+  nodes/data_handlers/data_handler.cpp
   nodes/data_handlers/data_parser.cpp
   nodes/data_handlers/serialized_record_batch_handler.cpp
+  nodes/data_handlers/parsers/parser.cpp
   nodes/data_handlers/parsers/csv_parser.cpp
   nodes/data_handlers/parsers/graphite_parser.cpp
   record_batch_handlers/record_batch_handler.cpp
+  record_batch_handlers/aggregate_functions/aggregate_function.cpp
   record_batch_handlers/aggregate_functions/aggregate_functions.cpp
+  record_batch_handlers/stateful_handlers/handler_factory.cpp
   record_batch_handlers/stateful_handlers/threshold_state_machine.cpp
   record_batch_handlers/aggregate_handler.cpp
   record_batch_handlers/default_handler.cpp
@@ -130,6 +134,7 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_SOURCES"
   record_batch_handlers/sort_handler.cpp
   record_batch_handlers/stateful_handlers/window_handler.cpp
   record_batch_handlers/join_handler.cpp
+  server/unix_socket_client.cpp
   server/unix_socket_server.cpp
   producers/tcp_producer.cpp
   producers/subscriber_producer.cpp
@@ -162,21 +167,27 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   $<TARGET_OBJECTS:protofiles_object_library>
   kapacitor_udf/utils/grouping_utils.cpp
   kapacitor_udf/udf_agent.cpp
+  kapacitor_udf/utils/rw_utils.cpp
   kapacitor_udf/utils/points_converter.cpp
   kapacitor_udf/request_handlers/aggregate_request_handlers/aggregate_options_parser.cpp
   kapacitor_udf/request_handlers/aggregate_request_handlers/batch_aggregate_request_handler.cpp
   kapacitor_udf/request_handlers/aggregate_request_handlers/stream_aggregate_request_handler.cpp
   kapacitor_udf/request_handlers/dynamic_window_request_handler.cpp
+  kapacitor_udf/request_handlers/logging_request_handler.cpp
+  kapacitor_udf/utils/points_storage.cpp
   kapacitor_udf/request_handlers/record_batch_request_handler.cpp
+  kapacitor_udf/request_handlers/request_handler.cpp
   kapacitor_udf/request_handlers/stateful_threshold_request_handler.cpp
-  kapacitor_udf/request_handlers/batch_to_stream_request_handler.cpp
-  kapacitor_udf/request_handlers/stream_to_stream_request_handler.cpp
+  kapacitor_udf/request_handlers/batch_request_handler.cpp
+  kapacitor_udf/request_handlers/stream_request_handler.cpp
   metadata/column_typing.cpp
   metadata/time_metadata.cpp
   metadata/grouping.cpp
   metadata/help.cpp
   record_batch_handlers/record_batch_handler.cpp
+  record_batch_handlers/aggregate_functions/aggregate_function.cpp
   record_batch_handlers/aggregate_functions/aggregate_functions.cpp
+  record_batch_handlers/stateful_handlers/handler_factory.cpp
   record_batch_handlers/stateful_handlers/threshold_state_machine.cpp
   record_batch_handlers/aggregate_handler.cpp
   record_batch_handlers/default_handler.cpp
@@ -189,6 +200,7 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   record_batch_handlers/sort_handler.cpp
   record_batch_handlers/stateful_handlers/window_handler.cpp
   record_batch_handlers/join_handler.cpp
+  server/unix_socket_client.cpp
   server/unix_socket_server.cpp
   utils/arrow_utils.cpp
   utils/compute_utils.cpp
@@ -206,8 +218,5 @@ if (CLANG_TIDY_LINT)
 endif()
 
 foreach(library_name ${LIBRARIES_NAMES})
-  add_library("${library_name}" ${${library_name}_SOURCES})
-  target_include_directories("${library_name}" PUBLIC ${${library_name}_PUBLIC_INCLUDE_DIRS})
-  target_include_directories("${library_name}" PRIVATE ${${library_name}_PRIVATE_INCLUDE_DIRS})
-  target_link_libraries("${library_name}" ${${library_name}_DEPENDENCIES})
+  add_library_target("${library_name}")
 endforeach()

@@ -12,13 +12,14 @@
 
 #include "kapacitor_udf/udf_agent.h"
 #include "kapacitor_udf/request_handlers/aggregate_request_handlers/aggregate_options_parser.h"
-#include "kapacitor_udf/request_handlers/batch_to_stream_request_handler.h"
+#include "kapacitor_udf/request_handlers/batch_request_handler.h"
 #include "kapacitor_udf/request_handlers/invalid_option_exception.h"
 #include "record_batch_handlers/aggregate_handler.h"
 #include "record_batch_handlers/pipeline_handler.h"
 #include "record_batch_handlers/record_batch_handler.h"
 #include "kapacitor_udf/utils/grouping_utils.h"
 #include "kapacitor_udf/utils/points_converter.h"
+#include "kapacitor_udf/utils/points_storage.h"
 #include "kapacitor_udf/request_handlers/dynamic_window_request_handler.h"
 #include "test_help.h"
 #include "record_batch_builder.h"
@@ -39,7 +40,7 @@ class MockUDFAgent : public IUDFAgent {
 };
 
 SCENARIO("UDFAgent with RequestHandler interaction",
-         "[BatchToStreamRequestHandler]") {
+         "[BatchRequestHandler]") {
   GIVEN("UDFAgent and mirror Handler") {
     std::shared_ptr<MockUDFAgent>
         mock_agent = std::make_shared<MockUDFAgent>();
@@ -49,24 +50,37 @@ SCENARIO("UDFAgent with RequestHandler interaction",
         "time",
         "measurement"
     };
-    std::shared_ptr<RecordBatchRequestHandler>
-        handler = std::make_shared<BatchToStreamRequestHandler>(
-        mock_agent.get()
-    );
 
-    handler->setHandler(
-        std::make_shared<PipelineHandler>(std::move(empty_handler_pipeline)));
+    std::unique_ptr<storage_utils::IPointsStorage> points_storage =
+        std::make_unique<storage_utils::PointsStorage>(
+            mock_agent.get(),
+            std::make_unique<BasePointsConverter>(to_record_batches_options),
+            std::make_unique<PipelineHandler>(std::move(empty_handler_pipeline)),
+            false);
 
-    handler->setPointsConverter(
-        std::make_shared<BasePointsConverter>(to_record_batches_options));
+    std::shared_ptr<RequestHandler> handler =
+        std::make_shared<BatchRequestHandler>(
+            mock_agent.get(),
+            std::move(points_storage));
+
+    agent::Point point;
+    int64_t now = std::time(nullptr) * 1000000000;
+    point.set_time(now);
+    point.set_name("name");
+    point.set_group("");
+
+    agent::BeginBatch begin_batch;
+    begin_batch.set_group("");
+    begin_batch.set_name("name");
+    begin_batch.set_byname(false);
+
+    agent::EndBatch end_batch;
+    end_batch.set_group("");
+    end_batch.set_name("name");
+    end_batch.set_byname(false);
+    end_batch.set_tmax(now);
 
     WHEN("mirror Handler consumes points batch") {
-      agent::Point point;
-      int64_t now = std::time(nullptr);
-      point.set_time(now);
-      point.set_name("name");
-      point.set_group("");
-
       THEN("UDFAgent's writeResponse method is called with same points") {
         auto serialized_point = point.SerializeAsString();
         EXPECT_CALL(*mock_agent,
@@ -81,18 +95,12 @@ SCENARIO("UDFAgent with RequestHandler interaction",
                     }))).Times(0);
       }
 
-      handler->beginBatch(agent::BeginBatch());
+      handler->beginBatch(begin_batch);
       handler->point(point);
-      handler->endBatch(agent::EndBatch());
+      handler->endBatch(end_batch);
     }
 
     WHEN("mirror Handler restores from snapshot") {
-      agent::Point point;
-      int64_t time = 100 * 10e9;
-      point.set_time(time);
-      point.set_name("name");
-      point.set_group("");
-
       THEN("mirror Handler sends same data") {
         auto serialized_point = point.SerializeAsString();
         EXPECT_CALL(*mock_agent,
@@ -107,17 +115,17 @@ SCENARIO("UDFAgent with RequestHandler interaction",
                     }))).Times(::testing::Exactly(0));
       }
 
-      handler->beginBatch(agent::BeginBatch());
+      handler->beginBatch(begin_batch);
       handler->point(point);
       auto snapshot_response = handler->snapshot();
-      handler->endBatch(agent::EndBatch());
+      handler->endBatch(end_batch);
 
       auto restore_request = agent::RestoreRequest();
       restore_request.set_snapshot(snapshot_response.snapshot().snapshot());
       auto restore_response = handler->restore(restore_request);
-      REQUIRE (restore_response.has_restore());
+      REQUIRE(restore_response.has_restore());
       REQUIRE(restore_response.restore().success());
-      handler->endBatch(agent::EndBatch());
+      handler->endBatch(end_batch);
     }
   }
 }
@@ -688,3 +696,5 @@ TEST_CASE("DynamicWindowUDF info response is right", "[DynamicWindowUDF]") {
     REQUIRE( info_options.find(option_name) != info_options.end() );
   }
 }
+
+

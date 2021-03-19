@@ -12,6 +12,8 @@ class Producer {
  public:
   explicit Producer(const std::shared_ptr<Node>& node) : node_(node) {}
 
+  virtual ~Producer() = default;
+
   virtual void start() = 0;
   virtual void stop() = 0;
 
@@ -22,6 +24,15 @@ class Producer {
   }
 
   std::shared_ptr<Node> getNode() const { return node_; }
+
+ protected:
+  Producer() = default;
+
+  Producer(const Producer& /* non-used */) = default;
+  Producer& operator=(const Producer& /* non-used */) = default;
+
+  Producer(Producer&& /* non-used */) = default;
+  Producer& operator=(Producer&& /* non-used */) = default;
 
  private:
   std::shared_ptr<Node> node_;

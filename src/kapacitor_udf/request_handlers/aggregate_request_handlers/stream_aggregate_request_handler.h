@@ -14,6 +14,8 @@
 namespace stream_data_processor {
 namespace kapacitor_udf {
 
+using convert_utils::BasePointsConverter;
+
 class StreamAggregateRequestHandler
     : public TimerRecordBatchRequestHandlerBase {
  public:
