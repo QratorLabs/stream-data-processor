@@ -91,6 +91,7 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_PUBLIC_INCLUDE_DIRS"
   )
 set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_PRIVATE_INCLUDE_DIRS"
   "${CMAKE_SOURCE_DIR}/third_party/bprinter/include"
+  "${CMAKE_SOURCE_DIR}/third_party/eigen"
   )
 set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_DEPENDENCIES"
   uvw::uvw-static
@@ -123,6 +124,7 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_SOURCES"
   record_batch_handlers/aggregate_functions/aggregate_functions.cpp
   record_batch_handlers/stateful_handlers/handler_factory.cpp
   record_batch_handlers/stateful_handlers/threshold_state_machine.cpp
+  record_batch_handlers/stateful_handlers/derivative_handler.cpp
   record_batch_handlers/aggregate_handler.cpp
   record_batch_handlers/default_handler.cpp
   record_batch_handlers/filter_handler.cpp
@@ -155,6 +157,7 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_PUBLIC_INCLUDE_DIRS"
   "${CMAKE_CURRENT_SOURCE_DIR}"
   "${CMAKE_SOURCE_DIR}/third_party/uvw/src"
   "${CMAKE_SOURCE_DIR}/third_party/cxxopts/include"
+  "${CMAKE_SOURCE_DIR}/third_party/eigen"
   )
 set("${KAPACITOR_UDF_LIBRARY_NAME}_DEPENDENCIES"
   uvw::uvw-static
@@ -189,6 +192,7 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   record_batch_handlers/aggregate_functions/aggregate_functions.cpp
   record_batch_handlers/stateful_handlers/handler_factory.cpp
   record_batch_handlers/stateful_handlers/threshold_state_machine.cpp
+  record_batch_handlers/stateful_handlers/derivative_handler.cpp
   record_batch_handlers/aggregate_handler.cpp
   record_batch_handlers/default_handler.cpp
   record_batch_handlers/filter_handler.cpp

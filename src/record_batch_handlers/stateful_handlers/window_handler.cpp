@@ -15,8 +15,13 @@ arrow::Result<arrow::RecordBatchVector> WindowHandler::handle(
       auto sorted_record_batch,
       compute_utils::sortByColumn(time_column_name, record_batch));
 
+  auto time_column = sorted_record_batch->GetColumnByName(time_column_name);
+  if (time_column == nullptr) {
+    return arrow::Status::Invalid(fmt::format(
+        "RecordBatch has no time column with name {}", time_column_name));
+  }
+
   if (next_emit_ == 0) {
-    auto time_column = sorted_record_batch->GetColumnByName(time_column_name);
     ARROW_ASSIGN_OR_RAISE(
         auto min_ts, arrow_utils::castTimestampScalar(
                          time_column->GetScalar(0), arrow::TimeUnit::SECOND));
@@ -30,7 +35,6 @@ arrow::Result<arrow::RecordBatchVector> WindowHandler::handle(
     }
   }
 
-  auto time_column = sorted_record_batch->GetColumnByName(time_column_name);
   ARROW_ASSIGN_OR_RAISE(
       auto max_ts_scalar,
       arrow_utils::castTimestampScalar(
@@ -42,12 +46,12 @@ arrow::Result<arrow::RecordBatchVector> WindowHandler::handle(
 
   arrow::RecordBatchVector result;
   while (max_ts >= next_emit_) {
-    ARROW_ASSIGN_OR_RAISE(auto divide_index, tsLowerBound(
-                                                 *sorted_record_batch,
-                                                 [this](std::time_t ts) {
-                                                   return ts >= next_emit_;
-                                                 },
-                                                 time_column_name));
+    time_column = sorted_record_batch->GetColumnByName(time_column_name);
+    ARROW_ASSIGN_OR_RAISE(
+        auto divide_index,
+        compute_utils::tsLowerBound(
+            *time_column, [this](int64_t ts) { return ts >= next_emit_; },
+            arrow::TimeUnit::SECOND));
 
     if (divide_index > 0) {
       buffered_record_batches_.push_back(
@@ -69,47 +73,6 @@ arrow::Result<arrow::RecordBatchVector> WindowHandler::handle(
   buffered_record_batches_.push_back(sorted_record_batch);
 
   return result;
-}
-
-arrow::Result<size_t> WindowHandler::tsLowerBound(
-    const arrow::RecordBatch& record_batch,
-    const std::function<bool(std::time_t)>& pred,
-    const std::string& time_column_name) {
-  size_t left_bound = 0;
-  size_t right_bound = record_batch.num_rows();
-  while (left_bound != right_bound - 1) {
-    auto middle = (left_bound + right_bound) / 2;
-
-    ARROW_ASSIGN_OR_RAISE(
-        auto ts_scalar,
-        arrow_utils::castTimestampScalar(
-            record_batch.GetColumnByName(time_column_name)->GetScalar(middle),
-            arrow::TimeUnit::SECOND));
-
-    std::time_t ts(
-        std::static_pointer_cast<arrow::TimestampScalar>(ts_scalar)->value);
-
-    if (pred(ts)) {
-      right_bound = middle;
-    } else {
-      left_bound = middle;
-    }
-  }
-
-  ARROW_ASSIGN_OR_RAISE(auto ts_scalar,
-                        arrow_utils::castTimestampScalar(
-                            record_batch.GetColumnByName(time_column_name)
-                                ->GetScalar(left_bound),
-                            arrow::TimeUnit::SECOND));
-
-  std::time_t ts(
-      std::static_pointer_cast<arrow::TimestampScalar>(ts_scalar)->value);
-
-  if (pred(ts)) {
-    return left_bound;
-  } else {
-    return right_bound;
-  }
 }
 
 arrow::Result<arrow::RecordBatchVector> WindowHandler::emitWindow() {
@@ -154,14 +117,15 @@ arrow::Status WindowHandler::removeOldRecords() {
     ARROW_ASSIGN_OR_RAISE(auto time_column_name,
                           metadata::getTimeColumnNameMetadata(*oldest_batch));
 
+    auto time_column = oldest_batch->GetColumnByName(time_column_name);
     size_t divide_index;
     ARROW_ASSIGN_OR_RAISE(
-        divide_index, tsLowerBound(
-                          *oldest_batch,
-                          [this](std::time_t ts) {
+        divide_index, compute_utils::tsLowerBound(
+                          *time_column,
+                          [this](int64_t ts) {
                             return ts >= next_emit_ - options_.period.count();
                           },
-                          time_column_name));
+                          arrow::TimeUnit::SECOND));
 
     if (divide_index < oldest_batch->num_rows()) {
       oldest_batch = oldest_batch->Slice(divide_index);

@@ -72,11 +72,6 @@ class WindowHandler : public IWindowHandler {
   }
 
  private:
-  arrow::Result<size_t> tsLowerBound(
-      const arrow::RecordBatch& record_batch,
-      const std::function<bool(std::time_t)>& pred,
-      const std::string& time_column_name);
-
   arrow::Result<arrow::RecordBatchVector> emitWindow();
   arrow::Status removeOldRecords();
 
