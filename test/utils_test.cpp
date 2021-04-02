@@ -205,3 +205,77 @@ TEST_CASE("concatenation puts delimiter right between strings", "[string_utils]"
   REQUIRE( (concatenation_result == "first second" ||
             concatenation_result == "second first") );
 }
+
+TEST_CASE("calculating derivatives for sinus", "[FDDerivativeCalculator]") {
+  size_t n = 9;
+  std::deque<double> xs(n);
+  std::deque<double> ys(n);
+  for (int64_t i = 0; i < n; ++i) {
+    xs[i] = M_PI * i / (n - 1);
+    ys[i] = std::sin(xs[i]);
+  }
+
+  std::unique_ptr<sdp::compute_utils::DerivativeCalculator> derivative_calculator =
+      std::make_unique<sdp::compute_utils::FDDerivativeCalculator>();
+
+  double delta = 0.001;
+  double start = 0;
+  double end = M_PI;
+
+  double required_average_error = 1e-5;
+  double required_max_error = 0.0005;
+
+  std::vector<std::function<double(double)>> true_derivative_functions{
+      [](double x) { return std::sin(x); },
+      [](double x) { return std::cos(x); },
+      [](double x) { return - std::sin(x); }
+  };
+
+  for (size_t i = 0; i < true_derivative_functions.size(); ++i) {
+    double cur_x = start;
+    double max_err = 0;
+    double total_err = 0;
+    int64_t iters = 0;
+
+    while (cur_x <= end) {
+      auto true_der = true_derivative_functions[i](cur_x);
+      auto my_der =
+          derivative_calculator->calculateDerivative(xs, ys, cur_x, i);
+      auto err = std::abs(true_der - my_der);
+      total_err += err;
+      max_err = std::max(max_err, err);
+      cur_x += delta;
+      ++iters;
+    }
+
+    INFO("Required average error is " << required_average_error);
+    REQUIRE(total_err / iters < required_average_error);
+
+    INFO("Required max error is " << required_max_error);
+    REQUIRE(max_err < required_max_error);
+  }
+}
+
+TEST_CASE("can't calculate first order derivative by one value", "[FDDerivativeCalculator]") {
+  std::deque<double> xs{0};
+  std::deque<double> ys{0};
+
+  std::unique_ptr<sdp::compute_utils::DerivativeCalculator> derivative_calculator =
+      std::make_unique<sdp::compute_utils::FDDerivativeCalculator>();
+
+  REQUIRE_THROWS_AS(
+      derivative_calculator->calculateDerivative(xs, ys, 0, 1),
+      compute_utils::ComputeException);
+}
+
+TEST_CASE("argument and value arrays must have same sizes", "[FDDerivativeCalculator]") {
+  std::deque<double> xs{0};
+  std::deque<double> ys{0, 1};
+
+  std::unique_ptr<sdp::compute_utils::DerivativeCalculator> derivative_calculator =
+      std::make_unique<sdp::compute_utils::FDDerivativeCalculator>();
+
+  REQUIRE_THROWS_AS(
+      derivative_calculator->calculateDerivative(xs, ys, 0, 1),
+      compute_utils::ComputeException);
+}

@@ -39,11 +39,11 @@ class DerivativeHandler : public RecordBatchHandler {
       const std::shared_ptr<arrow::RecordBatch>& record_batch) override;
 
  private:
-  arrow::Result<double> getPositionTime(
-      int64_t id, const arrow::Array& time_column) const;
+  arrow::Result<double> getScaledPositionTime(
+      int64_t row_id, const arrow::Array& time_column) const;
 
   arrow::Result<double> getPositionValue(
-      int64_t id, const arrow::Array& value_column) const;
+      int64_t row_id, const arrow::Array& value_column) const;
 
  private:
   std::unique_ptr<DerivativeCalculator> derivative_calculator_;

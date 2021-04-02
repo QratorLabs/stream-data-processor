@@ -1832,3 +1832,150 @@ TEST_CASE( "WindowHandler behaviour with different schemas", "[WindowHandler]" )
   checkValue<int64_t, arrow::Int64Scalar>(
       0, result_1[1], new_column_name, 0);
 }
+
+class MockDerivativeCalculator : public compute_utils::DerivativeCalculator {
+ public:
+  MOCK_METHOD(double, calculateDerivative,
+              (const std::deque<double>& xs, const std::deque<double>& ys,
+                  double x_der, size_t order), (const, override));
+};
+
+SCENARIO( "DerivativeHandler behaviour", "[DerivativeHandler]" ) {
+  GIVEN( "DerivativeCalculator, DerivativeHandler instances" ) {
+    using namespace ::testing;
+
+    std::unique_ptr<MockDerivativeCalculator> mock_derivative_calculator =
+        std::make_unique<StrictMock<MockDerivativeCalculator>>();
+
+    auto mock_derivative_calculator_raw = mock_derivative_calculator.get();
+
+    int64_t s_to_ns_factor = 1000 * 1000 * 1000;
+    std::chrono::nanoseconds unit_time_segment{1 * s_to_ns_factor};
+    std::chrono::nanoseconds derivative_neighbourhood{2 * s_to_ns_factor};
+
+    auto result_column_name = "value_derivative";
+    auto value_column_name = "value";
+    std::unordered_map<
+        std::string,
+        DerivativeHandler::DerivativeCase
+    > derivative_cases{ {result_column_name, {value_column_name, 1}} };
+
+    std::unique_ptr<RecordBatchHandler> derivative_handler =
+        std::make_unique<DerivativeHandler>(
+            std::move(mock_derivative_calculator),
+            unit_time_segment,
+            derivative_neighbourhood,
+            derivative_cases);
+
+    RecordBatchBuilder record_batch_builder;
+    record_batch_builder.reset();
+
+    const double EPS = 1e-8;
+
+    WHEN( "first RecordBatch is passed to handle" ) {
+      auto time_column_name = "time";
+      arrowAssertNotOk(record_batch_builder.setRowNumber(4));
+
+      std::vector<std::time_t> time_values_0 {0, 1, 3, 4};
+      arrowAssertNotOk(record_batch_builder.buildTimeColumn<std::time_t>(
+          time_column_name, time_values_0, arrow::TimeUnit::SECOND));
+
+      std::vector<int64_t> values_0 {0, 1, 2, 3};
+      arrowAssertNotOk(record_batch_builder.buildColumn<int64_t>(
+          value_column_name, values_0));
+
+      std::shared_ptr<arrow::RecordBatch> record_batch_0;
+      arrowAssignOrRaise(record_batch_0, record_batch_builder.getResult());
+
+      THEN( "DerivativeCalculator method is called" ) {
+        EXPECT_CALL(*mock_derivative_calculator_raw,
+                    calculateDerivative(
+                        Truly([&](const std::deque<double>& xs) {
+                          if (xs.size() != 2) {
+                            return false;
+                          }
+
+                          for (size_t i = 0; i < xs.size(); ++i) {
+                            if (std::abs(xs[i] - time_values_0[i]) >= EPS) {
+                              return false;
+                            }
+                          }
+
+                          return true;
+                        }),
+                        Truly([&](const std::deque<double>& ys) {
+                          if (ys.size() != 2) {
+                            return false;
+                          }
+
+                          for (size_t i = 0; i < ys.size(); ++i) {
+                            if (std::abs(ys[i] - values_0[i]) >= EPS) {
+                              return false;
+                            }
+                          }
+
+                          return true;
+                        }),
+                        0, derivative_cases[result_column_name].order))
+                        .WillOnce(Return(0));
+
+        EXPECT_CALL(*mock_derivative_calculator_raw,
+                    calculateDerivative(
+                        Truly([&](const std::deque<double>& xs) {
+                          if (xs.size() != 3) {
+                            return false;
+                          }
+
+                          for (size_t i = 0; i < xs.size(); ++i) {
+                            if (std::abs(xs[i] - time_values_0[i]) >= EPS) {
+                              return false;
+                            }
+                          }
+
+                          return true;
+                        }),
+                        Truly([&](const std::deque<double>& ys) {
+                          if (ys.size() != 3) {
+                            return false;
+                          }
+
+                          for (size_t i = 0; i < ys.size(); ++i) {
+                            if (std::abs(ys[i] - values_0[i]) >= EPS) {
+                              return false;
+                            }
+                          }
+
+                          return true;
+                        }),
+                        1, derivative_cases[result_column_name].order))
+                        .WillOnce(Return(1));
+      }
+
+      arrow::RecordBatchVector result_0;
+      arrowAssignOrRaise(result_0, derivative_handler->handle(record_batch_0));
+
+      REQUIRE( result_0.size() == 1 );
+
+      checkSize(result_0[0], 2, 3);
+      checkColumnsArePresent(result_0[0], {
+        time_column_name, value_column_name, result_column_name
+      });
+
+      checkValue<int64_t, arrow::TimestampScalar>(
+          0, result_0[0], time_column_name, 0);
+      checkValue<int64_t, arrow::TimestampScalar>(
+          1, result_0[0], time_column_name, 1);
+
+      checkValue<int64_t, arrow::Int64Scalar>(
+          0, result_0[0], value_column_name, 0);
+      checkValue<int64_t, arrow::Int64Scalar>(
+          1, result_0[0], value_column_name, 1);
+
+      checkValue<double, arrow::DoubleScalar>(
+          0, result_0[0], result_column_name, 0);
+      checkValue<double, arrow::DoubleScalar>(
+          1, result_0[0], result_column_name, 1);
+    }
+
+  }
+}
