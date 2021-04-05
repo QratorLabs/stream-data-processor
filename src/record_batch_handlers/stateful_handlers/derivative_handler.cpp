@@ -83,8 +83,7 @@ arrow::Result<arrow::RecordBatchVector> DerivativeHandler::handle(
       }
 
       if (buffered_times_.empty()) {
-        ARROW_ASSIGN_OR_RAISE(left_bound_time,
-                              getScaledPositionTime(0, *time_column));
+        left_bound_time = derivative_time;
       } else {
         left_bound_time = buffered_times_.front();
       }
