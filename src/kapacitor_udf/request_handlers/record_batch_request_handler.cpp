@@ -15,7 +15,9 @@ BatchRecordBatchRequestHandlerBase::BatchRecordBatchRequestHandlerBase(
 agent::Response BatchRecordBatchRequestHandlerBase::snapshot() const {
   agent::Response response;
   if (points_storage_ == nullptr) {
-    response.mutable_error()->set_error("PointsStorage is not provided");
+    response.mutable_error()->set_error(
+        "Can't provide snapshot. "
+        "PointsStorage is not provided");
     spdlog::critical(response.error().error());
     getAgent()->writeResponse(response);
 
@@ -41,7 +43,9 @@ agent::Response BatchRecordBatchRequestHandlerBase::restore(
   agent::Response response;
   if (points_storage_ == nullptr) {
     response.mutable_restore()->set_success(false);
-    response.mutable_restore()->set_error("PointsStorage is not provided");
+    response.mutable_restore()->set_error(
+        "Can't restore from snapshot. "
+        "PointsStorage is not provided");
     spdlog::critical(response.restore().error());
     return response;
   }
@@ -77,7 +81,9 @@ void BatchRecordBatchRequestHandlerBase::beginBatch(
 void BatchRecordBatchRequestHandlerBase::point(const agent::Point& point) {
   agent::Response response;
   if (points_storage_ == nullptr) {
-    response.mutable_error()->set_error("PointsStorage is not provided");
+    response.mutable_error()->set_error(
+        "Can't handle point. "
+        "PointsStorage is not provided");
     spdlog::critical(response.error().error());
     getAgent()->writeResponse(response);
     return;
@@ -95,7 +101,9 @@ void BatchRecordBatchRequestHandlerBase::endBatch(
     const agent::EndBatch& batch) {
   agent::Response response;
   if (points_storage_ == nullptr) {
-    response.mutable_error()->set_error("PointsStorage is not provided");
+    response.mutable_error()->set_error(
+        "Can't handle EndBatch message. "
+        "PointsStorage is not provided");
     spdlog::critical(response.error().error());
     getAgent()->writeResponse(response);
     return;
@@ -124,7 +132,9 @@ StreamRecordBatchRequestHandlerBase::StreamRecordBatchRequestHandlerBase(
 agent::Response StreamRecordBatchRequestHandlerBase::snapshot() const {
   agent::Response response;
   if (points_storage_ == nullptr) {
-    response.mutable_error()->set_error("PointsStorage is not provided");
+    response.mutable_error()->set_error(
+        "Can't provide snapshot. "
+        "PointsStorage is not provided");
     spdlog::critical(response.error().error());
     getAgent()->writeResponse(response);
 
@@ -142,7 +152,9 @@ agent::Response StreamRecordBatchRequestHandlerBase::restore(
   agent::Response response;
   if (points_storage_ == nullptr) {
     response.mutable_restore()->set_success(false);
-    response.mutable_restore()->set_error("PointsStorage is not provided");
+    response.mutable_restore()->set_error(
+        "Can't restore from snapshot. "
+        "PointsStorage is not provided");
     spdlog::critical(response.restore().error());
     return response;
   }
@@ -162,6 +174,7 @@ void StreamRecordBatchRequestHandlerBase::handleBatch() const {
   if (getPointsStorage() == nullptr) {
     agent::Response error_response;
     error_response.mutable_error()->set_error(
+        "Can't handle batch. "
         "PointsStorage is not provided");
     spdlog::critical(error_response.error().error());
     getAgent()->writeResponse(error_response);
@@ -197,7 +210,7 @@ void TimerRecordBatchRequestHandlerBase::point(const agent::Point& point) {
   if (getPointsStorage() == nullptr) {
     agent::Response error_response;
     error_response.mutable_error()->set_error(
-        "PointsStorage is not provided");
+        "Can't handle point. PointsStorage is not provided");
     spdlog::critical(error_response.error().error());
     getAgent()->writeResponse(error_response);
     return;
@@ -210,7 +223,10 @@ void TimerRecordBatchRequestHandlerBase::point(const agent::Point& point) {
 }
 
 void TimerRecordBatchRequestHandlerBase::stop() {
-  handleBatch();
+  if (getPointsStorage() != nullptr) {
+    handleBatch();
+  }
+
   emit_timer_->stop();
   RequestHandler::stop();
 }

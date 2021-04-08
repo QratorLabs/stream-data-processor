@@ -17,6 +17,7 @@
 #include "record_batch_handlers/aggregate_handler.h"
 #include "record_batch_handlers/pipeline_handler.h"
 #include "record_batch_handlers/record_batch_handler.h"
+#include "kapacitor_udf/kapacitor_udf.h"
 #include "kapacitor_udf/utils/grouping_utils.h"
 #include "kapacitor_udf/utils/points_converter.h"
 #include "kapacitor_udf/utils/points_storage.h"
@@ -697,4 +698,177 @@ TEST_CASE("DynamicWindowUDF info response is right", "[DynamicWindowUDF]") {
   }
 }
 
+TEST_CASE( "DerivativeUDF info response is right", "[DerivativeUDF]" ) {
+  std::unique_ptr<IUDFAgent> udf_agent =
+      std::make_unique<::testing::StrictMock<MockUDFAgent>>();
 
+  auto loop = uvw::Loop::getDefault();
+  DerivativeRequestHandler request_handler(udf_agent.get(), loop.get());
+
+  auto info_response = request_handler.info();
+
+  REQUIRE( info_response.has_info() );
+  REQUIRE( agent::STREAM == info_response.info().wants() );
+  REQUIRE( agent::STREAM == info_response.info().provides() );
+
+  std::unordered_map<std::string, agent::ValueType> derivative_options_types{
+      {"derivative", agent::STRING},
+      {"as", agent::STRING},
+      {"order", agent::INT},
+      {"unit", agent::DURATION},
+      {"neighbourhood", agent::DURATION},
+      {"emitTimeout", agent::DURATION}
+  };
+
+  std::unordered_set<std::string> info_options;
+
+  for (auto& option : info_response.info().options()) {
+    info_options.insert(option.first);
+    REQUIRE( derivative_options_types.find(option.first) != derivative_options_types.end() );
+    REQUIRE( option.second.valuetypes_size() == 1 );
+    REQUIRE( derivative_options_types[option.first] == option.second.valuetypes(0) );
+  }
+
+  for ([[maybe_unused]] auto& [option_name, _] : derivative_options_types) {
+    REQUIRE( info_options.find(option_name) != info_options.end() );
+  }
+}
+
+TEST_CASE("successfully parses DerivativeUDF options", "[DerivativeUDF]") {
+  using namespace std::chrono_literals;
+
+  std::unordered_map<std::string, agent::OptionValue> options;
+  google::protobuf::RepeatedPtrField<agent::Option> request_options;
+
+  std::string derivative_option_name{"derivative"};
+  options[derivative_option_name] = {};
+  options[derivative_option_name].set_type(agent::STRING);
+  options[derivative_option_name].set_stringvalue("cpu_idle");
+  auto new_option = request_options.Add();
+  new_option->set_name(derivative_option_name);
+  auto new_option_value = new_option->mutable_values()->Add();
+  *new_option_value = options[derivative_option_name];
+
+  std::string result_option_name{"as"};
+  options[result_option_name] = {};
+  options[result_option_name].set_type(agent::STRING);
+  options[result_option_name].set_stringvalue("cpu_idle_der");
+  new_option = request_options.Add();
+  new_option->set_name(result_option_name);
+  new_option_value = new_option->mutable_values()->Add();
+  *new_option_value = options[result_option_name];
+
+  std::string order_option_name{"order"};
+  options[order_option_name] = {};
+  options[order_option_name].set_type(agent::INT);
+  options[order_option_name].set_intvalue(2);
+  new_option = request_options.Add();
+  new_option->set_name(order_option_name);
+  new_option_value = new_option->mutable_values()->Add();
+  *new_option_value = options[order_option_name];
+
+  std::string unit_time_segment_option_name{"unit"};
+  options[unit_time_segment_option_name] = {};
+  options[unit_time_segment_option_name].set_type(agent::DURATION);
+  options[unit_time_segment_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(2s).count());
+  new_option = request_options.Add();
+  new_option->set_name(unit_time_segment_option_name);
+  new_option_value = new_option->mutable_values()->Add();
+  *new_option_value = options[unit_time_segment_option_name];
+
+  std::string neighbourhood_option_name{"neighbourhood"};
+  options[neighbourhood_option_name] = {};
+  options[neighbourhood_option_name].set_type(agent::DURATION);
+  options[neighbourhood_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(3s).count());
+  new_option = request_options.Add();
+  new_option->set_name(neighbourhood_option_name);
+  new_option_value = new_option->mutable_values()->Add();
+  *new_option_value = options[neighbourhood_option_name];
+
+  std::string emit_timeout_option_name{"emitTimeout"};
+  options[emit_timeout_option_name] = {};
+  options[emit_timeout_option_name].set_type(agent::DURATION);
+  options[emit_timeout_option_name].set_durationvalue(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(20s).count());
+  new_option = request_options.Add();
+  new_option->set_name(emit_timeout_option_name);
+  new_option_value = new_option->mutable_values()->Add();
+  *new_option_value = options[emit_timeout_option_name];
+
+  auto parsed_options = kapacitor_udf::internal::parseDerivativeOptions(request_options);
+
+  REQUIRE( 20s == parsed_options.emit_timeout  );
+  REQUIRE( 2s == parsed_options.options.unit_time_segment );
+  REQUIRE( 3s == parsed_options.options.derivative_neighbourhood );
+
+  const auto& derivative_cases = parsed_options.options.derivative_cases;
+  REQUIRE( 1 == derivative_cases.size() );
+  REQUIRE( derivative_cases.find("cpu_idle_der") != derivative_cases.end() );
+  REQUIRE( 2 == derivative_cases.at("cpu_idle_der").order );
+  REQUIRE( "cpu_idle" == derivative_cases.at("cpu_idle_der").values_column_name );
+}
+
+TEST_CASE("successfully parses DerivativeUDF default options with multiple derivative cases", "[DerivativeUDF]") {
+  using namespace std::chrono_literals;
+
+  std::unordered_map<std::string, agent::OptionValue> options;
+  google::protobuf::RepeatedPtrField<agent::Option> request_options;
+
+  std::string derivative_option_name{"derivative"};
+  options[derivative_option_name] = {};
+  options[derivative_option_name].set_type(agent::STRING);
+  options[derivative_option_name].set_stringvalue("cpu_idle");
+  auto new_option = request_options.Add();
+  new_option->set_name(derivative_option_name);
+  auto new_option_value = new_option->mutable_values()->Add();
+  *new_option_value = options[derivative_option_name];
+
+  std::string result_option_name{"as"};
+  options[result_option_name] = {};
+  options[result_option_name].set_type(agent::STRING);
+  options[result_option_name].set_stringvalue("cpu_idle_der");
+  new_option = request_options.Add();
+  new_option->set_name(result_option_name);
+  new_option_value = new_option->mutable_values()->Add();
+  *new_option_value = options[result_option_name];
+
+  options[derivative_option_name].set_stringvalue("cpu_nice");
+  new_option = request_options.Add();
+  new_option->set_name(derivative_option_name);
+  new_option_value = new_option->mutable_values()->Add();
+  *new_option_value = options[derivative_option_name];
+
+  options[result_option_name].set_stringvalue("cpu_nice_der");
+  new_option = request_options.Add();
+  new_option->set_name(result_option_name);
+  new_option_value = new_option->mutable_values()->Add();
+  *new_option_value = options[result_option_name];
+
+  std::string order_option_name{"order"};
+  options[order_option_name] = {};
+  options[order_option_name].set_type(agent::INT);
+  options[order_option_name].set_intvalue(2);
+  new_option = request_options.Add();
+  new_option->set_name(order_option_name);
+  new_option_value = new_option->mutable_values()->Add();
+  *new_option_value = options[order_option_name];
+
+  auto parsed_options = kapacitor_udf::internal::parseDerivativeOptions(request_options);
+
+  REQUIRE( 10s == parsed_options.emit_timeout  );
+  REQUIRE( 1s == parsed_options.options.unit_time_segment );
+  REQUIRE( 1s == parsed_options.options.derivative_neighbourhood );
+
+  const auto& derivative_cases = parsed_options.options.derivative_cases;
+  REQUIRE( 2 == derivative_cases.size() );
+
+  REQUIRE( derivative_cases.find("cpu_idle_der") != derivative_cases.end() );
+  REQUIRE( 1 == derivative_cases.at("cpu_idle_der").order );
+  REQUIRE( "cpu_idle" == derivative_cases.at("cpu_idle_der").values_column_name );
+
+  REQUIRE( derivative_cases.find("cpu_nice_der") != derivative_cases.end() );
+  REQUIRE( 2 == derivative_cases.at("cpu_nice_der").order );
+  REQUIRE( "cpu_nice" == derivative_cases.at("cpu_nice_der").values_column_name );
+}

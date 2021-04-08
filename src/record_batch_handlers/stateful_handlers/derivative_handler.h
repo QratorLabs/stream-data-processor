@@ -10,6 +10,7 @@
 
 #include <arrow/api.h>
 
+#include "handler_factory.h"
 #include "record_batch_handlers/record_batch_handler.h"
 #include "utils/compute_utils.h"
 
@@ -24,16 +25,19 @@ class DerivativeHandler : public RecordBatchHandler {
     size_t order;
   };
 
+  struct DerivativeOptions {
+    std::chrono::nanoseconds unit_time_segment;
+    std::chrono::nanoseconds derivative_neighbourhood;
+    std::unordered_map<std::string, DerivativeCase> derivative_cases;
+  };
+
  public:
-  template <typename CasesMapType>
-  DerivativeHandler(
-      std::unique_ptr<DerivativeCalculator>&& derivative_calculator,
-      std::chrono::nanoseconds unit_time_segment,
-      std::chrono::nanoseconds derivative_neighbourhood, CasesMapType&& cases)
-      : derivative_calculator_(std::move(derivative_calculator)),
-        unit_time_segment_(unit_time_segment),
-        derivative_neighbourhood_(derivative_neighbourhood),
-        derivative_cases_(std::forward<CasesMapType>(cases)) {}
+  template <typename DerivativeCalculatorType, typename OptionsType>
+  DerivativeHandler(DerivativeCalculatorType&& derivative_calculator,
+                    OptionsType&& options)
+      : derivative_calculator_(
+            std::forward<DerivativeCalculatorType>(derivative_calculator)),
+        options_(std::forward<OptionsType>(options)) {}
 
   arrow::Result<arrow::RecordBatchVector> handle(
       const std::shared_ptr<arrow::RecordBatch>& record_batch) override;
@@ -46,13 +50,27 @@ class DerivativeHandler : public RecordBatchHandler {
       int64_t row_id, const arrow::Array& value_column) const;
 
  private:
-  std::unique_ptr<DerivativeCalculator> derivative_calculator_;
-  std::chrono::nanoseconds unit_time_segment_;
-  std::chrono::nanoseconds derivative_neighbourhood_;
-  std::unordered_map<std::string, DerivativeCase> derivative_cases_;
+  std::shared_ptr<DerivativeCalculator> derivative_calculator_;
+  DerivativeOptions options_;
   std::deque<double> buffered_times_;
   std::unordered_map<std::string, std::deque<double>> buffered_values_;
   std::shared_ptr<arrow::RecordBatch> buffered_batch_{nullptr};
+};
+
+class DerivativeHandlerFactory : public HandlerFactory {
+ public:
+  template <typename DerivativeCalculatorType, typename OptionsType>
+  DerivativeHandlerFactory(DerivativeCalculatorType&& derivative_calculator,
+                           OptionsType&& options)
+      : derivative_calculator_(
+            std::forward<DerivativeCalculatorType>(derivative_calculator)),
+        options_(std::forward<OptionsType>(options)) {}
+
+  std::shared_ptr<RecordBatchHandler> createHandler() const override;
+
+ private:
+  std::shared_ptr<DerivativeCalculator> derivative_calculator_;
+  DerivativeHandler::DerivativeOptions options_;
 };
 
 }  // namespace stream_data_processor

@@ -33,7 +33,7 @@ arrow::Result<arrow::RecordBatchVector> DerivativeHandler::handle(
   std::unordered_map<std::string, arrow::DoubleBuilder>
       derivative_columns_builders;
   for (const auto& [result_column_name, derivative_case] :
-       derivative_cases_) {
+       options_.derivative_cases) {
     auto& value_column_name = derivative_case.values_column_name;
     if (value_columns.find(value_column_name) == value_columns.end()) {
       value_columns[value_column_name] =
@@ -74,8 +74,9 @@ arrow::Result<arrow::RecordBatchVector> DerivativeHandler::handle(
         derivative_time,
         getScaledPositionTime(derivative_row_id, *time_column));
 
-    while ((derivative_time - left_bound_time) * unit_time_segment_.count() >
-           derivative_neighbourhood_.count()) {
+    while ((derivative_time - left_bound_time) *
+               options_.unit_time_segment.count() >
+           options_.derivative_neighbourhood.count()) {
       buffered_times_.pop_front();
       for ([[maybe_unused]] auto& [_, buffered_values_deque] :
            buffered_values_) {
@@ -91,8 +92,8 @@ arrow::Result<arrow::RecordBatchVector> DerivativeHandler::handle(
 
     while (right_bound_row_id < total_rows &&
            (right_bound_time - derivative_time) *
-                   unit_time_segment_.count() <=
-               derivative_neighbourhood_.count()) {
+                   options_.unit_time_segment.count() <=
+               options_.derivative_neighbourhood.count()) {
       for (auto& [column_name, column] : value_columns) {
         buffered_times_.push_back(right_bound_time);
         buffered_values_[column_name].emplace_back();
@@ -111,13 +112,14 @@ arrow::Result<arrow::RecordBatchVector> DerivativeHandler::handle(
           getScaledPositionTime(right_bound_row_id, *time_column));
     }
 
-    if ((right_bound_time - derivative_time) * unit_time_segment_.count() <=
-        derivative_neighbourhood_.count()) {
+    if ((right_bound_time - derivative_time) *
+            options_.unit_time_segment.count() <=
+        options_.derivative_neighbourhood.count()) {
       break;
     }
 
     for (const auto& [result_column_name, derivative_case] :
-         derivative_cases_) {
+         options_.derivative_cases) {
       try {
         ARROW_RETURN_NOT_OK(
             derivative_columns_builders[result_column_name].Append(
@@ -170,7 +172,7 @@ arrow::Result<double> DerivativeHandler::getScaledPositionTime(
 
   return std::static_pointer_cast<arrow::TimestampScalar>(time_scalar)
              ->value /
-         unit_time_segment_.count();
+         options_.unit_time_segment.count();
 }
 
 arrow::Result<double> DerivativeHandler::getPositionValue(
@@ -180,6 +182,12 @@ arrow::Result<double> DerivativeHandler::getPositionValue(
   ARROW_ASSIGN_OR_RAISE(value_scalar, value_scalar->CastTo(arrow::float64()));
 
   return std::static_pointer_cast<arrow::DoubleScalar>(value_scalar)->value;
+}
+
+std::shared_ptr<RecordBatchHandler> DerivativeHandlerFactory::createHandler()
+    const {
+  return std::make_shared<DerivativeHandler>(derivative_calculator_,
+                                             options_);
 }
 
 }  // namespace stream_data_processor

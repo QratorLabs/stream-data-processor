@@ -1849,23 +1849,19 @@ SCENARIO( "DerivativeHandler behaviour", "[DerivativeHandler]" ) {
 
     auto mock_derivative_calculator_raw = mock_derivative_calculator.get();
 
-    int64_t s_to_ns_factor = 1000 * 1000 * 1000;
-    std::chrono::nanoseconds unit_time_segment{1 * s_to_ns_factor};
-    std::chrono::nanoseconds derivative_neighbourhood{2 * s_to_ns_factor};
-
     auto result_column_name = "value_derivative";
     auto value_column_name = "value";
-    std::unordered_map<
-        std::string,
-        DerivativeHandler::DerivativeCase
-    > derivative_cases{ {result_column_name, {value_column_name, 1}} };
+    int64_t s_to_ns_factor = 1000 * 1000 * 1000;
+    DerivativeHandler::DerivativeOptions options {
+        std::chrono::nanoseconds{1 * s_to_ns_factor},
+        std::chrono::nanoseconds{2 * s_to_ns_factor},
+        { {result_column_name, {value_column_name, 1}} }
+    };
 
     std::unique_ptr<RecordBatchHandler> derivative_handler =
         std::make_unique<DerivativeHandler>(
             std::move(mock_derivative_calculator),
-            unit_time_segment,
-            derivative_neighbourhood,
-            derivative_cases);
+            options);
 
     RecordBatchBuilder record_batch_builder;
 
@@ -1918,7 +1914,7 @@ SCENARIO( "DerivativeHandler behaviour", "[DerivativeHandler]" ) {
 
                           return true;
                         }),
-                        0, derivative_cases[result_column_name].order))
+                        0, options.derivative_cases[result_column_name].order))
                         .WillOnce(Return(0));
 
         EXPECT_CALL(*mock_derivative_calculator_raw,
@@ -1949,7 +1945,7 @@ SCENARIO( "DerivativeHandler behaviour", "[DerivativeHandler]" ) {
 
                           return true;
                         }),
-                        1, derivative_cases[result_column_name].order))
+                        1, options.derivative_cases[result_column_name].order))
                         .WillOnce(Return(1));
 
         AND_WHEN( "next RecordBatch is passed" ) {
@@ -1988,7 +1984,7 @@ SCENARIO( "DerivativeHandler behaviour", "[DerivativeHandler]" ) {
                                   ys[2] == values_0[3];
                             }),
                             time_values_0[2],
-                            derivative_cases[result_column_name].order))
+                            options.derivative_cases[result_column_name].order))
                 .WillOnce(Return(2));
 
             EXPECT_CALL(*mock_derivative_calculator_raw,
@@ -2010,7 +2006,7 @@ SCENARIO( "DerivativeHandler behaviour", "[DerivativeHandler]" ) {
                                   ys[1] == values_0[3];
                             }),
                             time_values_0[3],
-                            derivative_cases[result_column_name].order))
+                            options.derivative_cases[result_column_name].order))
                 .WillOnce(Return(3));
 
             EXPECT_CALL(*mock_derivative_calculator_raw,
@@ -2022,7 +2018,7 @@ SCENARIO( "DerivativeHandler behaviour", "[DerivativeHandler]" ) {
                               return ys.size() == 1;
                             }),
                             time_values_1[0],
-                            derivative_cases[result_column_name].order))
+                            options.derivative_cases[result_column_name].order))
                 .WillOnce(Throw(compute_utils::ComputeException("Mock exception")));
           }
         }

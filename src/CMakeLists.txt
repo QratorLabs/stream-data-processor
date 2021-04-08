@@ -172,12 +172,13 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   kapacitor_udf/udf_agent.cpp
   kapacitor_udf/utils/rw_utils.cpp
   kapacitor_udf/utils/points_converter.cpp
+  kapacitor_udf/utils/points_storage.cpp
   kapacitor_udf/request_handlers/aggregate_request_handlers/aggregate_options_parser.cpp
   kapacitor_udf/request_handlers/aggregate_request_handlers/batch_aggregate_request_handler.cpp
   kapacitor_udf/request_handlers/aggregate_request_handlers/stream_aggregate_request_handler.cpp
+  kapacitor_udf/request_handlers/derivative_request_handler.cpp
   kapacitor_udf/request_handlers/dynamic_window_request_handler.cpp
   kapacitor_udf/request_handlers/logging_request_handler.cpp
-  kapacitor_udf/utils/points_storage.cpp
   kapacitor_udf/request_handlers/record_batch_request_handler.cpp
   kapacitor_udf/request_handlers/request_handler.cpp
   kapacitor_udf/request_handlers/stateful_threshold_request_handler.cpp
