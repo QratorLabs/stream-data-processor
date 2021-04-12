@@ -17,22 +17,24 @@ services:
       - sockets-vol:/var/run/
     command: /app/dynamic_window_udf --socket /var/run/dynamicWindowUDF.sock --verbose
 
-  collectd:
-    image: fr3nd/collectd
-    privileged: true
-    volumes:
-      - ./collectd.conf:/etc/collectd/collectd.conf
-
   influxdb:
-    image: influxdb
+    image: influxdb:1.8.4
     ports:
       - 8086:8086
       - 2003:2003
     volumes:
       - ./influxdb.conf:/etc/influxdb/influxdb.conf
 
+  collectd:
+    image: fr3nd/collectd
+    privileged: true
+    volumes:
+      - ./collectd.conf:/etc/collectd/collectd.conf
+    depends_on:
+      - influxdb
+
   kapacitor:
-    image: kapacitor
+    image: kapacitor:1.5.9
     volumes:
       - sockets-vol:/var/run/
       - ./kapacitor.conf:/etc/kapacitor/kapacitor.conf

@@ -1,4 +1,5 @@
 #include <spdlog/spdlog.h>
+#include <uvw/fs.h>
 
 #include "unix_socket_server.h"
 
@@ -24,6 +25,7 @@ UnixSocketServer::UnixSocketServer(
         spdlog::error(event.what());
       });
 
+  loop->resource<uvw::FsReq>()->unlinkSync(socket_path);
   socket_handle_->bind(socket_path);
 }
 
