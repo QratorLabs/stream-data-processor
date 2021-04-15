@@ -19,8 +19,14 @@ class UnixSocketServer {
   void stop();
 
  private:
+  static const std::string SOCKET_LOCK_FILE_SUFFIX;
+  static constexpr mode_t LOCK_FILE_MODE = 0644;
+
+ private:
   std::shared_ptr<UnixSocketClientFactory> client_factory_;
+  std::string socket_path_;
   std::shared_ptr<uvw::PipeHandle> socket_handle_;
+  int socket_lock_fd_;
   std::vector<std::shared_ptr<UnixSocketClient>> clients_;
 };
 

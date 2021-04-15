@@ -39,7 +39,7 @@ AggregateHandler::AggregateHandler(
 arrow::Result<arrow::RecordBatchVector> AggregateHandler::handle(
     const std::shared_ptr<arrow::RecordBatch>& record_batch) {
   if (record_batch->num_rows() == 0) {
-    return arrow::Status::OK();
+    return arrow::RecordBatchVector{};
   }
 
   ARROW_ASSIGN_OR_RAISE(auto result_vector,
@@ -56,7 +56,7 @@ arrow::Result<arrow::RecordBatchVector> AggregateHandler::handle(
 arrow::Result<arrow::RecordBatchVector> AggregateHandler::handle(
     const arrow::RecordBatchVector& record_batches) {
   if (record_batches.empty()) {
-    return arrow::Status::OK();
+    return arrow::RecordBatchVector{};
   }
 
   ARROW_RETURN_NOT_OK(isValid(record_batches));

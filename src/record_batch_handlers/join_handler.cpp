@@ -11,7 +11,7 @@ namespace stream_data_processor {
 arrow::Result<arrow::RecordBatchVector> JoinHandler::handle(
     const arrow::RecordBatchVector& record_batches) {
   if (record_batches.empty()) {
-    return arrow::Status::OK();
+    return arrow::RecordBatchVector{};
   }
 
   auto pool = arrow::default_memory_pool();
