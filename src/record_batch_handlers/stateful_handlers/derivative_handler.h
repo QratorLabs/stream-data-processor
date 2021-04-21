@@ -29,6 +29,7 @@ class DerivativeHandler : public RecordBatchHandler {
     std::chrono::nanoseconds unit_time_segment;
     std::chrono::nanoseconds derivative_neighbourhood;
     std::unordered_map<std::string, DerivativeCase> derivative_cases;
+    bool no_wait_future{false};
   };
 
  public:
@@ -43,17 +44,20 @@ class DerivativeHandler : public RecordBatchHandler {
       const std::shared_ptr<arrow::RecordBatch>& record_batch) override;
 
  private:
+  struct BufferedValues {
+    std::deque<double> times;
+    std::deque<double> values;
+  };
+
+ private:
   arrow::Result<double> getScaledPositionTime(
       int64_t row_id, const arrow::Array& time_column) const;
-
-  arrow::Result<double> getPositionValue(
-      int64_t row_id, const arrow::Array& value_column) const;
 
  private:
   std::shared_ptr<DerivativeCalculator> derivative_calculator_;
   DerivativeOptions options_;
-  std::deque<double> buffered_times_;
-  std::unordered_map<std::string, std::deque<double>> buffered_values_;
+  std::deque<double> all_buffered_times_;
+  std::unordered_map<std::string, BufferedValues> buffered_values_;
   std::shared_ptr<arrow::RecordBatch> buffered_batch_{nullptr};
 };
 

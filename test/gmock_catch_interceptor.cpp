@@ -1,12 +1,23 @@
+#include <sstream>
+
 #include <catch2/catch.hpp>
 
 #include "gmock_catch_interceptor.h"
 
 void GmockCatchInterceptor::OnTestPartResult(
     const ::testing::TestPartResult & gmock_assertion_result) {
+  std::stringstream failure_place;
+  if (gmock_assertion_result.file_name() == nullptr) {
+    failure_place << "unknown place";
+  } else {
+    failure_place << gmock_assertion_result.file_name();
+    if (gmock_assertion_result.line_number() != -1) {
+      failure_place << ':' << gmock_assertion_result.line_number();
+    }
+  }
+
   INFO( "*** Failure in "
-            << gmock_assertion_result.file_name() << ':'
-            << gmock_assertion_result.line_number() << "\n  "
+            << failure_place.str() << "\n  "
             << gmock_assertion_result.summary() << '\n');
   CHECK_FALSE(gmock_assertion_result.failed()); // inverse logic
 }

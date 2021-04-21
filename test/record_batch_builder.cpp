@@ -31,7 +31,8 @@ template<>
 arrow::Status RecordBatchBuilder::buildColumn<int64_t>(
     const std::string& column_name,
     const std::vector<int64_t>& values,
-    sdp::metadata::ColumnType column_type) {
+    sdp::metadata::ColumnType column_type,
+    const std::vector<bool>& is_valid) {
   ARROW_RETURN_NOT_OK(checkValueArraySize(values));
   fields_.push_back(arrow::field(column_name, arrow::int64()));
 
@@ -39,7 +40,12 @@ arrow::Status RecordBatchBuilder::buildColumn<int64_t>(
       &fields_.back(), column_type));
 
   arrow::Int64Builder column_builder;
-  ARROW_RETURN_NOT_OK(column_builder.AppendValues(values));
+  if (!is_valid.empty()) {
+    ARROW_RETURN_NOT_OK(column_builder.AppendValues(values, is_valid));
+  } else {
+    ARROW_RETURN_NOT_OK(column_builder.AppendValues(values));
+  }
+
   column_arrays_.emplace_back();
   ARROW_RETURN_NOT_OK(column_builder.Finish(&column_arrays_.back()));
 
@@ -50,7 +56,8 @@ template<>
 arrow::Status RecordBatchBuilder::buildColumn<std::string>(
     const std::string& column_name,
     const std::vector<std::string>& values,
-    sdp::metadata::ColumnType column_type) {
+    sdp::metadata::ColumnType column_type,
+    const std::vector<bool>& is_valid) {
   ARROW_RETURN_NOT_OK(checkValueArraySize(values));
   fields_.push_back(arrow::field(column_name, arrow::utf8()));
 
@@ -58,7 +65,23 @@ arrow::Status RecordBatchBuilder::buildColumn<std::string>(
       &fields_.back(), column_type));
 
   arrow::StringBuilder column_builder;
-  ARROW_RETURN_NOT_OK(column_builder.AppendValues(values));
+
+  if (!is_valid.empty()) {
+    uint8_t* valid_bytes = new uint8_t[values.size()];
+    for (size_t i = 0; i < is_valid.size(); ++i) {
+      if (is_valid[i]) {
+        valid_bytes[i] = 1;
+      } else {
+        valid_bytes[i] = 0;
+      }
+    }
+
+    ARROW_RETURN_NOT_OK(column_builder.AppendValues(values, valid_bytes));
+    delete [] valid_bytes;
+  } else {
+    ARROW_RETURN_NOT_OK(column_builder.AppendValues(values));
+  }
+
   column_arrays_.emplace_back();
   ARROW_RETURN_NOT_OK(column_builder.Finish(&column_arrays_.back()));
 
@@ -69,7 +92,8 @@ template<>
 arrow::Status RecordBatchBuilder::buildColumn<double>(
     const std::string& column_name,
     const std::vector<double>& values,
-    sdp::metadata::ColumnType column_type) {
+    sdp::metadata::ColumnType column_type,
+    const std::vector<bool>& is_valid) {
   ARROW_RETURN_NOT_OK(checkValueArraySize(values));
   fields_.push_back(arrow::field(column_name, arrow::float64()));
 
@@ -77,7 +101,12 @@ arrow::Status RecordBatchBuilder::buildColumn<double>(
       &fields_.back(), column_type));
 
   arrow::DoubleBuilder column_builder;
-  ARROW_RETURN_NOT_OK(column_builder.AppendValues(values));
+  if (!is_valid.empty()) {
+    ARROW_RETURN_NOT_OK(column_builder.AppendValues(values, is_valid));
+  } else {
+    ARROW_RETURN_NOT_OK(column_builder.AppendValues(values));
+  }
+
   column_arrays_.emplace_back();
   ARROW_RETURN_NOT_OK(column_builder.Finish(&column_arrays_.back()));
 
@@ -88,7 +117,8 @@ template<>
 arrow::Status RecordBatchBuilder::buildColumn<bool>(
     const std::string& column_name,
     const std::vector<bool>& values,
-    sdp::metadata::ColumnType column_type) {
+    sdp::metadata::ColumnType column_type,
+    const std::vector<bool>& is_valid) {
   ARROW_RETURN_NOT_OK(checkValueArraySize(values));
   fields_.push_back(arrow::field(column_name, arrow::boolean()));
 
@@ -96,7 +126,12 @@ arrow::Status RecordBatchBuilder::buildColumn<bool>(
       &fields_.back(), column_type));
 
   arrow::BooleanBuilder column_builder;
-  ARROW_RETURN_NOT_OK(column_builder.AppendValues(values));
+  if (!is_valid.empty()) {
+    ARROW_RETURN_NOT_OK(column_builder.AppendValues(values, is_valid));
+  } else {
+    ARROW_RETURN_NOT_OK(column_builder.AppendValues(values));
+  }
+
   column_arrays_.emplace_back();
   ARROW_RETURN_NOT_OK(column_builder.Finish(&column_arrays_.back()));
 

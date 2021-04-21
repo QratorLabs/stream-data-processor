@@ -51,11 +51,11 @@ arrow::Result<arrow::RecordBatchVector> DerivativeHandler::handle(
   }
 
   double left_bound_time, derivative_time, right_bound_time;
-  if (buffered_times_.empty()) {
+  if (all_buffered_times_.empty()) {
     ARROW_ASSIGN_OR_RAISE(left_bound_time,
                           getScaledPositionTime(0, *time_column));
   } else {
-    left_bound_time = buffered_times_.front();
+    left_bound_time = all_buffered_times_.front();
   }
 
   int64_t derivative_row_id = 0;
@@ -77,16 +77,21 @@ arrow::Result<arrow::RecordBatchVector> DerivativeHandler::handle(
     while ((derivative_time - left_bound_time) *
                options_.unit_time_segment.count() >
            options_.derivative_neighbourhood.count()) {
-      buffered_times_.pop_front();
-      for ([[maybe_unused]] auto& [_, buffered_values_deque] :
-           buffered_values_) {
-        buffered_values_deque.pop_front();
+      all_buffered_times_.pop_front();
+      for ([[maybe_unused]] auto& [_, buffered_values] : buffered_values_) {
+        while (!buffered_values.times.empty() &&
+               (derivative_time - buffered_values.times.front()) *
+                       options_.unit_time_segment.count() >
+                   options_.derivative_neighbourhood.count()) {
+          buffered_values.times.pop_front();
+          buffered_values.values.pop_front();
+        }
       }
 
-      if (buffered_times_.empty()) {
+      if (all_buffered_times_.empty()) {
         left_bound_time = derivative_time;
       } else {
-        left_bound_time = buffered_times_.front();
+        left_bound_time = all_buffered_times_.front();
       }
     }
 
@@ -94,12 +99,22 @@ arrow::Result<arrow::RecordBatchVector> DerivativeHandler::handle(
            (right_bound_time - derivative_time) *
                    options_.unit_time_segment.count() <=
                options_.derivative_neighbourhood.count()) {
+      all_buffered_times_.push_back(right_bound_time);
       for (auto& [column_name, column] : value_columns) {
-        buffered_times_.push_back(right_bound_time);
-        buffered_values_[column_name].emplace_back();
+        ARROW_ASSIGN_OR_RAISE(auto value_scalar,
+                              column->GetScalar(right_bound_row_id));
 
-        ARROW_ASSIGN_OR_RAISE(buffered_values_[column_name].back(),
-                              getPositionValue(right_bound_row_id, *column));
+        if (!value_scalar->is_valid) {
+          continue;
+        }
+
+        ARROW_ASSIGN_OR_RAISE(value_scalar,
+                              value_scalar->CastTo(arrow::float64()));
+
+        buffered_values_[column_name].times.push_back(right_bound_time);
+        buffered_values_[column_name].values.push_back(
+            std::static_pointer_cast<arrow::DoubleScalar>(value_scalar)
+                ->value);
       }
 
       ++right_bound_row_id;
@@ -112,9 +127,10 @@ arrow::Result<arrow::RecordBatchVector> DerivativeHandler::handle(
           getScaledPositionTime(right_bound_row_id, *time_column));
     }
 
-    if ((right_bound_time - derivative_time) *
-            options_.unit_time_segment.count() <=
-        options_.derivative_neighbourhood.count()) {
+    if (!options_.no_wait_future &&
+        (right_bound_time - derivative_time) *
+                options_.unit_time_segment.count() <=
+            options_.derivative_neighbourhood.count()) {
       break;
     }
 
@@ -124,8 +140,10 @@ arrow::Result<arrow::RecordBatchVector> DerivativeHandler::handle(
         ARROW_RETURN_NOT_OK(
             derivative_columns_builders[result_column_name].Append(
                 derivative_calculator_->calculateDerivative(
-                    buffered_times_,
-                    buffered_values_.at(derivative_case.values_column_name),
+                    buffered_values_.at(derivative_case.values_column_name)
+                        .times,
+                    buffered_values_.at(derivative_case.values_column_name)
+                        .values,
                     derivative_time, derivative_case.order)));
       } catch (const compute_utils::ComputeException& exc) {
         spdlog::warn(
@@ -173,15 +191,6 @@ arrow::Result<double> DerivativeHandler::getScaledPositionTime(
   return std::static_pointer_cast<arrow::TimestampScalar>(time_scalar)
              ->value /
          options_.unit_time_segment.count();
-}
-
-arrow::Result<double> DerivativeHandler::getPositionValue(
-    int64_t row_id, const arrow::Array& value_column) const {
-  ARROW_ASSIGN_OR_RAISE(auto value_scalar, value_column.GetScalar(row_id));
-
-  ARROW_ASSIGN_OR_RAISE(value_scalar, value_scalar->CastTo(arrow::float64()));
-
-  return std::static_pointer_cast<arrow::DoubleScalar>(value_scalar)->value;
 }
 
 std::shared_ptr<RecordBatchHandler> DerivativeHandlerFactory::createHandler()

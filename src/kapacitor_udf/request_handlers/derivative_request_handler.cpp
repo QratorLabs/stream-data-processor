@@ -22,6 +22,7 @@ inline const std::string ORDER_OPTION_NAME{"order"};
 inline const std::string UNIT_TIME_SEGMENT_OPTION_NAME{"unit"};
 inline const std::string NEIGHBOURHOOD_OPTION_NAME{"neighbourhood"};
 inline const std::string EMIT_TIMEOUT_OPTION_NAME{"emitTimeout"};
+inline const std::string NO_WAIT_FUTURE_OPTION_NAME{"noWait"};
 
 inline const std::unordered_set<std::string> REQUIRED_DERIVATIVE_CASE_OPTIONS{
     DERIVATIVE_OPTION_NAME, RESULT_OPTION_NAME};
@@ -87,6 +88,8 @@ getDerivativeOptionsMap() {
     options_map[option_name].add_valuetypes(option_type);
   }
 
+  options_map[NO_WAIT_FUTURE_OPTION_NAME].Clear();
+
   return options_map;
 }
 
@@ -101,7 +104,8 @@ DerivativeOptions parseDerivativeOptions(
   for (auto& option : request_options) {
     auto& option_name = option.name();
     auto option_type = DERIVATIVE_OPTIONS_TYPES.find(option_name);
-    if (option_type == DERIVATIVE_OPTIONS_TYPES.end()) {
+    if (option_type == DERIVATIVE_OPTIONS_TYPES.end() &&
+        option_name != NO_WAIT_FUTURE_OPTION_NAME) {
       throw InvalidOptionException(
           fmt::format("Unexpected option name: {}", option_name));
     }
@@ -111,6 +115,16 @@ DerivativeOptions parseDerivativeOptions(
         option.values_size() > 1) {
       throw InvalidOptionException(fmt::format(
           "Expected at most one value of option {}", option_name));
+    }
+
+    if (option_name == NO_WAIT_FUTURE_OPTION_NAME) {
+      if (option.values_size() > 0) {
+        throw InvalidOptionException(fmt::format(
+            "Option {} is supposed not to have values", option_name));
+      }
+
+      derivative_options.options.no_wait_future = true;
+      continue;
     }
 
     if (option.values_size() == 0) {

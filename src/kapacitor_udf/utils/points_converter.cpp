@@ -129,11 +129,12 @@ arrow::Result<agent::PointBatch> BasePointsConverter::convertToPoints(
                         scalar_value)
                         ->value;
                 break;
-              default:  // TODO: support null type and others
+              case arrow::Type::NA: break;
+              default:  // TODO: support other types
                 spdlog::warn(
                     "Currently supports field columns of arrow types: "
                     "arrow::int64, arrow::float64, arrow::utf8, "
-                    "arrow::boolean. "
+                    "arrow::boolean, arrow::null. "
                     "Provided type is {}, column name: {}",
                     column->type()->ToString(),
                     record_batch->schema()->field(i)->name());

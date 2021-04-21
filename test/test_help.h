@@ -38,7 +38,7 @@ inline void checkValue(const T& expected_value, const std::shared_ptr<arrow::Rec
                 const std::string& column_name, size_t i) {
   std::shared_ptr<arrow::Scalar> field_scalar;
   arrowAssignOrRaise(field_scalar, record_batch->GetColumnByName(column_name)->GetScalar(i));
-  REQUIRE( std::static_pointer_cast<ArrowType>(field_scalar)->value == expected_value );
+  REQUIRE( expected_value == std::static_pointer_cast<ArrowType>(field_scalar)->value );
 }
 
 template<>

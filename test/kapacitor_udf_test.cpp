@@ -711,6 +711,7 @@ TEST_CASE( "DerivativeUDF info response is right", "[DerivativeUDF]" ) {
   REQUIRE( agent::STREAM == info_response.info().wants() );
   REQUIRE( agent::STREAM == info_response.info().provides() );
 
+  std::string no_wait_future_option_name = "noWait";
   std::unordered_map<std::string, agent::ValueType> derivative_options_types{
       {"derivative", agent::STRING},
       {"as", agent::STRING},
@@ -724,11 +725,17 @@ TEST_CASE( "DerivativeUDF info response is right", "[DerivativeUDF]" ) {
 
   for (auto& option : info_response.info().options()) {
     info_options.insert(option.first);
-    REQUIRE( derivative_options_types.find(option.first) != derivative_options_types.end() );
-    REQUIRE( option.second.valuetypes_size() == 1 );
-    REQUIRE( derivative_options_types[option.first] == option.second.valuetypes(0) );
+    if (derivative_options_types.find(option.first) != derivative_options_types.end()) {
+      REQUIRE(option.second.valuetypes_size() == 1);
+      REQUIRE(derivative_options_types[option.first]
+                  == option.second.valuetypes(0));
+    } else {
+      REQUIRE( option.first == no_wait_future_option_name );
+      REQUIRE( option.second.valuetypes_size() == 0 );
+    }
   }
 
+  REQUIRE( info_options.find(no_wait_future_option_name) != info_options.end() );
   for ([[maybe_unused]] auto& [option_name, _] : derivative_options_types) {
     REQUIRE( info_options.find(option_name) != info_options.end() );
   }
@@ -797,11 +804,16 @@ TEST_CASE("successfully parses DerivativeUDF options", "[DerivativeUDF]") {
   new_option_value = new_option->mutable_values()->Add();
   *new_option_value = options[emit_timeout_option_name];
 
+  std::string no_wait_option_name{"noWait"};
+  new_option = request_options.Add();
+  new_option->set_name(no_wait_option_name);
+
   auto parsed_options = kapacitor_udf::internal::parseDerivativeOptions(request_options);
 
   REQUIRE( 20s == parsed_options.emit_timeout  );
   REQUIRE( 2s == parsed_options.options.unit_time_segment );
   REQUIRE( 3s == parsed_options.options.derivative_neighbourhood );
+  REQUIRE( parsed_options.options.no_wait_future );
 
   const auto& derivative_cases = parsed_options.options.derivative_cases;
   REQUIRE( 1 == derivative_cases.size() );
@@ -860,6 +872,7 @@ TEST_CASE("successfully parses DerivativeUDF default options with multiple deriv
   REQUIRE( 10s == parsed_options.emit_timeout  );
   REQUIRE( 1s == parsed_options.options.unit_time_segment );
   REQUIRE( 1s == parsed_options.options.derivative_neighbourhood );
+  REQUIRE( !parsed_options.options.no_wait_future );
 
   const auto& derivative_cases = parsed_options.options.derivative_cases;
   REQUIRE( 2 == derivative_cases.size() );
