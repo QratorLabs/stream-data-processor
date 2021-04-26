@@ -11,11 +11,11 @@ services:
       target: app
       args:
         ALPINE_IMAGE_VERSION: 3.12.1
-        CMAKE_BUILD_BINARY_TARGET: dynamic_window_udf
+        CMAKE_BUILD_BINARY_TARGET: sdp-udf
         PROJECT_ID: dynamic_window_udf_example
     volumes:
       - sockets-vol:/var/run/
-    command: /app/dynamic_window_udf --socket /var/run/dynamicWindowUDF.sock --verbose
+    command: /app/sdp-udf --window /var/run/dynamicWindowUDF.sock --verbose
 
   influxdb:
     image: influxdb:1.8.4

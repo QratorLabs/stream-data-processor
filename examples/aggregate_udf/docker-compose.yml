@@ -11,11 +11,11 @@ services:
       target: app
       args:
         ALPINE_IMAGE_VERSION: 3.12.1
-        CMAKE_BUILD_BINARY_TARGET: aggregate_udf
+        CMAKE_BUILD_BINARY_TARGET: sdp-udf
         PROJECT_ID: aggregate_udf_example
     volumes:
       - sockets-vol:/var/run/
-    command: /app/aggregate_udf --batch /var/run/batchAggregateUDF.sock --stream /var/run/streamAggregateUDF.sock
+    command: /app/sdp-udf --batch-aggr /var/run/batchAggregateUDF.sock --stream-aggr /var/run/streamAggregateUDF.sock
 
   influxdb:
     image: influxdb:1.8.4

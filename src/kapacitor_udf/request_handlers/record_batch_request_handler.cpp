@@ -123,6 +123,7 @@ void BatchRecordBatchRequestHandlerBase::endBatch(
   }
 
   points_storage_->clear();
+  in_batch_ = false;
 }
 
 StreamRecordBatchRequestHandlerBase::StreamRecordBatchRequestHandlerBase(

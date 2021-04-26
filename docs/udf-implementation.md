@@ -40,8 +40,8 @@ basic steps. As example, you can refer to
 [`streamAggregateUDF`'s](../src/kapacitor_udf/request_handlers/aggregate_request_handlers/stream_aggregate_request_handler.h) 
 and [`batchAggregateUDF`'s](../src/kapacitor_udf/request_handlers/aggregate_request_handlers/batch_aggregate_request_handler.h) 
 `RequestHandeler` implementations (items 3, 4, 6) and to the 
-[AggregateUDF's `.cpp` file with `main`](../examples/aggregate_udf/aggregate_udf.cpp) 
-(item 7).
+[udf_agent_client_factory.h](../src/kapacitor_udf/udf_agent_client_factory.h) 
+file (item 7).
 
 1. Check out if your UDF is expressed through one of 
    [`RecordBatchHandler`s](computation-graph.md#RecordBatchHandler) or their 

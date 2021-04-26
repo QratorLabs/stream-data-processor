@@ -81,7 +81,7 @@ udf-docker$ make threshold_udf
 Now, start the UDF:
 
 ```terminal
-udf-docker$ ./bin/threshold_udf --socket /var/run/adjustLevelUDF.sock
+udf-docker$ ./bin/sdp-udf --level /var/run/adjustLevelUDF.sock
 ```
 
 ### Kapacitor container

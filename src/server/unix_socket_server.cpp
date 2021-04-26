@@ -18,21 +18,49 @@ UnixSocketServer::UnixSocketServer(
     const std::string& socket_path, uvw::Loop* loop)
     : client_factory_(std::move(client_factory)),
       socket_path_(socket_path),
-      socket_handle_(loop->resource<uvw::PipeHandle>()) {
-  socket_handle_->on<uvw::ListenEvent>(
-      [this](const uvw::ListenEvent& event, uvw::PipeHandle& socket_handle) {
-        spdlog::info("New socket connection!");
-        auto connection = socket_handle.loop().resource<uvw::PipeHandle>();
-        clients_.push_back(
-            std::move(client_factory_->createClient(connection)));
-        socket_handle_->accept(*connection);
-        clients_.back()->start();
-      });
-
+      socket_handle_(loop->resource<uvw::PipeHandle>()),
+      listen_event_listener_(socket_handle_->on<uvw::ListenEvent>(
+          [this](const uvw::ListenEvent& event,
+                 uvw::PipeHandle& socket_handle) {
+            handleNewConnection(event, socket_handle);
+          })) {
   socket_handle_->on<uvw::ErrorEvent>(
       [](const uvw::ErrorEvent& event, uvw::PipeHandle& socket_handle) {
         spdlog::error(event.what());
       });
+}
+
+UnixSocketServer::UnixSocketServer(UnixSocketServer&& other)
+    : client_factory_(std::move(other.client_factory_)),
+      socket_path_(std::move(other.socket_path_)),
+      socket_handle_(std::move(other.socket_handle_)),
+      socket_lock_fd_(other.socket_lock_fd_),
+      clients_(std::move(other.clients_)) {
+  socket_handle_->erase(other.listen_event_listener_);
+  listen_event_listener_ = socket_handle_->on<uvw::ListenEvent>(
+      [this](const uvw::ListenEvent& event, uvw::PipeHandle& socket_handle) {
+        handleNewConnection(event, socket_handle);
+      });
+}
+
+UnixSocketServer& UnixSocketServer::operator=(UnixSocketServer&& other) {
+  if (&other == this) {
+    return *this;
+  }
+
+  client_factory_ = std::move(other.client_factory_);
+  socket_path_ = std::move(other.socket_path_);
+  socket_handle_ = std::move(other.socket_handle_);
+  socket_lock_fd_ = other.socket_lock_fd_;
+  clients_ = std::move(other.clients_);
+  socket_handle_->erase(other.listen_event_listener_);
+
+  listen_event_listener_ = socket_handle_->on<uvw::ListenEvent>(
+      [this](const uvw::ListenEvent& event, uvw::PipeHandle& socket_handle) {
+        handleNewConnection(event, socket_handle);
+      });
+
+  return *this;
 }
 
 void UnixSocketServer::start() {

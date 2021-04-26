@@ -218,6 +218,10 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   )
 list(APPEND LIBRARIES_NAMES "${KAPACITOR_UDF_LIBRARY_NAME}")
 
+set(SDP_UDF_EXECUTABLE_NAME "sdp-udf")
+add_executable("${SDP_UDF_EXECUTABLE_NAME}" "${CMAKE_SOURCE_DIR}/src/kapacitor_udf/main.cpp")
+target_link_libraries("${SDP_UDF_EXECUTABLE_NAME}" "${KAPACITOR_UDF_LIBRARY_NAME}")
+
 if (CLANG_TIDY_LINT)
   set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
 endif()
