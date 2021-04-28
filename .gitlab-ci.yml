@@ -5,11 +5,13 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   DOCKER_IMAGE_NAME: qevent_intership_stream_data_processor_image
   DOCKER_PROJECT_PATH: /stream-data-processor
+  UDF_IMAGE_NAME: sdp_kapacitor_udf
 
 .docker_cleanup: &docker_cleanup
   - docker container prune --filter "label=project=${CI_PROJECT_PATH}" --force
   - docker volume prune --filter "label=project=${CI_PROJECT_PATH}" --force
   - docker network prune --filter "label=project=${CI_PROJECT_PATH}" --force
+  - docker image prune --filter "label=stage=builder" --filter "label=project=${CI_PROJECT_PATH}" --force
 
 .setup_image: &setup_image
   - |
@@ -38,6 +40,26 @@ variables:
   - docker cp . "${CI_COMMIT_SHORT_SHA}-${CI_PIPELINE_ID}-${CI_JOB_ID}":"${DOCKER_PROJECT_PATH}"
   - docker container start --attach "${CI_COMMIT_SHORT_SHA}-${CI_PIPELINE_ID}-${CI_JOB_ID}"
 
+.build_udf_image: &build_udf_image
+  - |
+    docker image build \
+            --target app \
+            --build-arg ALPINE_IMAGE_VERSION=3.12.1 \
+            --build-arg CMAKE_BUILD_BINARY_TARGET=sdp-udf \
+            --build-arg "PROJECT_ID=${CI_PROJECT_PATH}" \
+            -t "${UDF_IMAGE_NAME}" .
+  - docker image list --filter=reference="${UDF_IMAGE_NAME}" --filter=before="${UDF_IMAGE_NAME}:latest"
+  - |
+    for image in $(
+        docker image list --no-trunc --quiet \
+          --filter=reference="${UDF_IMAGE_NAME}" \
+          --filter=before="${UDF_IMAGE_NAME}:latest"
+    ); do
+        docker image remove --force "${image}"
+    done
+  - docker save "${UDF_IMAGE_NAME}" | gzip > "${UDF_IMAGE_NAME}.tar.gz"
+
+
 default:
   before_script:
     - *setup_image
@@ -53,3 +75,8 @@ generic:
   script:
     - *start_job_container
     - docker container rm -f "${CI_COMMIT_SHORT_SHA}-${CI_PIPELINE_ID}-${CI_JOB_ID}"
+    - *build_udf_image
+  artifacts:
+    paths:
+      - "${UDF_IMAGE_NAME}.tar.gz"
+
