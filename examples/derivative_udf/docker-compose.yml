@@ -1,0 +1,45 @@
+version: "3.8"
+
+volumes:
+  sockets-vol:
+
+services:
+  kapacitor-udf:
+    build:
+      context: ./../..
+      dockerfile: Dockerfile
+      target: app
+      args:
+        ALPINE_IMAGE_VERSION: 3.12.1
+        CMAKE_BUILD_BINARY_TARGET: sdp-udf
+        PROJECT_ID: derivative_udf_example
+    volumes:
+      - sockets-vol:/var/run/
+    command: /app/sdp-udf --der /var/run/derivativeUDF.sock -v
+
+  influxdb:
+    image: influxdb:1.8.4
+    ports:
+      - 8086:8086
+      - 2003:2003
+    volumes:
+      - ./influxdb.conf:/etc/influxdb/influxdb.conf
+
+  collectd:
+    image: fr3nd/collectd
+    privileged: true
+    volumes:
+      - ./collectd.conf:/etc/collectd/collectd.conf
+    depends_on:
+      - influxdb
+
+  kapacitor:
+    image: kapacitor:1.5.9
+    volumes:
+      - sockets-vol:/var/run/
+      - ./kapacitor.conf:/etc/kapacitor/kapacitor.conf
+    ports:
+      - 9092:9092
+    depends_on:
+      - influxdb
+      - kapacitor-udf

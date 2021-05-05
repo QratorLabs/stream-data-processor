@@ -1,0 +1,18 @@
+dbrp "graphite"."default"
+
+var log_url = 'http://127.0.0.1:7777/'
+
+var cputime_all = stream
+    |from()
+        .measurement('cpu')
+        .groupBy(*)
+
+var cputime_all_grouped = cputime_all
+    |groupBy('cpu', 'host', 'type')
+    |flatten().tolerance(5s)
+    @derivativeUDF()
+        .derivative('idle').as('idle_der')
+        .derivative('idle').order(2).as('idle_der_2')
+        .unit(10s).neighbourhood(20s).noWait()
+        .emitTimeout(10s)
+    |log()
