@@ -91,6 +91,7 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_PUBLIC_INCLUDE_DIRS"
   )
 set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_PRIVATE_INCLUDE_DIRS"
   "${CMAKE_SOURCE_DIR}/third_party/bprinter/include"
+  "${CMAKE_SOURCE_DIR}/third_party/eigen"
   )
 set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_DEPENDENCIES"
   uvw::uvw-static
@@ -123,6 +124,7 @@ set("${STREAM_DATA_PROCESSOR_LIBRARY_NAME}_SOURCES"
   record_batch_handlers/aggregate_functions/aggregate_functions.cpp
   record_batch_handlers/stateful_handlers/handler_factory.cpp
   record_batch_handlers/stateful_handlers/threshold_state_machine.cpp
+  record_batch_handlers/stateful_handlers/derivative_handler.cpp
   record_batch_handlers/aggregate_handler.cpp
   record_batch_handlers/default_handler.cpp
   record_batch_handlers/filter_handler.cpp
@@ -155,6 +157,7 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_PUBLIC_INCLUDE_DIRS"
   "${CMAKE_CURRENT_SOURCE_DIR}"
   "${CMAKE_SOURCE_DIR}/third_party/uvw/src"
   "${CMAKE_SOURCE_DIR}/third_party/cxxopts/include"
+  "${CMAKE_SOURCE_DIR}/third_party/eigen"
   )
 set("${KAPACITOR_UDF_LIBRARY_NAME}_DEPENDENCIES"
   uvw::uvw-static
@@ -169,12 +172,13 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   kapacitor_udf/udf_agent.cpp
   kapacitor_udf/utils/rw_utils.cpp
   kapacitor_udf/utils/points_converter.cpp
+  kapacitor_udf/utils/points_storage.cpp
   kapacitor_udf/request_handlers/aggregate_request_handlers/aggregate_options_parser.cpp
   kapacitor_udf/request_handlers/aggregate_request_handlers/batch_aggregate_request_handler.cpp
   kapacitor_udf/request_handlers/aggregate_request_handlers/stream_aggregate_request_handler.cpp
+  kapacitor_udf/request_handlers/derivative_request_handler.cpp
   kapacitor_udf/request_handlers/dynamic_window_request_handler.cpp
   kapacitor_udf/request_handlers/logging_request_handler.cpp
-  kapacitor_udf/utils/points_storage.cpp
   kapacitor_udf/request_handlers/record_batch_request_handler.cpp
   kapacitor_udf/request_handlers/request_handler.cpp
   kapacitor_udf/request_handlers/stateful_threshold_request_handler.cpp
@@ -189,6 +193,7 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   record_batch_handlers/aggregate_functions/aggregate_functions.cpp
   record_batch_handlers/stateful_handlers/handler_factory.cpp
   record_batch_handlers/stateful_handlers/threshold_state_machine.cpp
+  record_batch_handlers/stateful_handlers/derivative_handler.cpp
   record_batch_handlers/aggregate_handler.cpp
   record_batch_handlers/default_handler.cpp
   record_batch_handlers/filter_handler.cpp
@@ -212,6 +217,10 @@ set("${KAPACITOR_UDF_LIBRARY_NAME}_SOURCES"
   utils/uvarint_utils.cpp
   )
 list(APPEND LIBRARIES_NAMES "${KAPACITOR_UDF_LIBRARY_NAME}")
+
+set(SDP_UDF_EXECUTABLE_NAME "sdp-udf")
+add_executable("${SDP_UDF_EXECUTABLE_NAME}" "${CMAKE_SOURCE_DIR}/src/kapacitor_udf/main.cpp")
+target_link_libraries("${SDP_UDF_EXECUTABLE_NAME}" "${KAPACITOR_UDF_LIBRARY_NAME}")
 
 if (CLANG_TIDY_LINT)
   set(CMAKE_CXX_CLANG_TIDY "clang-tidy")

@@ -112,7 +112,11 @@ void UDFAgent<UVWHandleType, LibuvHandleType>::writeResponse(
   std::ostringstream out_stream;
   rw_utils::writeToStreamWithUvarintLength(out_stream, response_data);
   spdlog::debug("Response: {}", response.DebugString());
-  out_->write(out_stream.str().data(), out_stream.str().length());
+  auto data = out_stream.str();
+  auto data_ptr = std::make_unique<char[]>(data.length() + 1);
+  std::copy(data.begin(), data.end(), data_ptr.get());
+  data_ptr[data.length()] = '\0';
+  out_->write(std::move(data_ptr), data.length());
 }
 
 template void UDFAgent<uvw::TTYHandle, uv_tty_t>::writeResponse(

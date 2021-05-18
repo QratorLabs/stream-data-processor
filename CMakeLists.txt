@@ -101,12 +101,6 @@ add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src")
 add_subdirectory(examples)
 
 if(ENABLE_TESTS)
-
-#  if(LINUX)
-#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=leak -fno-omit-frame-pointer -g")
-#    message(STATUS "Enabled LeakSanitizer")
-#  endif()
-
   enable_testing()
   add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/test")
 endif()

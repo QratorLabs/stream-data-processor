@@ -20,7 +20,7 @@ arrow::Result<arrow::RecordBatchVector> GraphiteParser::parseRecordBatches(
     const arrow::Buffer& buffer) {
   auto metric_strings = string_utils::split(buffer.ToString(), "\n");
   if (metric_strings.empty()) {
-    return arrow::Status::OK();
+    return arrow::RecordBatchVector{};
   }
 
   parseMetricStrings(metric_strings);

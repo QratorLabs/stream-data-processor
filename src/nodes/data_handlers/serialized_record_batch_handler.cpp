@@ -16,7 +16,7 @@ arrow::Result<arrow::BufferVector> SerializedRecordBatchHandler::handle(
                         serialize_utils::deserializeRecordBatches(source));
 
   if (record_batches.empty()) {
-    return arrow::Status::OK();
+    return arrow::BufferVector{};
   }
 
   ARROW_ASSIGN_OR_RAISE(auto result,

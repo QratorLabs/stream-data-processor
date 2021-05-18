@@ -18,9 +18,8 @@ arrow::Result<std::shared_ptr<arrow::RecordBatch>> convertTableToRecordBatch(
 arrow::Result<std::shared_ptr<arrow::RecordBatch>> concatenateRecordBatches(
     const std::vector<std::shared_ptr<arrow::RecordBatch>>& record_batches);
 
-template <typename ElementType>
-inline void append(std::vector<ElementType>& from,
-                   std::vector<ElementType>& to) {
+template <typename ContainerType>
+inline void append(const ContainerType& from, ContainerType& to) {
   if (to.empty()) {
     to = from;
   } else {
@@ -28,9 +27,8 @@ inline void append(std::vector<ElementType>& from,
   }
 }
 
-template <typename ElementType>
-inline void append(std::vector<ElementType>&& from,
-                   std::vector<ElementType>& to) {
+template <typename ContainerType>
+inline void append(ContainerType&& from, ContainerType& to) {
   if (to.empty()) {
     to = std::move(from);
   } else {

@@ -60,7 +60,8 @@ class RecordBatchBuilder {
   arrow::Status buildColumn(
       const std::string& column_name,
       const std::vector<ValueType>& values,
-      sdp::metadata::ColumnType column_type = sdp::metadata::UNKNOWN);
+      sdp::metadata::ColumnType column_type = sdp::metadata::UNKNOWN,
+      const std::vector<bool>& is_valid = {});
 
   arrow::Result<std::shared_ptr<arrow::RecordBatch>> getResult() const;
 

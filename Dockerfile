@@ -35,6 +35,8 @@ RUN if [ "${CMAKE_BUILD_BINARY_TARGET}" = "test_main" ]; then cmake .. -DENABLE_
     && make "${CMAKE_BUILD_BINARY_TARGET}" -j$(( $(nproc) / 2 + 1 ))
 
 FROM alpine:${ALPINE_IMAGE_VERSION} AS app
+ARG CMAKE_BUILD_BINARY_TARGET
+ARG PROJECT_ID
 LABEL stage="app"
 LABEL project="${PROJECT_ID}"
 COPY --from=builder "/stream-data-processor/build/bin/${CMAKE_BUILD_BINARY_TARGET}" ./app/
